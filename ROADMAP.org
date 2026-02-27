@@ -49,17 +49,18 @@ Use your creativity for the node contents, such as headings, tags, properties an
 * Grammar
 ** TODO Formal grammar
 Translate the @docs/research/target-syntax.md into a formal description of the target org syntax and place it in @docs/plans/syntax.md .
-My preference is PEG - parsing expression grammars, but you can use any formalism that you deem fit to describe the target syntax (for instance BNF).
+My preference is PEG - parsing expression grammars, but you can use any formalism that you deem fit to describe the target syntax (for instance BNF), keep in mind that the parser will be translated into code, specifically using tree-sitter.
 
 This description will be used to build a parser for the grammar.
+
+You can include the excluded features as explicit text rules. We might expand the parser with those features in the future.
 
 ** TODO Tree-sitter parser
 Build a parser based on =tree-sitter= (https://tree-sitter.github.io/tree-sitter/index.html) and the formal grammar description in @docs/plans/syntax.md.
 
-The parser should preserve the source locations of all the parsed nodes, this property will be used for original content reconstruction.
+The parser should preserve the source locations of all the parsed nodes, this property will be used for original content reconstruction. Please take special care to implement error recovery in the parser, we want descriptive parse error messages.
 
 The parser will be embedded in Python at a later stage.
-
 You can test the parser on sample org files found in the examples/ directory in addition to using unittests.
 
 ** TODO Python wrapper on tree-sitter
