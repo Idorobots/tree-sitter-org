@@ -1,0 +1,85 @@
+================
+Unordered list with dashes
+================
+- Item one
+- Item two
+- Item three
+
+---
+
+(document
+  (zeroth_section
+    (plain_list
+      (item
+        (plain_text)
+        (plain_list
+          (item
+            (plain_text)
+            (plain_list
+              (item
+                (plain_text)))))))))
+
+================
+Unordered list with plus
+================
++ First
++ Second
+
+---
+
+(document
+  (zeroth_section
+    (plain_list
+      (item
+        (plain_text)
+        (plain_list
+          (item
+            (plain_text)))))))
+
+================
+Ordered list with numbers
+================
+1. First
+2. Second
+3. Third
+
+---
+
+(document
+  (zeroth_section
+    (plain_list
+      (item
+        (counter)
+        (plain_text)
+        (plain_list
+          (item
+            (counter)
+            (plain_text)
+            (plain_list
+              (item
+                (counter)
+                (plain_text)))))))))
+
+================
+List with checkboxes
+================
+- [ ] Unchecked
+- [X] Checked
+- [-] Partial
+
+---
+
+(document
+  (zeroth_section
+    (plain_list
+      (item
+        (checkbox)
+        (plain_text)
+        (plain_list
+          (item
+            (checkbox)
+            (plain_text)
+            (plain_list
+              (item
+                (checkbox)
+                (plain_text)))))))))

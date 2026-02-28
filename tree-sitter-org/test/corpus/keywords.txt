@@ -1,0 +1,41 @@
+================
+Title keyword
+================
+#+TITLE: My Document
+
+---
+
+(document
+  (zeroth_section
+    (special_keyword
+      (keyword_key))))
+
+================
+Author keyword
+================
+#+AUTHOR: Jane Doe
+
+---
+
+(document
+  (zeroth_section
+    (special_keyword
+      (keyword_key))))
+
+================
+Multiple keywords
+================
+#+TITLE: My Doc
+#+AUTHOR: Jane
+#+DATE: 2024-01-01
+
+---
+
+(document
+  (zeroth_section
+    (special_keyword
+      (keyword_key))
+    (special_keyword
+      (keyword_key))
+    (special_keyword
+      (keyword_key))))

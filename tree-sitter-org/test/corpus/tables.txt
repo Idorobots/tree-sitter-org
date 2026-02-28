@@ -1,0 +1,49 @@
+================
+Simple org table
+================
+| A | B |
+| 1 | 2 |
+
+---
+
+(document
+  (zeroth_section
+    (org_table
+      (table_row
+        (table_cell
+          (plain_text))
+        (table_cell
+          (plain_text))))
+    (org_table
+      (table_row
+        (table_cell
+          (plain_text))
+        (table_cell
+          (plain_text))))))
+
+================
+Table with rule row
+================
+| Name | Age |
+|------+-----|
+| Alice | 30 |
+
+---
+
+(document
+  (zeroth_section
+    (org_table
+      (table_row
+        (table_cell
+          (plain_text))
+        (table_cell
+          (plain_text))))
+    (org_table
+      (table_row
+        (table_rule)))
+    (org_table
+      (table_row
+        (table_cell
+          (plain_text))
+        (table_cell
+          (plain_text))))))

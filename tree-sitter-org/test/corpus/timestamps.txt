@@ -1,0 +1,67 @@
+================
+Active timestamp
+================
+<2024-01-15 Mon>
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (timestamp
+        (ts_year)
+        (ts_month)
+        (ts_day)
+        (ts_dayname)))))
+
+================
+Inactive timestamp
+================
+[2024-01-15 Mon]
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (timestamp
+        (ts_year)
+        (ts_month)
+        (ts_day)
+        (ts_dayname)))))
+
+================
+Active timestamp with time
+================
+<2024-01-15 Mon 14:30>
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (timestamp
+        (ts_year)
+        (ts_month)
+        (ts_day)
+        (ts_dayname)))))
+
+================
+Timestamp range
+================
+<2024-01-15 Mon>--<2024-01-20 Fri>
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (timestamp
+        (ts_year)
+        (ts_month)
+        (ts_day)
+        (ts_dayname)
+        (ts_year)
+        (ts_month)
+        (ts_day)
+        (ts_dayname)))))

@@ -1,0 +1,40 @@
+================
+Regular link path only
+================
+[[/path/to/file]]
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (regular_link
+        (link_path)))))
+
+================
+Regular link with description
+================
+[[https://example.com][Click here]]
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (regular_link
+        (link_path)
+        (plain_text)))))
+
+================
+Angle link
+================
+<https://example.com/path>
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (angle_link
+        (link_type)
+        (link_path)))))

@@ -1,0 +1,41 @@
+================
+Heading with DEADLINE
+================
+* TODO Task
+DEADLINE: <2024-01-15 Mon>
+
+---
+
+(document
+  (heading
+    (stars)
+    (todo_keyword)
+    (plain_text)
+    (planning
+      (planning_keyword)
+      (timestamp
+        (ts_year)
+        (ts_month)
+        (ts_day)
+        (ts_dayname)))))
+
+================
+Heading with SCHEDULED
+================
+* TODO Task
+SCHEDULED: <2024-01-15 Mon>
+
+---
+
+(document
+  (heading
+    (stars)
+    (todo_keyword)
+    (plain_text)
+    (planning
+      (planning_keyword)
+      (timestamp
+        (ts_year)
+        (ts_month)
+        (ts_day)
+        (ts_dayname)))))

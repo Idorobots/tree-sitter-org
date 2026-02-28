@@ -1,0 +1,54 @@
+================
+Simple drawer
+================
+:NOTES:
+Some notes here.
+:END:
+
+---
+
+(document
+  (zeroth_section
+    (drawer
+      (drawer_name)
+      (paragraph
+        (plain_text)))))
+
+================
+Property drawer
+================
+* Heading
+:PROPERTIES:
+:ID: unique-id
+:END:
+
+---
+
+(document
+  (heading
+    (stars)
+    (plain_text)
+    (property_drawer
+      (node_property
+        (property_name)))))
+
+================
+Property drawer with multiple properties
+================
+* Heading
+:PROPERTIES:
+:ID: unique-id
+:CATEGORY: work
+:END:
+
+---
+
+(document
+  (heading
+    (stars)
+    (plain_text)
+    (property_drawer
+      (node_property
+        (property_name))
+      (node_property
+        (property_name)))))

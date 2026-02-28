@@ -1,0 +1,28 @@
+================
+Simple citation
+================
+[cite:@key]
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (citation
+        (citation_reference
+          (cite_key))))))
+
+================
+Citation with style
+================
+[cite/t:@key]
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (citation
+        (cite_style_name)
+        (citation_reference
+          (cite_key))))))

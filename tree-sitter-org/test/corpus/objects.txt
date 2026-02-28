@@ -1,0 +1,66 @@
+================
+Export snippet
+================
+@@html:<b>@@
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (export_snippet
+        (snippet_backend)
+        (snippet_value)))))
+
+================
+Regular link with description
+================
+[[https://example.com][Example]]
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (regular_link
+        (link_path)
+        (plain_text)))))
+
+================
+Regular link without description
+================
+[[https://example.com]]
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (regular_link
+        (link_path)))))
+
+================
+Target
+================
+<<my-target>>
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (target
+        (target_text)))))
+
+================
+Radio target
+================
+<<<important term>>>
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (radio_target
+        (plain_text)))))

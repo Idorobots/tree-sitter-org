@@ -1,0 +1,55 @@
+================
+Comment block
+================
+#+begin_comment
+This is hidden.
+#+end_comment
+
+---
+
+(document
+  (zeroth_section
+    (comment_block)))
+
+================
+Example block
+================
+#+begin_example
+Some example text.
+#+end_example
+
+---
+
+(document
+  (zeroth_section
+    (example_block)))
+
+================
+Src block with language
+================
+#+begin_src python
+print("hello")
+#+end_src
+
+---
+
+(document
+  (zeroth_section
+    (src_block
+      (language))))
+
+================
+Verse block
+================
+#+begin_verse
+Roses are red,
+Violets are blue.
+#+end_verse
+
+---
+
+(document
+  (zeroth_section
+    (verse_block
+      (plain_text)
+      (plain_text))))

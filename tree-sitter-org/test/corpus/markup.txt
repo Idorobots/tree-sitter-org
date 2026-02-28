@@ -1,0 +1,103 @@
+================
+Bold text
+================
+This has *bold* words.
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (plain_text)
+      (bold
+        (plain_text))
+      (plain_text))))
+
+================
+Italic text
+================
+This has /italic/ words.
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (plain_text)
+      (italic
+        (plain_text))
+      (plain_text))))
+
+================
+Underline text
+================
+This has _underline_ words.
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (plain_text)
+      (underline
+        (plain_text))
+      (plain_text))))
+
+================
+Strikethrough text
+================
+This has +deleted+ words.
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (plain_text)
+      (strike_through
+        (plain_text))
+      (plain_text))))
+
+================
+Verbatim text
+================
+This has =verbatim= words.
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (plain_text)
+      (verbatim
+        (verbatim_content))
+      (plain_text))))
+
+================
+Code text
+================
+This has ~code~ words.
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (plain_text)
+      (code
+        (code_content))
+      (plain_text))))
+
+================
+Bold at beginning of line
+================
+*bold text* here.
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (bold
+        (plain_text))
+      (plain_text))))
