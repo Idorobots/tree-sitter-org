@@ -8,7 +8,8 @@ Title keyword
 (document
   (zeroth_section
     (special_keyword
-      (keyword_key))))
+      (keyword_key)
+      (keyword_value))))
 
 ================
 Author keyword
@@ -20,7 +21,8 @@ Author keyword
 (document
   (zeroth_section
     (special_keyword
-      (keyword_key))))
+      (keyword_key)
+      (keyword_value))))
 
 ================
 Multiple keywords
@@ -34,8 +36,35 @@ Multiple keywords
 (document
   (zeroth_section
     (special_keyword
-      (keyword_key))
+      (keyword_key)
+      (keyword_value))
     (special_keyword
-      (keyword_key))
+      (keyword_key)
+      (keyword_value))
     (special_keyword
-      (keyword_key))))
+      (keyword_key)
+      (keyword_value))))
+
+================
+Zeroth and heading special keywords
+================
+# Comment in zeroth section
+#+TODO: SPECIAL KEYWORD
+* Heading
+#+TODO: This is treated as a special keyword
+
+---
+
+(document
+  (zeroth_section
+    (comment)
+    (special_keyword
+      (keyword_key)
+      (keyword_value)))
+  (heading
+    (stars)
+    (plain_text)
+    (section
+      (special_keyword
+        (keyword_key)
+        (keyword_value)))))

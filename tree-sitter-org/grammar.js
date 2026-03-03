@@ -171,6 +171,7 @@ module.exports = grammar({
 
     _section_element: $ => choice(
       $._section_element_affiliated,
+      $.special_keyword,
       $._non_affiliatable,
       $._affiliatable,
     ),
@@ -639,7 +640,7 @@ module.exports = grammar({
       '#+',
       field('key', alias($._SPECIAL_KEY, $.keyword_key)),
       ':',
-      optional(field('value', seq($._S, $._REST_OF_LINE))),
+      optional(seq($._S, field('value', alias($._REST_OF_LINE, $.keyword_value)))),
       $._NL,
     ),
 
