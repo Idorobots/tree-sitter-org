@@ -54,6 +54,7 @@ enum TokenType {
   TOKEN_LISTITEM_INDENT,
   TOKEN_PLAN_KW,
   TOKEN_ERROR_SENTINEL,
+  TOKEN_TABLE_START,   // zero-width gate emitted once at the start of each org_table
 };
 
 // ---------------------------------------------------------------------------
@@ -132,6 +133,11 @@ typedef struct {
 
   // Consecutive blank line counter
   uint8_t consecutive_blank_lines;
+
+  // Table tracking: true while the parser is inside an org_table.
+  // Used by scan_table_start to prevent starting a new org_table mid-table,
+  // which would cause each row to parse as a separate org_table node.
+  bool in_table;
 } Scanner;
 
 // ---------------------------------------------------------------------------
@@ -250,13 +256,14 @@ unsigned tree_sitter_org_external_scanner_serialize(
     pos += len;
   }
 
-  // prev_char, consecutive_blank_lines
-  if (pos + 5 > SERIALIZE_BUF_SIZE) return 0;
+  // prev_char, consecutive_blank_lines, in_table
+  if (pos + 6 > SERIALIZE_BUF_SIZE) return 0;
   buffer[pos++] = (char)((s->prev_char >> 24) & 0xFF);
   buffer[pos++] = (char)((s->prev_char >> 16) & 0xFF);
   buffer[pos++] = (char)((s->prev_char >> 8) & 0xFF);
   buffer[pos++] = (char)(s->prev_char & 0xFF);
   buffer[pos++] = (char)s->consecutive_blank_lines;
+  buffer[pos++] = (char)(s->in_table ? 1 : 0);
 
   return pos;
 }
@@ -320,7 +327,7 @@ void tree_sitter_org_external_scanner_deserialize(
     pos += len;
   }
 
-  // prev_char, consecutive_blank_lines
+  // prev_char, consecutive_blank_lines, in_table
   if (pos + 5 <= length) {
     s->prev_char = ((int32_t)(uint8_t)buffer[pos] << 24) |
                    ((int32_t)(uint8_t)buffer[pos + 1] << 16) |
@@ -328,6 +335,9 @@ void tree_sitter_org_external_scanner_deserialize(
                    ((int32_t)(uint8_t)buffer[pos + 3]);
     pos += 4;
     s->consecutive_blank_lines = (uint8_t)buffer[pos++];
+  }
+  if (pos < length) {
+    s->in_table = (bool)buffer[pos++];
   }
 }
 
@@ -895,6 +905,49 @@ static bool scan_paragraph_continue(TSLexer *lexer) {
   return true;
 }
 
+// _TABLE_START: zero-width token emitted once at the start of each org_table.
+//
+// The scanner tracks `in_table` to prevent GLR from creating a separate
+// org_table node for each row of a multi-row table.  When the parser is
+// trying to open a new org_table (TOKEN_TABLE_START is in valid_symbols):
+//
+//   - If the next character is NOT '|': the table cannot start here; reset
+//     in_table to false (this is how the flag is cleared when a table ends
+//     and the parser returns to element level looking for the next element).
+//
+//   - If the next character IS '|' and in_table is false: emit _TABLE_START
+//     and set in_table = true.
+//
+//   - If the next character IS '|' but in_table is already true: we are
+//     already inside an org_table.  Return false so the parser cannot open
+//     a second org_table for this row; GLR paths that try to do so are pruned.
+//
+// TOKEN_TABLE_START is only in valid_symbols when the grammar is at element
+// level (the beginning of an org_table), never while parsing rows inside one,
+// so this check fires in exactly the right contexts.
+static bool scan_table_start(Scanner *s, TSLexer *lexer) {
+  mark_end(lexer);  // zero-width token
+
+  int32_t ch = lookahead(lexer);
+  if (ch != '|') {
+    // Not the start of a table row.  Reset in_table so the next real table
+    // (after a non-table element) can start normally.
+    s->in_table = false;
+    return false;
+  }
+
+  if (s->in_table) {
+    // Already inside a table; do not start a new one.  This kills any GLR
+    // path that tries to reduce the current org_table early and open a fresh
+    // one for the next row.
+    return false;
+  }
+
+  s->in_table = true;
+  lexer->result_symbol = TOKEN_TABLE_START;
+  return true;
+}
+
 // ---------------------------------------------------------------------------
 // Main scan function
 // ---------------------------------------------------------------------------
@@ -970,6 +1023,11 @@ bool tree_sitter_org_external_scanner_scan(
 
   if (valid_symbols[TOKEN_ITEM_END]) {
     if (scan_item_end(s, lexer)) return true;
+  }
+
+  // --- TABLE management (zero-width) ---
+  if (valid_symbols[TOKEN_TABLE_START]) {
+    if (scan_table_start(s, lexer)) return true;
   }
 
   // --- FNDEF_END ---

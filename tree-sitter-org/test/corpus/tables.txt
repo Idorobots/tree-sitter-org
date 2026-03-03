@@ -13,8 +13,7 @@ Simple org table
         (table_cell
           (plain_text))
         (table_cell
-          (plain_text))))
-    (org_table
+          (plain_text)))
       (table_row
         (table_cell
           (plain_text))
@@ -37,11 +36,9 @@ Table with rule row
         (table_cell
           (plain_text))
         (table_cell
-          (plain_text))))
-    (org_table
+          (plain_text)))
       (table_row
-        (table_rule)))
-    (org_table
+        (table_rule))
       (table_row
         (table_cell
           (plain_text))

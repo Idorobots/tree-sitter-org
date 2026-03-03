@@ -57,6 +57,7 @@ module.exports = grammar({
     $._LISTITEM_INDENT,
     $._PLAN_KW_EXT,       // Planning keyword (DEADLINE/SCHEDULED/CLOSED)
     $._ERROR_SENTINEL,
+    $._TABLE_START,       // Zero-width gate: emitted once at the start of each org_table
   ],
 
   extras: _ => [],
@@ -403,7 +404,13 @@ module.exports = grammar({
     _PROP_NAME: _ => /[^ \t\n:+]+\+?/,
 
     // --- 6.7 Tables ---
+    // $._TABLE_START is a zero-width scanner-gated token emitted exactly once
+    // when entering a new org_table.  It tracks in_table state so that
+    // consecutive '|'-rows are merged into one org_table rather than creating
+    // separate nodes for each row (which is what happens when GLR explores
+    // multiple parse paths within zeroth_section / section).
     org_table: $ => prec(1, seq(
+      $._TABLE_START,
       repeat1($.table_row),
       repeat($.tblfm_line),
     )),
