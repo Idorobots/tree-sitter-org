@@ -59,6 +59,33 @@ This has +deleted+ words.
       (plain_text))))
 
 ================
+Strikethrough at beginning of line
+================
++so is this+
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (strike_through
+        (plain_text)))))
+
+================
+Strikethrough at line start with trailing text
+================
++And also+ this
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (strike_through
+        (plain_text))
+      (plain_text))))
+
+================
 Verbatim text
 ================
 This has =verbatim= words.
@@ -192,3 +219,45 @@ Bold in heading title after TODO keyword
     (bold
       (plain_text))
     (plain_text)))
+
+================
+Strikethrough in heading title after plain text
+================
+* Heading +strike+
+
+---
+
+(document
+  (heading
+    (stars)
+    (plain_text)
+    (strike_through
+      (plain_text))))
+
+================
+Strikethrough at start of heading title
+================
+* +strike throguh+ yeah
+
+---
+
+(document
+  (heading
+    (stars)
+    (strike_through
+      (plain_text))
+    (plain_text)))
+
+================
+Strikethrough in heading title after TODO keyword
+================
+* TODO  +strike throguh+
+
+---
+
+(document
+  (heading
+    (stars)
+    (todo_keyword)
+    (strike_through
+      (plain_text))))

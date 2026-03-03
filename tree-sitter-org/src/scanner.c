@@ -615,7 +615,7 @@ static bool scan_markup_close(Scanner *s, TSLexer *lexer, int32_t marker, enum T
 // sibling item without a new _LIST_START.
 //
 // Returns: 1=matched LIST_START, 0=no match
-static int scan_list_start(Scanner *s, TSLexer *lexer) {
+static int scan_list_start(Scanner *s, TSLexer *lexer, const bool *valid_symbols) {
   if (s->list_depth >= MAX_LIST_DEPTH) return 0;
 
   // Flat lists only: never start a nested list.
@@ -634,6 +634,19 @@ static int scan_list_start(Scanner *s, TSLexer *lexer) {
       lexer->result_symbol = TOKEN_LIST_START;
       return 1;
     }
+
+    // Recovery for '+' at BOL/non-list contexts (e.g. "+strike+").
+    // scan_list_start probes list bullets before markup scanners; if we
+    // consumed '+' and it is not a bullet, emit strike-open when valid.
+    if (ch == '+' && valid_symbols[TOKEN_MARKUP_OPEN_STRIKE] &&
+        is_markup_pre(s->prev_char) && lookahead(lexer) != ' ' &&
+        lookahead(lexer) != '\t' && lookahead(lexer) != '\n' && !eof(lexer)) {
+      lexer->result_symbol = TOKEN_MARKUP_OPEN_STRIKE;
+      mark_end(lexer);
+      s->prev_char = '+';
+      return 1;
+    }
+
     return 0;
   }
 
@@ -1114,7 +1127,7 @@ bool tree_sitter_org_external_scanner_scan(
 
   // --- LIST management (zero-width) ---
   if (valid_symbols[TOKEN_LIST_START]) {
-    int result = scan_list_start(s, lexer);
+    int result = scan_list_start(s, lexer, valid_symbols);
     if (result == 1) return true;
     // result == 0: no match; no advance was made.
   }
