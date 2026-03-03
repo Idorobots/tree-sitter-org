@@ -397,7 +397,7 @@ module.exports = grammar({
       ':',
       field('name', alias($._PROP_NAME, $.property_name)),
       ':',
-      optional(field('value', seq($._S, $._REST_OF_LINE))),
+      optional(seq($._S, field('value', alias($._REST_OF_LINE, $.property_value)))),
       $._NL,
     ),
 

@@ -18,7 +18,8 @@
 ; --- Sections & Elements ---
 (property_drawer) @property
 (node_property
-  (property_name) @property)
+  (property_name) @property
+  (property_value) @string)
 
 ; --- Keywords ---
 (special_keyword
