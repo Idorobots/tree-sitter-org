@@ -1094,6 +1094,16 @@ bool tree_sitter_org_external_scanner_scan(
   // context, even after a line that ended with a non-PRE character.
   if (get_column(lexer) == 0) {
     s->prev_char = 0;
+
+    // Keep table state in sync across element boundaries even when
+    // TOKEN_TABLE_START is not probed on an intervening line (for example,
+    // blank lines, heading stars, comments/keywords before the next table).
+    // Without this, `in_table` can leak past the end of a table and block
+    // later tables in the same document.
+    int32_t ch = lookahead(lexer);
+    if (s->in_table && ch != '|' && ch != ' ' && ch != '\t') {
+      s->in_table = false;
+    }
   }
 
   // --- HEADING_END at EOF ---
