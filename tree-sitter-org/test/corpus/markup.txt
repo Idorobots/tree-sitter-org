@@ -101,3 +101,94 @@ Bold at beginning of line
       (bold
         (plain_text))
       (plain_text))))
+
+================
+Bold at start of paragraph continuation line
+================
+line one
+*bold line two*
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (plain_text)
+      (bold
+        (plain_text)))))
+
+================
+Nested markup — italic inside bold
+================
+*outer /inner/ text*
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (bold
+        (plain_text)
+        (italic
+          (plain_text))
+        (plain_text)))))
+
+================
+Multiple markup types in one paragraph
+================
+*bold* and /italic/
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (bold
+        (plain_text))
+      (plain_text)
+      (italic
+        (plain_text)))))
+
+================
+Bold in heading title — markup after plain text
+================
+* Hello *bold* world
+
+---
+
+(document
+  (heading
+    (stars)
+    (plain_text)
+    (bold
+      (plain_text))
+    (plain_text)))
+
+================
+Bold at start of heading title
+================
+* *bold* title
+
+---
+
+(document
+  (heading
+    (stars)
+    (bold
+      (plain_text))
+    (plain_text)))
+
+================
+Bold in heading title after TODO keyword
+================
+* TODO *bold* task
+
+---
+
+(document
+  (heading
+    (stars)
+    (todo_keyword)
+    (bold
+      (plain_text))
+    (plain_text)))

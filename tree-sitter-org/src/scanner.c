@@ -459,6 +459,13 @@ static bool scan_stars_or_heading_end(Scanner *s, TSLexer *lexer,
 // If the word isn't a TODO keyword but was consumed, emit as PLAIN_TEXT
 // to avoid corrupting the lexer state.
 static bool scan_todo_kw(Scanner *s, TSLexer *lexer, const bool *valid_symbols) {
+  // TOKEN_TODO_KW is only valid inside a heading, always directly after the
+  // stars have been scanned and $._S (the separating space) was consumed by
+  // the grammar regex — which means prev_char was never updated to reflect
+  // that space.  Set it now so that markup open scanners that run after us
+  // (or after our PLAIN_TEXT fallback) see a correct PRE context.
+  s->prev_char = ' ';
+
   char word[MAX_TODO_KW_LEN];
   int len = 0;
 
@@ -487,12 +494,20 @@ static bool scan_todo_kw(Scanner *s, TSLexer *lexer, const bool *valid_symbols) 
   // Not a TODO keyword but we consumed uppercase letters.
   // Emit as plain text to avoid corrupting lexer state.
   // Continue consuming the rest of the "word" as plain text.
+  bool continuation_ran = false;
   while (!eof(lexer) && lookahead(lexer) != '\n' && !is_special_char(lookahead(lexer))) {
     s->prev_char = lookahead(lexer);
     advance(lexer);
+    continuation_ran = true;
   }
   if (valid_symbols[TOKEN_PLAIN_TEXT]) {
-    s->prev_char = word[len - 1];
+    // If the continuation loop did not advance (e.g. the word was immediately
+    // followed by a special char like '*'), prev_char should be the last
+    // uppercase letter we consumed.  If the loop did run, prev_char was already
+    // updated to the correct last character inside the loop — do not overwrite.
+    if (!continuation_ran) {
+      s->prev_char = word[len - 1];
+    }
     lexer->result_symbol = TOKEN_PLAIN_TEXT;
     mark_end(lexer);
     return true;
@@ -962,6 +977,14 @@ bool tree_sitter_org_external_scanner_scan(
   // Error recovery sentinel — never match
   if (valid_symbols[TOKEN_ERROR_SENTINEL]) {
     return false;
+  }
+
+  // _NL is a grammar regex and never updates prev_char.  Reset it to 0
+  // (BOL) whenever we are positioned at the start of a new line so that
+  // markup scanners correctly treat the beginning-of-line as a valid PRE
+  // context, even after a line that ended with a non-PRE character.
+  if (get_column(lexer) == 0) {
+    s->prev_char = 0;
   }
 
   // --- HEADING_END at EOF ---
