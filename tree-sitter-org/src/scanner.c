@@ -1028,7 +1028,7 @@ static bool scan_table_start(Scanner *s, TSLexer *lexer) {
 //   0  -> no match, no advance made
 //  -1  -> no match, but advance(s) were made; caller must immediately
 //         return false so tree-sitter rewinds before trying other tokens.
-static int scan_fixed_width_colon(Scanner *s, TSLexer *lexer) {
+static int scan_fixed_width_colon(Scanner *s, TSLexer *lexer, const bool *valid_symbols) {
   bool advanced = false;
 
   if (get_column(lexer) == 0) {
@@ -1042,7 +1042,20 @@ static int scan_fixed_width_colon(Scanner *s, TSLexer *lexer) {
     if (s->prev_char != 0) return 0;
   }
 
-  if (lookahead(lexer) != ':') return advanced ? -1 : 0;
+  if (lookahead(lexer) != ':') {
+    if (advanced && valid_symbols[TOKEN_PLAIN_TEXT]) {
+      int32_t last = ' ';
+      while (!eof(lexer) && lookahead(lexer) != '\n' && !is_special_char(lookahead(lexer))) {
+        last = lookahead(lexer);
+        advance(lexer);
+      }
+      lexer->result_symbol = TOKEN_PLAIN_TEXT;
+      mark_end(lexer);
+      s->prev_char = last;
+      return 1;
+    }
+    return advanced ? -1 : 0;
+  }
   advance(lexer);  // consume ':'
   advanced = true;
 
@@ -1219,7 +1232,7 @@ bool tree_sitter_org_external_scanner_scan(
   // Must run before PLAIN_TEXT so that "   : value" at column 0 emits
   // TOKEN_FIXED_WIDTH_COLON rather than TOKEN_PLAIN_TEXT for the indent.
   if (valid_symbols[TOKEN_FIXED_WIDTH_COLON]) {
-    int result = scan_fixed_width_colon(s, lexer);
+    int result = scan_fixed_width_colon(s, lexer, valid_symbols);
     if (result == 1) return true;
     if (result == -1) return false;
   }

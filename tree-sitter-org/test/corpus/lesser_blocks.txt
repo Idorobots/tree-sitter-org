@@ -56,3 +56,20 @@ Violets are blue.
       (paragraph
         (plain_text)
         (plain_text)))))
+
+================
+Example block preserves indentation in body lines
+================
+#+begin_example
+verbatim content
+  preserved indentation
+#+end_example
+
+---
+
+(document
+  (zeroth_section
+    (example_block
+      (paragraph
+        (plain_text)
+        (plain_text)))))
