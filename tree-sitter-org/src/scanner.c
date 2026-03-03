@@ -815,6 +815,12 @@ static bool is_internal_token_start(int32_t ch) {
          ch == '>' || ch == ']' || ch == '-';
 }
 
+static bool is_heading_tag_char(int32_t ch) {
+  return (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') ||
+         (ch >= '0' && ch <= '9') || ch == '_' || ch == '@' ||
+         ch == '#' || ch == '%';
+}
+
 // _PLAIN_TEXT: scan forward to next object/element boundary
 // Consumes "safe" characters that cannot start an object or element.
 // If positioned at a markup character (*/_ +=~) that the markup scanner
@@ -847,22 +853,26 @@ static bool scan_plain_text(Scanner *s, TSLexer *lexer) {
   // Only consume markup-related chars (*/_+=~) as single-char fallback,
   // since the markup open/close scanners already tried and failed.
   int32_t ch = lookahead(lexer);
-  if (!is_internal_token_start(ch)) {
-    s->prev_char = ch;
+  if (ch == ':') {
+    // Mid-line colons are often plain text ("test ::", "value: text").
+    // But if ':' is followed by a heading-tag character, prefer letting
+    // the grammar parse tags (e.g. "* Title :tag:"). We probe one char
+    // ahead and, in the tag-like case, return false so this scan call is
+    // discarded and parsing retries from the original ':' position.
     advance(lexer);
+    int32_t next = lookahead(lexer);
+    if (is_heading_tag_char(next)) {
+      return false;
+    }
+
+    s->prev_char = ':';
     mark_end(lexer);
     lexer->result_symbol = TOKEN_PLAIN_TEXT;
     return true;
   }
 
-  // Special case for ':': if the external scanner has already consumed
-  // content on this line (prev_char != 0), then ':' cannot be at a
-  // beginning-of-line position and cannot start a fixed-width section,
-  // drawer, or any other BOL-anchored element.  Consuming it here as
-  // plain text prevents tree-sitter error recovery from mis-identifying
-  // mid-line colons (e.g. "test ::", "Paragraph:") as fixed-width starts.
-  if (ch == ':' && s->prev_char != 0) {
-    s->prev_char = ':';
+  if (!is_internal_token_start(ch)) {
+    s->prev_char = ch;
     advance(lexer);
     mark_end(lexer);
     lexer->result_symbol = TOKEN_PLAIN_TEXT;
@@ -1000,27 +1010,36 @@ static bool scan_table_start(Scanner *s, TSLexer *lexer) {
 // In all other cases (column > 0 with prev_char != 0, meaning external scanner
 // has already consumed visible content on this line) we return false.  The
 // ':' will be consumed by scan_plain_text instead.
-static bool scan_fixed_width_colon(Scanner *s, TSLexer *lexer) {
+// Return values:
+//   1  -> TOKEN_FIXED_WIDTH_COLON emitted
+//   0  -> no match, no advance made
+//  -1  -> no match, but advance(s) were made; caller must immediately
+//         return false so tree-sitter rewinds before trying other tokens.
+static int scan_fixed_width_colon(Scanner *s, TSLexer *lexer) {
+  bool advanced = false;
+
   if (get_column(lexer) == 0) {
     // Skip optional leading whitespace (indentation)
     while (lookahead(lexer) == ' ' || lookahead(lexer) == '\t') {
       advance(lexer);
+      advanced = true;
     }
   } else {
     // Mid-line: only valid if prev_char == 0 (no external text on this line)
-    if (s->prev_char != 0) return false;
+    if (s->prev_char != 0) return 0;
   }
 
-  if (lookahead(lexer) != ':') return false;
+  if (lookahead(lexer) != ':') return advanced ? -1 : 0;
   advance(lexer);  // consume ':'
+  advanced = true;
 
   // ':' must be followed by a space, newline, or EOF to qualify
   int32_t next = lookahead(lexer);
-  if (next != ' ' && next != '\n' && !eof(lexer)) return false;
+  if (next != ' ' && next != '\n' && !eof(lexer)) return -1;
 
   mark_end(lexer);
   lexer->result_symbol = TOKEN_FIXED_WIDTH_COLON;
-  return true;
+  return 1;
 }
 
 // ---------------------------------------------------------------------------
@@ -1187,7 +1206,9 @@ bool tree_sitter_org_external_scanner_scan(
   // Must run before PLAIN_TEXT so that "   : value" at column 0 emits
   // TOKEN_FIXED_WIDTH_COLON rather than TOKEN_PLAIN_TEXT for the indent.
   if (valid_symbols[TOKEN_FIXED_WIDTH_COLON]) {
-    if (scan_fixed_width_colon(s, lexer)) return true;
+    int result = scan_fixed_width_colon(s, lexer);
+    if (result == 1) return true;
+    if (result == -1) return false;
   }
 
   // --- PARAGRAPH_CONTINUE ---

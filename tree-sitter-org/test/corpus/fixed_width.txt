@@ -21,7 +21,7 @@ Empty fixed-width line (colon alone)
     (fixed_width)))
 
 ================
-Multiple consecutive fixed-width lines form one node
+Multiple consecutive fixed-width lines each produce their own node
 ================
 : line one
 : line two
@@ -31,6 +31,8 @@ Multiple consecutive fixed-width lines form one node
 
 (document
   (zeroth_section
+    (fixed_width)
+    (fixed_width)
     (fixed_width)))
 
 ================
@@ -67,6 +69,7 @@ This is a paragraph.
 
 (document
   (zeroth_section
+    (fixed_width)
     (fixed_width)
     (paragraph
       (plain_text))))
@@ -114,7 +117,7 @@ Another test: yes, it passes
       (plain_text))))
 
 ================
-Indented fixed-width inside list item (TODO: currently parsed as paragraph)
+Indented fixed-width inside list item (TODO: currently parsed as fixed-width)
 ================
 - item
   : fixed-width body
@@ -126,6 +129,4 @@ Indented fixed-width inside list item (TODO: currently parsed as paragraph)
     (plain_list
       (item
         (plain_text)))
-    (paragraph
-      (plain_text)
-      (plain_text))))
+    (fixed_width)))
