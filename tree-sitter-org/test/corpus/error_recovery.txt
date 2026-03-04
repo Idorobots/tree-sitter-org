@@ -18,6 +18,8 @@ Standalone stars not heading (no space)
 ---
 
 (document
-  (ERROR
-    (plain_text))
-  (zeroth_section))
+  (zeroth_section
+    (paragraph
+      (bold
+        (plain_text)
+        (MISSING _MARKUP_CLOSE_BOLD)))))

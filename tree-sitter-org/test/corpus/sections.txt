@@ -77,6 +77,40 @@ O(n²)
       (plain_text))))
 
 ================
+Caption with leading markup in zeroth section
+================
+#+CAPTION: *hurr* - durr derp
+works
+
+---
+
+(document
+  (zeroth_section
+    (caption_keyword
+      value: (plain_text))
+    (paragraph
+      (plain_text))))
+
+================
+Caption with leading markup in heading section
+================
+* Heading
+#+CAPTION: *hurr* - durr derp
+doesn't work
+
+---
+
+(document
+  (heading
+    stars: (stars)
+    title: (plain_text)
+    body: (section
+      (caption_keyword
+        value: (plain_text))
+      (paragraph
+        (plain_text)))))
+
+================
 Paragraph keeps at-sign in plain text
 ================
 Report issues to mailto:bugs@example.org or via the issue tracker.

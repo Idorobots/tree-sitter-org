@@ -702,10 +702,7 @@ module.exports = grammar({
       token(prec(2, ci('#+caption'))),
       optional(field('optval', $._caption_optval)),
       ':',
-      optional(field('value', choice(
-        seq($._S, repeat1($._object_nofn)),
-        seq($._S, alias($._REST_OF_LINE, $.plain_text)),
-      ))),
+      optional(field('value', seq($._S, alias($._REST_OF_LINE, $.plain_text)))),
       $._NL,
     ),
 
@@ -985,12 +982,26 @@ module.exports = grammar({
     ),
 
     verbatim: $ => seq(
-      $._MARKUP_OPEN_VERBATIM,
-      field('body', alias($._verbatim_body, $.verbatim_content)),
-      $._MARKUP_CLOSE_VERBATIM,
+      choice(
+        seq(
+          '=',
+          field('body', alias($._verbatim_body_with_inner_equals, $.verbatim_content)),
+          '=',
+        ),
+        seq(
+          $._MARKUP_OPEN_VERBATIM,
+          field('body', alias($._verbatim_body, $.verbatim_content)),
+          $._MARKUP_CLOSE_VERBATIM,
+        ),
+      ),
     ),
 
-    _verbatim_body: _ => /[^\n=]+/,
+    _verbatim_body: _ => repeat1(choice(
+      /[^\n=]+/,
+      '=',
+    )),
+
+    _verbatim_body_with_inner_equals: _ => /[^\n=]* = [^\n=]*/,
 
     code: $ => seq(
       $._MARKUP_OPEN_CODE,
@@ -998,7 +1009,10 @@ module.exports = grammar({
       $._MARKUP_CLOSE_CODE,
     ),
 
-    _code_body: _ => /[^\n~]+/,
+    _code_body: _ => repeat1(choice(
+      /[^\n~]+/,
+      '~',
+    )),
 
     // --- 8.11 Plain Text ---
     // Plain text is handled by the external scanner to keep prev_char

@@ -116,6 +116,19 @@ This has ~code~ words.
       (plain_text))))
 
 ================
+Verbatim with inner equals before final close
+================
+=Foo = bar=
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (verbatim
+        (verbatim_content)))))
+
+================
 Bold at beginning of line
 ================
 *bold text* here.
