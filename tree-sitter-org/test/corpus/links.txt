@@ -52,3 +52,18 @@ Angle link
       (angle_link
         (link_type)
         (link_path)))))
+
+================
+Multiline angle link
+================
+<https://very-long-domain-name.example.com/with/a/very/long/
+path/that/spans/multiple/lines/for/testing/purposes>
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (angle_link
+        (link_type)
+        (link_path)))))

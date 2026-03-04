@@ -795,15 +795,20 @@ module.exports = grammar({
       '[fn:',
       field('label', alias($._FN_LABEL, $.fn_label)),
       ':',
-      field('definition', repeat1($._object)),
+      field('definition', $._fn_ref_def),
       ']',
     ),
 
     _fn_ref_anonymous: $ => seq(
       '[fn::',
-      field('definition', repeat1($._object)),
+      field('definition', $._fn_ref_def),
       ']',
     ),
+
+    _fn_ref_def: $ => repeat1(choice(
+      $._object,
+      $._NL,
+    )),
 
     // --- 8.3 Citations ---
     citation: $ => seq(
@@ -846,7 +851,7 @@ module.exports = grammar({
     _CITE_KEY: _ => /[A-Za-z0-9\-.:?!`'/*+|(){}<>&_^$#%~]+/,
     _cite_key_suffix: $ => repeat1($._object_min),
 
-    _CITE_BODY: _ => /[^\]\n]+/,
+    _CITE_BODY: _ => /[^\]]+/,
 
     // --- 8.5 Inline Source Blocks ---
     inline_source_block: $ => seq(
@@ -884,7 +889,7 @@ module.exports = grammar({
       '<',
       field('type', alias($._LINK_TYPE, $.link_type)),
       ':',
-      field('path', alias(/[^>\n]*/, $.link_path)),
+      field('path', alias(/[^>]*/, $.link_path)),
       '>',
     ),
 
