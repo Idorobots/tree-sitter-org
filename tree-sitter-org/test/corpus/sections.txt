@@ -59,3 +59,15 @@ This is a Fixed-Width style phrase.
   (zeroth_section
     (paragraph
       (plain_text))))
+
+================
+Paragraph keeps underscore and colon as plain text
+================
+Fixed_Width: Areas in paragraph.
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (plain_text))))

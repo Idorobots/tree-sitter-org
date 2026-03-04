@@ -98,6 +98,11 @@ static bool is_markup_post(int32_t ch) {
          ch == 0;
 }
 
+static bool is_markup_marker(int32_t ch) {
+  return ch == '*' || ch == '/' || ch == '_' || ch == '+' ||
+         ch == '=' || ch == '~';
+}
+
 // Character that could start an object or element (for plain_text scanning)
 // This must be conservative: plain_text scanning stops at any character
 // that might start an object, markup, element, or special syntax.
@@ -188,6 +193,12 @@ static inline bool eof(TSLexer *lexer) {
 static inline uint32_t get_column(TSLexer *lexer) {
   return lexer->get_column(lexer);
 }
+
+static bool probe_markup_close_in_rest_of_line(
+    TSLexer *lexer,
+    int32_t marker,
+    int32_t *last_consumed_char
+);
 
 // ---------------------------------------------------------------------------
 // Scanner lifecycle
@@ -457,8 +468,9 @@ static bool scan_stars_or_heading_end(Scanner *s, TSLexer *lexer,
 }
 
 // _TODO_KW: match word against current TODO keyword set.
-// If the word isn't a TODO keyword but was consumed, emit as PLAIN_TEXT
-// to avoid corrupting the lexer state.
+// If the consumed word is not a TODO keyword, emit plain_text fallback.
+// For TitleCase words (e.g. "Fixed...") fail non-destructively so
+// plain_text scanning can keep the title in one run.
 static bool scan_todo_kw(Scanner *s, TSLexer *lexer, const bool *valid_symbols) {
   // TOKEN_TODO_KW is only valid inside a heading, always directly after the
   // stars have been scanned and $._S (the separating space) was consumed by
@@ -492,6 +504,13 @@ static bool scan_todo_kw(Scanner *s, TSLexer *lexer, const bool *valid_symbols) 
     }
   }
 
+  // If the uppercase run is immediately followed by lowercase text, this is
+  // likely a normal title word (e.g. "Fixed...") rather than a TODO keyword.
+  // Fail non-destructively so _PLAIN_TEXT can scan it as one run.
+  if (lookahead(lexer) >= 'a' && lookahead(lexer) <= 'z') {
+    return false;
+  }
+
   // Not a TODO keyword but we consumed uppercase letters.
   // Emit as plain text to avoid corrupting lexer state.
   // Continue consuming the rest of the "word" as plain text.
@@ -502,10 +521,6 @@ static bool scan_todo_kw(Scanner *s, TSLexer *lexer, const bool *valid_symbols) 
     continuation_ran = true;
   }
   if (valid_symbols[TOKEN_PLAIN_TEXT]) {
-    // If the continuation loop did not advance (e.g. the word was immediately
-    // followed by a special char like '*'), prev_char should be the last
-    // uppercase letter we consumed.  If the loop did run, prev_char was already
-    // updated to the correct last character inside the loop — do not overwrite.
     if (!continuation_ran) {
       s->prev_char = word[len - 1];
     }
@@ -579,8 +594,11 @@ static bool scan_markup_open(Scanner *s, TSLexer *lexer, int32_t marker, enum To
   int32_t next = lookahead(lexer);
   if (next == ' ' || next == '\t' || next == '\n' || eof(lexer)) return false;
 
-  lexer->result_symbol = token;
   mark_end(lexer);
+
+  if (!probe_markup_close_in_rest_of_line(lexer, marker, NULL)) return false;
+
+  lexer->result_symbol = token;
   s->prev_char = marker;
   return true;
 }
@@ -834,6 +852,69 @@ static bool is_heading_tag_char(int32_t ch) {
          ch == '#' || ch == '%';
 }
 
+// Probe for a heading tags suffix after consuming the leading ':'
+// of a candidate tags block (e.g. ":tag1:tag2:").
+//
+// The probe is intentionally strict:
+// - one or more non-empty tags made of heading-tag characters
+// - each tag terminated by ':'
+// - only optional trailing spaces/tabs before end-of-line/EOF
+static bool probe_heading_tags_suffix_after_colon(TSLexer *lexer) {
+  if (!is_heading_tag_char(lookahead(lexer))) return false;
+
+  while (true) {
+    while (is_heading_tag_char(lookahead(lexer))) {
+      advance(lexer);
+    }
+
+    if (lookahead(lexer) != ':') return false;
+    advance(lexer);
+
+    if (is_heading_tag_char(lookahead(lexer))) {
+      continue;
+    }
+
+    while (lookahead(lexer) == ' ' || lookahead(lexer) == '\t') {
+      advance(lexer);
+    }
+
+    return lookahead(lexer) == '\n' || eof(lexer);
+  }
+}
+
+// Probe from immediately after a markup opener to determine whether
+// a valid closing marker exists before end-of-line.
+//
+// Returns true iff a close marker is found with valid POST constraints.
+// Advances lexer while probing; callers should rely on mark_end() to
+// control the actual consumed extent of the returned token.
+static bool probe_markup_close_in_rest_of_line(
+    TSLexer *lexer,
+    int32_t marker,
+    int32_t *last_consumed_char
+) {
+  bool has_body = false;
+  int32_t prev = marker;
+
+  if (last_consumed_char) *last_consumed_char = marker;
+
+  while (!eof(lexer) && lookahead(lexer) != '\n') {
+    int32_t ch = lookahead(lexer);
+    advance(lexer);
+    if (last_consumed_char) *last_consumed_char = ch;
+
+    if (ch == marker && has_body && prev != ' ' && prev != '\t' && prev != '\n' &&
+        (eof(lexer) || is_markup_post(lookahead(lexer)))) {
+      return true;
+    }
+
+    has_body = true;
+    prev = ch;
+  }
+
+  return false;
+}
+
 // _PLAIN_TEXT: scan forward to next object/element boundary
 // Consumes "safe" characters that cannot start an object or element.
 // If positioned at a markup character (*/_ +=~) that the markup scanner
@@ -870,8 +951,82 @@ static bool scan_plain_text(Scanner *s, TSLexer *lexer) {
       continue;
     }
 
-    // Stop at any character that could start an object or element
+    // Stop at characters that can start objects/elements, except when they
+    // clearly do not form a valid construct and should remain plain text.
     if (is_special_char(ch)) {
+      if (is_markup_marker(ch)) {
+        bool can_close = false;
+        bool can_open = false;
+
+        advance(lexer);
+        if (s->prev_char != ' ' && s->prev_char != '\t' && s->prev_char != '\n' &&
+            (eof(lexer) || is_markup_post(lookahead(lexer)))) {
+          can_close = true;
+        }
+
+        if (is_markup_pre(s->prev_char) && lookahead(lexer) != ' ' && lookahead(lexer) != '\t' &&
+            lookahead(lexer) != '\n' && !eof(lexer)) {
+          can_open = true;
+        }
+
+        if (can_close) {
+          if (!found_any) return false;
+          break;
+        }
+
+        // Potential markup open boundary. If no closer exists on this line,
+        // keep the remainder as plain text instead of creating missing-close
+        // recovery nodes.
+        if (can_open) {
+          int32_t last = ch;
+          if (probe_markup_close_in_rest_of_line(lexer, ch, &last)) {
+            if (!found_any) return false;
+            break;
+          }
+
+          s->prev_char = last;
+          mark_end(lexer);
+          found_any = true;
+          lexer->result_symbol = TOKEN_PLAIN_TEXT;
+          return true;
+        }
+
+        // Marker is plain text here.
+        s->prev_char = ch;
+        mark_end(lexer);
+        found_any = true;
+        continue;
+      }
+
+      if (ch == ':') {
+        // Preserve a leading CLOCK: token for the clock element rule.
+        if (maybe_clock_kw && consumed_len == 5) {
+          if (!found_any) return false;
+          break;
+        }
+
+        // Preserve a real trailing heading tags suffix for grammar-level tags.
+        if (s->prev_char == ' ' || s->prev_char == '\t') {
+          advance(lexer);
+          if (is_heading_tag_char(lookahead(lexer)) && probe_heading_tags_suffix_after_colon(lexer)) {
+            if (!found_any) return false;
+            break;
+          }
+
+          s->prev_char = ':';
+          mark_end(lexer);
+          found_any = true;
+          lexer->result_symbol = TOKEN_PLAIN_TEXT;
+          return true;
+        }
+
+        s->prev_char = ':';
+        advance(lexer);
+        mark_end(lexer);
+        found_any = true;
+        continue;
+      }
+
       break;
     }
 
@@ -918,17 +1073,22 @@ static bool scan_plain_text(Scanner *s, TSLexer *lexer) {
 
   if (ch == ':') {
     // Mid-line colons are often plain text ("test ::", "value: text").
-    // But if ':' is followed by a heading-tag character, prefer letting
-    // the grammar parse tags (e.g. "* Title :tag:"). We probe one char
-    // ahead and, in the tag-like case, return false so this scan call is
-    // discarded and parsing retries from the original ':' position.
-    advance(lexer);
-    int32_t next = lookahead(lexer);
-    if (is_heading_tag_char(next)) {
-      return false;
+    // Treat ':' as potential heading-tags start only in whitespace-delimited
+    // contexts and only if the remainder is a full tags suffix.
+    if (s->prev_char == ' ' || s->prev_char == '\t') {
+      advance(lexer);
+      s->prev_char = ':';
+      mark_end(lexer);
+      if (probe_heading_tags_suffix_after_colon(lexer)) {
+        return false;
+      }
+
+      lexer->result_symbol = TOKEN_PLAIN_TEXT;
+      return true;
     }
 
     s->prev_char = ':';
+    advance(lexer);
     mark_end(lexer);
     lexer->result_symbol = TOKEN_PLAIN_TEXT;
     return true;

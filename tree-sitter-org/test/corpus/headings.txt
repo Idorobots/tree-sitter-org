@@ -11,6 +11,47 @@ Level 1 heading
     (plain_text)))
 
 ================
+Heading title contains colon before real tags
+================
+* TODO Try to debug the ejabberd_tls:send timouts.                :Debugging:Erlang:XMPP:
+
+---
+
+(document
+  (heading
+    (stars)
+    (todo_keyword)
+    (plain_text)
+    (tags
+      (tag)
+      (tag)
+      (tag))))
+
+================
+Heading with colon in title and no tags
+================
+* Investigate api:send timeout handling
+
+---
+
+(document
+  (heading
+    (stars)
+    (plain_text)))
+
+================
+Heading title keeps underscore and colon as plain text
+================
+* Fixed_Width: Areas
+
+---
+
+(document
+  (heading
+    (stars)
+    (plain_text)))
+
+================
 Level 2 heading
 ================
 * Parent

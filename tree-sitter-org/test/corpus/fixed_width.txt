@@ -85,8 +85,6 @@ test :: Not a fixed width section
   (zeroth_section
     (paragraph
       (plain_text)
-      (plain_text)
-      (plain_text)
       (plain_text))))
 
 ================
@@ -99,7 +97,6 @@ Test paragraph:
 (document
   (zeroth_section
     (paragraph
-      (plain_text)
       (plain_text))))
 
 ================
@@ -112,8 +109,6 @@ Another test: yes, it passes
 (document
   (zeroth_section
     (paragraph
-      (plain_text)
-      (plain_text)
       (plain_text))))
 
 ================
