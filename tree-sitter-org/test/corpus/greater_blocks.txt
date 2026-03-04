@@ -58,3 +58,39 @@ Some content in drawer.
       (drawer_name)
       (paragraph
         (plain_text)))))
+
+================
+Adjacent dynamic blocks with table bodies
+================
+#+begin: clocktable
+| Bibliography check   | 0:30   |
+#+end:
+
+#+begin: columnview
+| Second chapter           | TODO | B        | :writing:  |
+#+end:
+
+---
+
+(document
+  (zeroth_section
+    (dynamic_block
+      (dynamic_block_name)
+      (org_table
+        (table_row
+          (table_cell
+            (plain_text))
+          (table_cell
+            (plain_text)))))
+    (dynamic_block
+      (dynamic_block_name)
+      (org_table
+        (table_row
+          (table_cell
+            (plain_text))
+          (table_cell
+            (plain_text))
+          (table_cell
+            (plain_text))
+          (table_cell
+            (plain_text)))))))

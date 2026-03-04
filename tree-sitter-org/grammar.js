@@ -56,6 +56,7 @@ module.exports = grammar({
     $._ITEM_TAG_END,      // Rightmost ' :: '
     $._LISTITEM_INDENT,
     $._PLAN_KW_EXT,       // Planning keyword (DEADLINE/SCHEDULED/CLOSED)
+    $._DYNBLOCK_SYNC,     // Zero-width sync point for dynamic-block boundaries
     $._ERROR_SENTINEL,
     $._TABLE_START,   // Zero-width gate: emitted once at the start of each org_table
     $._FIXED_WIDTH_COLON, // Consumes optional indent + ':' only at BOL context
@@ -325,6 +326,7 @@ module.exports = grammar({
       token(prec(3, ci('#+end:'))),
       optional($._TRAILING),
       $._NL,
+      $._DYNBLOCK_SYNC,
     ),
 
     _DYNBLOCK_NAME: _ => /[^ \t\n]+/,
@@ -543,11 +545,15 @@ module.exports = grammar({
       token(prec(2, ci('#+begin_example'))),
       optional(field('parameters', $._block_params)),
       $._NL,
-      field('body', optional($._gblock_body)),
+      field('body', optional($.example_block_body)),
       token(prec(2, ci('#+end_example'))),
       optional($._TRAILING),
       $._NL,
     ),
+
+    example_block_body: $ => repeat1($.example_line),
+
+    example_line: _ => seq(/[^\n]*/, '\n'),
 
     export_block: $ => seq(
       token(prec(2, ci('#+begin_export'))),

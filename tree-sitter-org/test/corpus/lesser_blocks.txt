@@ -23,8 +23,8 @@ Some example text.
 (document
   (zeroth_section
     (example_block
-      (paragraph
-        (plain_text)))))
+      (example_block_body
+        (example_line)))))
 
 ================
 Src block with language
@@ -93,6 +93,48 @@ verbatim content
 (document
   (zeroth_section
     (example_block
-      (paragraph
-        (plain_text)
-        (plain_text)))))
+      (example_block_body
+        (example_line)
+        (example_line)))))
+
+================
+Example block with comma-quoted contents
+================
+#+begin_example
+,* This line starts with an asterisk - comma-quoted.
+,** So does this - also comma-quoted.
+
+Normal text needs no quoting.
+
+,#+TITLE: This #+KEY line is also comma-quoted (optional for safety).
+#+TITLE: This one is not quoted
+#+end_example
+
+---
+
+(document
+  (zeroth_section
+    (example_block
+      (example_block_body
+        (example_line)
+        (example_line)
+        (example_line)
+        (example_line)
+        (example_line)
+        (example_line)
+        (example_line)))))
+
+================
+Example block body with pipe character
+================
+#+begin_example
+Receiving objects: 100% (1842/1842), 3.21 MiB | 4.5 MiB/s, done.
+#+end_example
+
+---
+
+(document
+  (zeroth_section
+    (example_block
+      (example_block_body
+        (example_line)))))

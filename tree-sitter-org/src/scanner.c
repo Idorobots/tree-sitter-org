@@ -53,6 +53,7 @@ enum TokenType {
   TOKEN_ITEM_TAG_END,
   TOKEN_LISTITEM_INDENT,
   TOKEN_PLAN_KW,
+  TOKEN_DYNBLOCK_SYNC,
   TOKEN_ERROR_SENTINEL,
   TOKEN_TABLE_START,   // zero-width gate emitted once at the start of each org_table
   TOKEN_FIXED_WIDTH_COLON, // consumes optional indent + ':' only at BOL context
@@ -1411,6 +1412,20 @@ static int scan_table_start(Scanner *s, TSLexer *lexer) {
   return 1;
 }
 
+// _DYNBLOCK_SYNC: zero-width sync point used at dynamic-block boundaries.
+//
+// Dynamic-block begin/end lines are internal regex tokens. Depending on parse
+// path, the external scanner may not be invoked on those lines, which can let
+// table state leak from one dynamic block into the next. Emitting this token
+// where the grammar expects it guarantees a scanner callback and clears any
+// stale table-open flag before parsing the closing marker / next block.
+static bool scan_dynblock_sync(Scanner *s, TSLexer *lexer) {
+  s->in_table = false;
+  mark_end(lexer);
+  lexer->result_symbol = TOKEN_DYNBLOCK_SYNC;
+  return true;
+}
+
 // _FIXED_WIDTH_COLON: gate token for fixed-width line starts.
 //
 // Emitted only when ':' is the first non-whitespace character on the line,
@@ -1661,6 +1676,11 @@ bool tree_sitter_org_external_scanner_scan(
   // --- PLAN_KW (planning keywords) ---
   if (valid_symbols[TOKEN_PLAN_KW]) {
     if (scan_plan_kw(s, lexer, valid_symbols)) return true;
+  }
+
+  // --- DYNBLOCK_SYNC ---
+  if (valid_symbols[TOKEN_DYNBLOCK_SYNC]) {
+    if (scan_dynblock_sync(s, lexer)) return true;
   }
 
   // --- FIXED_WIDTH_COLON (element-level BOL gate) ---
