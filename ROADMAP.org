@@ -125,7 +125,11 @@ Planning only parses when all fields are on the same line, but in Org Mode they 
 This should still parse as one planning block with 3 keywords.
 Please adjust the parser so that this parses correctly.
 
-*** TODO Nested lists
+*** CANCELLED Nested lists
+:LOGBOOK:
+- State "CANCELLED"  from "TODO"       [2026-03-03 Tue 13:16] \\
+  See comment.
+:END:
 Nested lists don't work very well:
 
 : - Test
@@ -150,9 +154,12 @@ This should result in a parse tree that looks something like this:
 
 But instead it's parsed as two separate lists with a paragraph inbetween.
 Please adjust the parser so that this parses correctly.
-**** COMMENT Proposed to parse them as one list and handle the indented fields later on.
-
-*** TODO Separate tables
+**** COMMENT
+Proposed to parse them as one list and handle the indented fields later on.
+*** DONE Separate tables
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-03 Tue 16:51]
+:END:
 Each row of a table parses as a separate org table:
 
 : | Properly affiliated table | Column 2 |
@@ -160,7 +167,831 @@ Each row of a table parses as a separate org table:
 : | Row                       | Data     |
 
 The above example should parse as a single table with 3 rows. First and last rows should have two cells each, and the middle row should be a table rule. It seems like the row parsing is correct, but multiple consecutive rows are not merged into a single table.
-Please adjust the parser so that this parses correctly.
+Please adjust the parser & tests so that this parses correctly. It is OK to modify the grammar.
+
+*** DONE Fixed-width section fix
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-03 Tue 21:10]
+:END:
+Fixed-width section should only start with a collon preceeded by whitespace.
+
+These are all valid:
+#+begin_example
+: This is OK
+: Continuation
+   : This is also OK
+   : So is the following
+:
+   :
+#+end_example
+
+These should not parse as fixed-width sections but currently are:
+#+begin_example
+test :: Not a fixed width section
+#+end_example
+
+Additionally, a collon character within a paragraph, but preceeded by other non-whitespace characters should be treated as regular text, only collons preceeded by whitespace at the beginning of the line indicate a fixed-width section.
+
+This should all be valid:
+#+begin_example
+Test paragraph:
+Another test: yes, it psases
+#+end_example
+
+**** COMMENT
+Claude "fixed" the issue, but broke some other tests in the process.
+
+*** DONE Fixed-width slop
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-03 Tue 21:10]
+:END:
+Looks like drawers and heading tags now do not work properly. Please make sure that the fixed-width section is on parsed when the =:= character is preceeded only by whitespace. Make sure that when there's any content following the fixed-width collon, there must be a whitespace character separating the collon from the content. Otherwise the line should be treated as a property.
+Under no circumstances should a line with leading non-whitespace characters be treated as a fixed-width section.
+
+*** DONE Inline markup fix
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-03 Tue 18:46]
+:END:
+Inline markup doesn't parse as distinct objects, please define additional rules and make sure that inline markup objects are parsed correctly in paragraphs and heading titles.
+
+*** DONE Inline markup strike-through
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-03 Tue 21:16]
+:END:
+The inline strike-through markup doesn't work at the begining of the line and in titles it seems.
+All of the following should parse fine and result in a strike-through object to be parsed:
+
+#+begin_example
+This should be +strike-through+
++so is this+
++And also+ this
+#+end_example
+
+Heading title examples:
+
+: * Heading +strike+
+: * +strike throguh+ yeah
+: * TODO  +strike throguh+
+
+*** DONE Text coalescence
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-04 Wed 00:21]
+:END:
+The =-= character in the title/paragraph should not split the text.
+
+This currently parses as a heading with a title consisting of three distinct parts =Fixed=, =-= and =Width Area=:
+
+: * Fixed-Width Areas
+
+Instead, the title should parse as a single plain text item.
+
+*** DONE Node properties without value
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-03 Tue 18:22]
+:END:
+Node properties don't bind the values in a property drawer - that is, =node_property= should have a =property_name= and a =property_value=.
+
+*** DONE Blocks body
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-03 Tue 21:57]
+:END:
+
+Looks like the =example_block= doesn't bind the contents in the parse tree, please bind it the same way that =quote_block= does.
+The =verse_block= binds the body in a different way (without a paragraph) please adjust that to match the other blocks.
+
+*** DONE Example body again
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-03 Tue 22:01]
+:END:
+This should parse and preserve the indentation:
+
+: #+begin_example
+: verbatim content
+:   preserved indentation
+: #+end_example
+
+I expect the block body to have two plaintext items.
+
+*** DONE Special keywords don't bind their values
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-03 Tue 22:15]
+:END:
+
+Looks like the zeroth section special keywords aren't binding their values. I expect =special_keyword= to have a =keyword_key= and a =keyword_value=, much like the node properties.
+
+Furthermore, a special keyword within a heading seems to be parsed as a =comment= followed by a =paragraph=. I would like these to be parsed as special keywords.
+
+: # Comment in zeroth section
+: #+TODO: SPECIAL KEYWORD
+: * Heading
+: #+TODO: This is actually treated as a comment
+
+This should result in a comment, then a special keyword, then a heading with a special keyword.
+
+**** COMMENT
+Codex decided that only #+TODO is a comment likely not to break #+CAPTION, so I decided it should parse all special keywords everywhere.
+
+*** DONE The src block body
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-03 Tue 22:23]
+:END:
+The =src_block= doesn't bind its body in the parse tree. I'd like it to bind the body and also the configuration switches that go next to the language.
+
+Given the following block:
+: #+begin_src python -n
+: x = 1
+: y = 2
+: z = x + y
+: #+end_src
+
+The expected parse tree is an =src_block= that binds "python" as the =language=, "-n" as the =arguments= and the contents of the block as =body=.
+
+*** DONE More table fixes
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-03 Tue 22:39]
+:END:
+Indented tables don't seem to parse correctly.
+Furthermore, an indented table with a =#+CAPTION:= in front of it fails to parse.
+
+Both of these should parse correctly (note the leading two space indent):
+
+:   #+CAPTION: A small reference table
+:   | Key | Value |
+:   |-----+-------|
+:   | a   |     1 |
+:   | b   |     2 |
+
+Table with 4 rows, two columns, with a rule on the second row and a caption.
+
+:   | Item    |
+:   |---------|
+:   | apple   |
+:   | banana  |
+:   | cherry  |
+
+Table with 5 rows, each one cell. With a rule on the second row:
+
+It is OK to skip the leading whitespace, but do include it in the table object.
+
+*** DONE Even more table fixes
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-03 Tue 23:54]
+:END:
+There is an issue when parsing tables within heading. You can find a reproduction of the issue in the @examples/table-basic.org file. All tables in that file should parse without any issues.
+Please check it out and determine the root cause.
+
+*** DONE Clock support
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-04 Wed 09:40]
+:END:
+Clock lines don't parse correctly currently.
+
+Please check the @examples/clock-basic.org for example that should parse correctly.
+
+*** DONE Collon in heading title
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-04 Wed 10:18]
+:END:
+There is as aissue when parsing a heading tittle with a =:= character in in:
+
+: * TODO Try to debug the ejabberd_tls:send timouts.                :Debugging:Erlang:XMPP:
+
+The parser is reporting an error before the =:= character followed by a single tag =send= which is incomplete. That character should be parsed as part of the title with tags starting at =Debugging=.
+
+*** DONE More text coalescing
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-04 Wed 10:39]
+:END:
+The =_= and =:= characters in the title/paragraph should not split the text.
+
+This currently parses as a heading with a title consisting of several distinct parts =Fixed=, =_=, =Width=, =:= and =Area=:
+
+: * Fixed_Width: Areas
+
+Instead, the title should parse as a single plain text item.
+
+There are likely other such "special characters" that do have a semantic meaning when wrapping a portion of text.
+If the title is missing such a closing character, the initial one should always be parsed as part of the text.
+A similar treatment should be done to these characters & text within paragraphs.
+
+*** DONE Property & drawer fixes
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-04 Wed 12:28]
+:END:
+There are some cases regarding drawers that don't work very well:
+
+1. Whitespace in properties drawer:
+
+: :properties:
+:
+: :end:
+
+This parses with an error in the body of the drawer. It does work for other drawer types. I'd like an empty body of a properties drawer to be handled more gracefully.
+
+2. Empty property values (just whitespace) break the parser:
+
+: :properties:
+: :key: value
+: :context: 
+: :some_key: value
+: :end:
+
+Ideally, these would be handled more gracefully (a property with an empty value).
+
+3. The =:= character in property values breaking the parser:
+
+: :properties:
+: :field: value
+: :some_key: value:test
+: :end:
+
+Collons should be treated as text in the property value.
+
+4. Drawers in the body of list items do not parse at all:
+
+: - List item
+:   :drawer:
+:   :test: 23
+:   :end:
+
+There are more issues with the list bodies, so for now it is OK if these are parsed as separate drawers, not within the body of the list item.
+
+5. Indented drawers don't parse very well in general (note the 2-space indent on all of these):
+
+:   :drawer:
+:   :end:
+
+Indicates an error in the whitespace before both the drawer name and the end.
+
+:   :properties:
+:   :key: ~/test/value
+:   :end:
+
+This parses as a drawer when in the zeroth section, but reports errors within it, while not parsing as a drawer at all when in a heading.
+Drawers should be indentable - the leading whitespace can be ignored for the drawer name, end line and each =:key:=, but should be retained for the textula drawer contents.
+
+6. Custom drawers with key-like values in them don't parse:
+
+: :drawer:
+: :test:
+: :end:
+
+This should parse without an error and bind the body of the drawer.
+
+: :drawer:
+: :test: value
+: :end:
+
+This should also parse and bind the body of the drawer.
+
+*** DONE Collon fixes
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-04 Wed 12:34]
+:END:
+The collon character still breaks some of the parsing. Here are some examples that should parse without issues:
+
+: :drawer:
+: 2025-01-12 :: foo bar
+: :end:
+
+Similar error due to the =:= character.
+
+: - some list item: oops
+
+Again, problem with the collon character.
+
+*** DONE Text fixes
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-04 Wed 13:12]
+:END:
+Plain text objects sometimes don't accept any unicode characters and report errors when these are encountered. Please make sure the parser recognizes unicode characters as text. Here are some examples:
+
+#+begin_example
+body → unit
+Zażółć gęślą jaźń.
+O(n²)
+#+end_example
+
+In a similar vein, the =>= and =<= alone on a line seem to break parsing and causes =plain_text= to be split into multiple objects. These should be treated as regular text and not break the text into chunks. All of the following should be parsed as text lines:
+
+#+begin_example
+Test > hurr
+Durr < derp
+Foo [ bar
+Bar ] baz
+#+end_example
+
+The =-= character still sometimes breaks the parsing:
+
+#+begin_example
+The earliest printed books, incunabula, often had no punctuation at all,
+leaving spaces for readers or scribes to add marks by hand. Gutenberg's
+42-line Bible c. 1455) is a notable early example.
+#+end_example
+
+The =-= on the final line causes a parsing error, but should be treated as just text.
+
+A similar issue exists for the =@= character:
+#+begin_example
+Report issues to mailto:bugs@example.org or via the issue tracker.
+#+end_example
+
+The parser breaks on the first line due to the =@= character.
+
+*** DONE Markup fixes
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-04 Wed 14:21]
+:END:
+There are some issues with the inline markup:
+
+1. Inline markup fails to parse in a caption, when embedded in a heading body. Seems to work fine outside:
+
+: #+CAPTION: *hurr* - durr derp
+: works
+: 
+: * Heading
+: #+CAPTION: *hurr* - durr derp
+: doesn't work
+
+Both of these should be parsed the same way.
+
+2. Markup characters alone in a caption are causing an error:
+
+#+begin_example
+#+CAPTION: *_?=
+foo
+#+end_example
+
+The caption value should parse as just text.
+
+3. Inline markup edge cases to handle:
+#+begin_example
+=Foo = bar=
+#+end_example
+
+This should be recognized as a singe verbatim section, since the ~=~ character is preceeded by whitespace in side of the value.
+
+4. Inline markup in list items doesn't seem to parse very well:
+
+#+begin_example
+- *Plurals* (controversial): some style guides permit =the 1990's= — others forbid it.
+- *Omission in poetry*: =o'er=, ='twas=, =ne'er=.
+#+end_example
+
+Both of these lines should parse without any issues and recognize the bold and verbatim sections.
+
+**** COMMENT
+Codex tried fixing the issues, but then reverted all changes as too many regressions were introduced.
+It did fix the verbatim case alone and then fixed the CAPTION.
+
+*** DONE Cite fixes
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-04 Wed 14:46]
+:END:
+There are some edge cases regarding the citation parsing.
+
+All of these lines should parse with a citation recognized within them delimited by the =[= and =]= characters.
+
+#+begin_example
+In prose: the foundational theory of information [cite:@shannon1948] was
+
+- Lambda calculus [cite:@church1936] — the foundation of functional programming.
+
+| 1936 | Church               | [cite:@church1936]     | Lambda calculus            |
+
+
+[cite/a:@knuth1968]
+[cite/numeric/brackets:@hopcroft1979]
+
+[cite: see;@martin2009]
+[cite: e.g.;@liskov1987;@meyer1988]
+[cite: for a contrasting view, see;@wirth1974]
+
+[cite: see also;see @chomsky1956 §4;cf. @bar-hillel1961 pp. 91-92;@ginsburg1966]
+
+[cite: as argued by *three independent groups* almost simultaneously,;@vaswani2017;@gehring2017;@wu2016]
+#+end_example
+
+*** DONE Block fixes
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-04 Wed 15:11]
+:END:
+There are some more edge cases when parsing blocks:
+
+1. Comma-quoted contents:
+
+: #+begin_example
+: ,* This line starts with an asterisk — comma-quoted.
+: ,** So does this — also comma-quoted.
+: 
+: Normal text needs no quoting.
+: 
+: ,#+TITLE: This #+KEY line is also comma-quoted (optional for safety).
+: #+TITLE: This one is not quoted
+: #+end_example
+
+I'd like the parser to not make an attempt at stripping the commas, but it should recognize the whole body of the example without any errors.
+
+2. Some characters in the body of an example block cause parse issues:
+
+: #+begin_example
+: Receiving objects: 100% (1842/1842), 3.21 MiB | 4.5 MiB/s, done.
+: #+end_example
+
+Here, the =|= character causess an issue.  The example block body should not be parsed for objects, the body should always be text.
+
+3. Custom dynamic blocks fail to parse when there are multiple instances one after another:
+
+: #+begin: clocktable
+: | Bibliography check   | 0:30   |
+: #+end:
+: 
+: #+begin: columnview
+: | Second chapter           | TODO | B        | :writing:  |
+: #+end:
+
+Here, the second block's body is not parsed correctly and results in an error. The parsing state should be cleared when the custom dynamic block is finished parsing so that both of these objects are treated separately and parsed correctly. The example works if there is a line of text inserted between the blocks.
+
+4. Looks like the issue still exists for the dynamic blocks - see the @examples/dynamic-blocks.org file for a reproduction
+
+*** DONE Even more inline markup fixes
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-04 Wed 17:20]
+:END:
+The following example parses as a long verbatim markup followed by ~;=~, but there should be two separate verbatim values: ~=REFERENCES=~ and ~=;=~ surrounding some plain text.
+
+#+begin_example
+=REFERENCES= contains one or more citation reference objects separated by =;=.
+#+end_example
+
+Similar issue happens here:
+
+#+begin_example
+Note comma-quoting in example block above: lines that would start with =,*= (like =,* First Heading=) are comma-quoted.
+#+end_example
+
+Here' the ~=,*= (like =,* First Heading=~ is parsed as ~=,*= (like =~ and ~,* First Heading=~ resulting in an error. Instead, it should be parsed as ~=,*=~ and ~=,* First Heading=~ separated by some text.
+
+*** DONE Lists fixes
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-04 Wed 17:39]
+:END:
+There are some list edge cases:
+
+1. Inline markup in list items
+
+#+begin_example
+- ~org-todo-keywords-1~ 
+- ~org-link-parameters~
+#+end_example
+
+The first list item is not prarsed properly because of the trailing whitespace. Once removed, or if anything is added past the trailing whitespace it starts working again.
+The second list item is not parsed properly because of an error related to the inline code.
+
+A more involved example follows:
+
+#+begin_example
+- *Plurals* (controversial): some style guides permit =the 1990's= — others forbid it.
+- *Omission in poetry*: =o'er=, ='twas=, =ne'er=.
+#+end_example
+
+Both of these examples should parse without any issues and recognize the bold, verbatim and code sections.
+
+2. Horizontal rule following a list doesn't parse:
+#+begin_example
+- List item
+
+-----
+#+end_example
+
+The horizontal rule should be parsed as a separate object.
+
+*** DONE Special characters
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-04 Wed 18:23]
+:END:
+There are some "special character" issues.
+
+1. The =#= character break title parsing:
+#+begin_example
+,* REVIEWING Code review: PR #412 :review:backend:
+#+end_example
+It should be treated as a regural text character.
+
+2. The =reguar_link= description fails to parse when it contains =/= characters
+#+begin_example
+[[https://orgmode.org][See also https://orgmode.org/worg/ for community docs]]
+#+end_example
+
+Another place where this breaks is:
+#+begin_example
+- The tree-sitter project is at https://tree-sitter.github.io/tree-sitter
+- See also https://www.gnu.org/software/emacs/
+#+end_example
+
+Here, first line parses fine, but the second errors out.
+
+*** DONE Indents
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-04 Wed 18:33]
+:END:
+Indents in the custom drawers fail when the body contains a timestamp:
+
+#+begin_example
+:PROGRESS:
+  [2025-01-06 Mon] 12,400 documents collected. Deduplication in progress.
+:END:
+#+end_example
+
+This is also the case when all parts of a drawer are indented:
+#+begin_example
+  :PROGRESS:
+  [2025-01-06 Mon] 12,400 documents collected. Deduplication in progress.
+  :END:
+#+end_example
+
+*** DONE Further markup edge cases
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-04 Wed 19:02]
+:END:
+I found some more markup-related issues.
+
+1. Here the two inline markup objects are separated by a =/= character reporting multiple errors.
+#+begin_example
+Increment hash field values atomically — identical semantics to ~INCR~/~INCRBYFLOAT~.
+#+end_example
+
+A similar situation happens in tables:
+
+#+begin_example
+| =[persistence]=| ~aof_enabled~       | bool    | =false=        |
+| =[persistence]=| ~aof_fsync~         | enum    | =everysec=     |
+#+end_example
+
+Here twe =|= character follows the ~=~ character causing an error to be reported for the code markup. Adding a space makes it work again.
+
+It should also OK if there is nothing between the different markup objects:
+
+#+begin_example
+*Bold*/italic/ — two markup objects sharing a boundary.
+~code~=verbatim= — code immediately followed by verbatim.
+#+end_example
+
+All four markup objects should parse correctly here.
+
+2. Some opening markup objects should be supported. Markup can also nest:
+
+#+begin_example
+- */Bold and italic simultaneously/* — achieved by nesting one inside the other.
+- /*Italic wrapping bold*/ — the outer marker determines the outer type.
+- *A _bold underlined_ phrase* — underline nested inside bold.
+- /An _italic underlined_ passage/ — underline nested inside italic.
+- (*/nested bold-italic inside parens/*) — opens with =(= which is a valid PRE.
+- "/italic inside double quotes/" — double quote is a valid PRE.
+- '/italic inside single quotes/' — single quote is a valid PRE.
+#+end_example
+
+All of these should parse without errors and have the requisite markup present.
+
+3. Analogically, sometimes a markup character should be treated as plain text, when they don't delineate an object without whitespace:
+
+#+begin_example
+- = not verbatim = (space before closing)
+- * not bold * (space before closing)
+- / not italic / (space before closing)
+#+end_example
+
+All of the above should parse as plain text without any markup.
+
+*** DONE Lists handling
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-04 Wed 22:13]
+:END:
+1. The markup on the second list item doesn't parse correctly:
+#+begin_example
+- This is fine
+- =NOT OK=
+#+end_example
+
+Another example:
+#+begin_example
+- [X] Stale replica read returns error with =read_replicas=strict= config.
+#+end_example
+
+Another example of weird markup behaviour:
+#+begin_example
+- Stream data type (~XADD~, ~XREAD~, consumer groups).
+- Test
+- ~EVAL~ / Lua scripting (subset — no global state, no network access).
+#+end_example
+
+Last line reports numerous errors.
+
+2. There are cases where lists are parsed in contexts they don't appear in, like tables:
+#+begin_example
+| CPU      | 4 vCPU   | 8+ vCPU     |
+| RAM      | 8 GiB    | 32+ GiB     |
+| Storage  | 20 GiB   | 100+ GiB NVMe |
+| Network  | 1 Gbps   | 10 Gbps     |
+#+end_example
+
+This reports an error, because of the =+= characters interpreted as the bullets on a list.
+
+A very similar issue happens for lists too:
+
+#+begin_example
+- =protoc= 3.21+ (for the binary protocol code generation).
+#+end_example
+
+Here the =+= is interpreted as a start of a new list item, but it should be just text.
+
+3. Drawer-like things don't parse in list items:
+
+#+begin_example
+- DONE Core string, list, hash, set, sorted set operations. :feature:
+- DONE Three-node cluster with consistent hashing. :feature:
+- DONE LRU and TTL eviction policies. :feature:
+#+end_example
+
+In each one of these, the =:features:= part should be parsed as plaintext.
+
+4. List item cookies don't parse correctly:
+
+#+begin_example
+5. [@5] fifth
+6. sixth
+#+end_example
+
+Here, the first line contains a cookie that sets the counter. It should be parsed correctly.
+
+Similarly:
+
+#+begin_example
+5. [@5] Review the day's bookings and note dietary restrictions.
+#+end_example
+
+The parser complains about the ='= character because of the cookie issue earlier.
+
+5. Some unicode characters are not supported when usig list cookies:
+#+begin_example
+1. [@1] Confirm gelato is at scooping temperature (-11°C).
+#+end_example
+
+Here the =°= character should be treated as text, but isn't due to the cookie error.
+
+*** DONE Head line
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-04 Wed 23:08]
+:END:
+1. When a TODO state is not recognized but followed by the priority, the parser returns an error:
+
+#+begin_example
+,* PREPRODUCTION [#B] Salt and Longitude :thriller:contemporary:
+#+end_example
+
+Instead, the priority should be treated as plain text in such a case. We'll handle the recognition of custom TODO-items separately.
+
+2. Markup characters can throw off the title parsing:
+
+#+begin_example
+,** Restart repeater (.+) — reschedule N units from the completion date
+#+end_example
+
+The =+= character in this case seems to cause a parsing failure of the title. The whole line should be parsed as a heading with just plaintext title.
+
+*** DONE Parser configuration / dynamic changes
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-04 Wed 19:17]
+:END:
+
+The =#+TODO:= special key should be supported. I.e. When encountered by the parser, it should take effect for the following file contents.
+The supported forms should include:
+#+begin_example
+,#+TODO: TODO | DONE
+,#+TODO: SUSPENDED
+,#+TODO: WORKING |
+,#+TODO: TODO(t) | DONE(d@/!)
+,#+TODO: | CANCELLED(c@/!) REWORKED(r@/!)
+#+end_example
+
+That is, plain definitions with todo/done separator. Just plain definition, empty done keys, empty todo keys, extra suffix with the org-mode controls (can be ignored).
+
+=#+TODO:= lines should just add keys to the set, never replate the existing set. When there are multiple lines, treat all of the keys as valid keys.
+
+*** DONE More edge cases
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-04 Wed 23:50]
+:END:
+There are still some edge cases present:
+
+1. Markup with hyphens and parens doesn't parse correctly:
+#+begin_example
+_Underlined_ text should be used sparingly to avoid confusion with hyperlinks.
+Consider: (_underline inside parentheses_) and -_underline after a hyphen_-.
+#+end_example
+
+In this case we expect three separate underline objects in those two lines.
+
+2. Indented quote block doesn't parse right:
+: ** Items with sub-blocks
+: 
+: - Stock types and their properties:
+:   #+begin_quote
+:   A good stock is the foundation of French cooking — it cannot be rushed.
+:   — Auguste Escoffier
+:   #+end_quote
+
+Please treat the indent as optional, much like in the example blocks. The same treatment should be applied to all blocks.
+
+3. Lists with drawer-like contents still parse wrong:
+
+#+begin_example
+- DONE Fixed critical bug: =LMOVE= with =source == destination= corrupted the list. :bugfix:
+- DONE Added =OBJECT IDLETIME= command. :feature:
+- DONE Documented all configuration keys in =docs/configuration.md=. :docs:
+#+end_example
+
+All of these lines should contain a list item with one verbose inline object surrounded by text. The text should include the =:text:= strings.
+
+Another example:
+
+#+begin_example
+- DONE Fixed =SCAN= cursor wraparound on very large keyspaces (> 100M keys). :bugfix:
+- DONE =ZADD GT/LT= options now correctly handle negative infinity scores. :bugfix:
+#+end_example
+
+*** DONE Multiline inline objects
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-05 Thu 00:07]
+:END:
+We can now address the multiline inline markup. Specifically footnotes, citations and links:
+
+1. Inline footnotes that span multiple lines not parsed:
+#+begin_example
+An inline footnote with a very short definition: the slash is called a
+solidus[fn:solidus:From Latin /solidus/, a gold coin whose abbreviation /s/ was
+written in the numerator position of the price fraction.] in formal contexts.
+#+end_example
+
+The footnote should be delimited by =[= and =]= even when spanning multiple lines.
+
+2. Multi-line citations don't work:
+#+begin_example
+The question of whether neural networks can learn formal grammars has been
+studied extensively [cite: see the surveys in;@chomsky1956;@gold1967;@angluin1987;
+see also recent work on;@bhattamishra2020;@hahn2020; for transformer-specific results].
+#+end_example
+
+The citation should be delimited by =[= and =]= even when spanning multiple lines.
+
+3. Multi-line links are not supported:
+#+begin_example
+<https://very-long-domain-name.example.com/with/a/very/long/
+path/that/spans/multiple/lines/for/testing/purposes>
+#+end_example
+
+The link should be delimited by =<= and =>= even when spanning multiple lines.
+
+*** TODO Other edge cases
+- Nested lists are parsed as items on the parent list
+
+*** TODO Heading line abstraction
+Add an abstraction over the heading line, so that the heading consists of a =heading_line= and a =body=.
+
+** TODO A script for checking example file coverage
+Create a simple script that can be run to get a breakdown of which files from the examples directories are still failing to parse correctly.
+The script should run the parser against each example file and list any errors that are encontered together with the content that causes the issue and a two lines of context on each side of the offending lines.
+
+Example invocation:
+#+begin_src bash
+./check.py example/*.org
+#+end_src
+
+The output of the script should look like this:
+
+#+begin_example
+46/53 files passing
+
+# examples/footnotes.org:
+
+```
+some text that is failing
+to parse
+with context on either side
+```
+
+```
+another failure in this file
+```
+
+# examples/zeroth.org
+
+```
+...
+```
+
+...
+#+end_example
 
 ** TODO Python wrapper on tree-sitter
 Create a scaffold of a Python project using Poetry as the build tool. Include =mypy= for typings, =ruff= for linting and formatting and =pytest= for tests. The project will be a library that wraps the tree-sitter based parser, so include =py-tree-sitter= in the dependencies as well. For development, add =pyright= lang server.
