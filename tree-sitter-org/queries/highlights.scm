@@ -99,8 +99,7 @@
 
 ; --- Objects: Citations ---
 (citation) @markup.link
-(citation_reference
-  (cite_key) @markup.link.url)
+(citation_body) @markup.link.url
 
 ; --- Objects: Export snippets ---
 (export_snippet

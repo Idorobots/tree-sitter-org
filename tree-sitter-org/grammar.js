@@ -770,9 +770,7 @@ module.exports = grammar({
       optional(field('style', $._cite_style)),
       ':',
       optional($._S),
-      optional(field('prefix', $._cite_global_prefix)),
-      field('references', $._cite_references),
-      optional(field('suffix', $._cite_global_suffix)),
+      optional(field('body', alias($._CITE_BODY, $.citation_body))),
       optional($._S),
       ']',
     ),
@@ -804,8 +802,10 @@ module.exports = grammar({
     ),
 
     _cite_key_prefix: $ => repeat1($._object_min),
-    _CITE_KEY: _ => /[A-Za-z0-9\-.:?!`'/*@+|(){}<>&_^$#%~]+/,
+    _CITE_KEY: _ => /[A-Za-z0-9\-.:?!`'/*+|(){}<>&_^$#%~]+/,
     _cite_key_suffix: $ => repeat1($._object_min),
+
+    _CITE_BODY: _ => /[^\]\n]+/,
 
     // --- 8.5 Inline Source Blocks ---
     inline_source_block: $ => seq(
