@@ -57,6 +57,7 @@ module.exports = grammar({
     $._LISTITEM_INDENT,
     $._PLAN_KW_EXT,       // Planning keyword (DEADLINE/SCHEDULED/CLOSED)
     $._DYNBLOCK_SYNC,     // Zero-width sync point for dynamic-block boundaries
+    $._TODO_SETUP_SYNC,   // Zero-width sync point to update TODO keyword set
     $._ERROR_SENTINEL,
     $._TABLE_START,   // Zero-width gate: emitted once at the start of each org_table
     $._FIXED_WIDTH_COLON, // Consumes optional indent + ':' only at BOL context
@@ -694,19 +695,31 @@ module.exports = grammar({
     ),
 
     // --- 7.8 Special Keywords ---
-    special_keyword: $ => seq(
-      '#+',
-      field('key', alias($._SPECIAL_KEY, $.keyword_key)),
-      ':',
-      optional(seq($._S, field('value', alias($._REST_OF_LINE, $.keyword_value)))),
-      $._NL,
+    special_keyword: $ => choice(
+      seq(
+        '#+',
+        field('key', alias($._TODO_SPECIAL_KEY, $.keyword_key)),
+        ':',
+        $._TODO_SETUP_SYNC,
+        optional(seq($._S, field('value', alias($._REST_OF_LINE, $.keyword_value)))),
+        $._NL,
+      ),
+      seq(
+        '#+',
+        field('key', alias($._SPECIAL_KEY_NO_TODO, $.keyword_key)),
+        ':',
+        optional(seq($._S, field('value', alias($._REST_OF_LINE, $.keyword_value)))),
+        $._NL,
+      ),
     ),
 
-    _SPECIAL_KEY: _ => token(prec(2, choice(
+    _TODO_SPECIAL_KEY: _ => token(prec(2, ci('TODO'))),
+
+    _SPECIAL_KEY_NO_TODO: _ => token(prec(2, choice(
       ci('TITLE'), ci('AUTHOR'), ci('DATE'), ci('EMAIL'),
       ci('DESCRIPTION'), ci('KEYWORDS'), ci('LANGUAGE'),
       ci('CATEGORY'), ci('FILETAGS'), ci('TAGS'),
-      ci('TODO'), ci('SEQ_TODO'), ci('TYP_TODO'),
+      ci('SEQ_TODO'), ci('TYP_TODO'),
       ci('PRIORITIES'), ci('PROPERTY'), ci('STARTUP'),
       ci('ARCHIVE'), ci('COLUMNS'), ci('OPTIONS'),
     ))),

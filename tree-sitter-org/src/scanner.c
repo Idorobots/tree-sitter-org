@@ -54,6 +54,7 @@ enum TokenType {
   TOKEN_LISTITEM_INDENT,
   TOKEN_PLAN_KW,
   TOKEN_DYNBLOCK_SYNC,
+  TOKEN_TODO_SETUP_SYNC,
   TOKEN_ERROR_SENTINEL,
   TOKEN_TABLE_START,   // zero-width gate emitted once at the start of each org_table
   TOKEN_FIXED_WIDTH_COLON, // consumes optional indent + ':' only at BOL context
@@ -215,6 +216,25 @@ static inline bool eof(TSLexer *lexer) {
 
 static inline uint32_t get_column(TSLexer *lexer) {
   return lexer->get_column(lexer);
+}
+
+static inline bool is_ascii_upper(int32_t ch) {
+  return ch >= 'A' && ch <= 'Z';
+}
+
+static bool scanner_add_todo_keyword(Scanner *s, const char *kw) {
+  if (kw == NULL || kw[0] == '\0') return false;
+
+  for (uint8_t i = 0; i < s->num_todo_keywords; i++) {
+    if (strcmp(s->todo_keywords[i], kw) == 0) return true;
+  }
+
+  if (s->num_todo_keywords >= MAX_TODO_KEYWORDS) return false;
+
+  strncpy(s->todo_keywords[s->num_todo_keywords], kw, MAX_TODO_KW_LEN - 1);
+  s->todo_keywords[s->num_todo_keywords][MAX_TODO_KW_LEN - 1] = '\0';
+  s->num_todo_keywords++;
+  return true;
 }
 
 static bool probe_markup_close_in_rest_of_line(
@@ -1569,6 +1589,66 @@ static bool scan_dynblock_sync(Scanner *s, TSLexer *lexer) {
   return true;
 }
 
+// _TODO_SETUP_SYNC: zero-width sync point used on special_keyword lines.
+//
+// When positioned at a line that begins with "#+TODO:", parse the remainder
+// of the line and add discovered TODO keywords to scanner state. Supported:
+//   - plain words: TODO, DONE, SUSPENDED
+//   - separator: |
+//   - keywords with controls: DONE(d@/!) -> DONE
+//
+// Keywords are accumulated across multiple #+TODO lines; existing defaults are
+// preserved and never replaced.
+static bool scan_todo_setup_sync(Scanner *s, TSLexer *lexer) {
+  mark_end(lexer);
+
+  while (lookahead(lexer) == ' ' || lookahead(lexer) == '\t') {
+    advance(lexer);
+  }
+
+  while (!eof(lexer) && lookahead(lexer) != '\n') {
+    while (lookahead(lexer) == ' ' || lookahead(lexer) == '\t') {
+      advance(lexer);
+    }
+    if (eof(lexer) || lookahead(lexer) == '\n') break;
+
+    char token[MAX_TODO_KW_LEN];
+    int token_len = 0;
+    while (!eof(lexer) && lookahead(lexer) != '\n' && lookahead(lexer) != ' ' && lookahead(lexer) != '\t') {
+      int32_t ch = lookahead(lexer);
+      if (token_len < MAX_TODO_KW_LEN - 1) {
+        token[token_len++] = (char)ch;
+      }
+      advance(lexer);
+    }
+    token[token_len] = '\0';
+
+    if (token_len == 0) continue;
+    if (token_len == 1 && token[0] == '|') continue;
+
+    char keyword[MAX_TODO_KW_LEN];
+    int kw_len = 0;
+    for (int i = 0; i < token_len; i++) {
+      if (token[i] == '(') break;
+      if (!is_ascii_upper(token[i])) {
+        kw_len = 0;
+        break;
+      }
+      if (kw_len < MAX_TODO_KW_LEN - 1) {
+        keyword[kw_len++] = token[i];
+      }
+    }
+    keyword[kw_len] = '\0';
+
+    if (kw_len > 0) {
+      scanner_add_todo_keyword(s, keyword);
+    }
+  }
+
+  lexer->result_symbol = TOKEN_TODO_SETUP_SYNC;
+  return true;
+}
+
 // _FIXED_WIDTH_COLON: gate token for fixed-width line starts.
 //
 // Emitted only when ':' is the first non-whitespace character on the line,
@@ -1651,6 +1731,11 @@ bool tree_sitter_org_external_scanner_scan(
   // Error recovery sentinel — never match
   if (valid_symbols[TOKEN_ERROR_SENTINEL]) {
     return false;
+  }
+
+  // Special-keyword sync hook used to update TODO keyword set from #+TODO.
+  if (valid_symbols[TOKEN_TODO_SETUP_SYNC]) {
+    if (scan_todo_setup_sync(s, lexer)) return true;
   }
 
   // _NL is a grammar regex and never updates prev_char.  Reset it to 0

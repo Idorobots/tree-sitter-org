@@ -11,6 +11,65 @@ Level 1 heading
     (plain_text)))
 
 ================
+TODO keywords accumulate from #+TODO lines
+================
+#+TODO: TODO | DONE
+#+TODO: SUSPENDED
+#+TODO: WORKING |
+#+TODO: TODO(t) | DONE(d@/!)
+#+TODO: | CANCELLED(c@/!) REWORKED(r@/!)
+* SUSPENDED Suspended task
+* WORKING In progress
+* CANCELLED Cancelled task
+* REWORKED Reworked task
+* TODO Default todo still valid
+* DONE Default done still valid
+
+---
+
+(document
+  (zeroth_section
+    (special_keyword
+      (keyword_key)
+      (keyword_value))
+    (special_keyword
+      (keyword_key)
+      (keyword_value))
+    (special_keyword
+      (keyword_key)
+      (keyword_value))
+    (special_keyword
+      (keyword_key)
+      (keyword_value))
+    (special_keyword
+      (keyword_key)
+      (keyword_value)))
+  (heading
+    (stars)
+    (todo_keyword)
+    (plain_text))
+  (heading
+    (stars)
+    (todo_keyword)
+    (plain_text))
+  (heading
+    (stars)
+    (todo_keyword)
+    (plain_text))
+  (heading
+    (stars)
+    (todo_keyword)
+    (plain_text))
+  (heading
+    (stars)
+    (todo_keyword)
+    (plain_text))
+  (heading
+    (stars)
+    (todo_keyword)
+    (plain_text)))
+
+================
 Heading title contains colon before real tags
 ================
 * TODO Try to debug the ejabberd_tls:send timouts.                :Debugging:Erlang:XMPP:
