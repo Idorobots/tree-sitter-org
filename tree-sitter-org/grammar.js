@@ -181,6 +181,11 @@ module.exports = grammar({
       $._affiliatable,
     ),
 
+    _section_element_affiliated_no_drawer: $ => seq(
+      repeat1($.caption_keyword),
+      $._affiliatable_no_drawer,
+    ),
+
     _affiliatable: $ => choice(
       $._greater_block,
       $.drawer,
@@ -194,6 +199,27 @@ module.exports = grammar({
       $.fixed_width,
       $.horizontal_rule,
       prec(-1, $.paragraph),
+    ),
+
+    _affiliatable_no_drawer: $ => choice(
+      $._greater_block,
+      $.dynamic_block,
+      $.footnote_definition,
+      $.plain_list,
+      $.org_table,
+      $.tableel_table,
+      $._lesser_block,
+      $.diary_sexp,
+      $.fixed_width,
+      $.horizontal_rule,
+      prec(-1, $.paragraph),
+    ),
+
+    _drawer_element: $ => choice(
+      $._section_element_affiliated_no_drawer,
+      $.special_keyword,
+      $._non_affiliatable,
+      $._affiliatable_no_drawer,
     ),
 
     _non_affiliatable: $ => choice(
@@ -251,12 +277,14 @@ module.exports = grammar({
 
     // --- 6.2 Drawers ---
     drawer: $ => seq(
+      optional($._INDENT),
       token(prec(2, ':')),
       field('name', alias($._DRAWER_NAME, $.drawer_name)),
       ':',
       optional($._TRAILING),
       $._NL,
       field('body', optional($._drawer_body)),
+      optional($._INDENT),
       token(prec(2, ci(':end:'))),
       optional($._TRAILING),
       $._NL,
@@ -265,9 +293,19 @@ module.exports = grammar({
     _DRAWER_NAME: _ => /[A-Za-z0-9_\-]+/,
 
     _drawer_body: $ => repeat1(choice(
-      $._section_element,
+      $.drawer_kv_line,
+      $._drawer_element,
       $._blank_line,
     )),
+
+    drawer_kv_line: $ => seq(
+      optional($._INDENT),
+      ':',
+      /[^:\n]+/,
+      ':',
+      /[^\n]*/,
+      $._NL,
+    ),
 
     // --- 6.3 Dynamic Blocks ---
     dynamic_block: $ => seq(
@@ -386,20 +424,26 @@ module.exports = grammar({
 
     // --- 6.6 Property Drawers ---
     property_drawer: $ => seq(
+      optional($._INDENT),
       token(prec(3, ci(':properties:'))),
       optional($._TRAILING),
       $._NL,
-      repeat($.node_property),
+      repeat(choice($.node_property, $._blank_line)),
+      optional($._INDENT),
       token(prec(3, ci(':end:'))),
       optional($._TRAILING),
       $._NL,
     ),
 
     node_property: $ => seq(
+      optional($._INDENT),
       ':',
       field('name', alias($._PROP_NAME, $.property_name)),
       ':',
-      optional(seq($._S, field('value', alias($._REST_OF_LINE, $.property_value)))),
+      choice(
+        seq($._S, field('value', alias($._REST_OF_LINE, $.property_value))),
+        optional($._TRAILING),
+      ),
       $._NL,
     ),
 

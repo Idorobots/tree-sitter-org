@@ -34,6 +34,25 @@ Unordered list with plus
         first_line: (plain_text)))))
 
 ================
+Drawer after list item parses separately
+================
+- List item
+  :DRAWER:
+  :test: 23
+  :END:
+
+---
+
+(document
+  (zeroth_section
+    (plain_list
+      (item
+        first_line: (plain_text)))
+    (drawer
+      name: (drawer_name)
+      body: (drawer_kv_line))))
+
+================
 Ordered list with numbers
 ================
 1. First

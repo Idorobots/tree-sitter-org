@@ -55,3 +55,105 @@ Property drawer with multiple properties
       (node_property
         (property_name)
         (property_value)))))
+
+================
+Property drawer with empty body
+================
+:PROPERTIES:
+
+:END:
+
+---
+
+(document
+  (zeroth_section
+    properties: (property_drawer)))
+
+================
+Property drawer with empty values
+================
+:PROPERTIES:
+:KEY:
+:CONTEXT: 
+:SOME_KEY: value
+:END:
+
+---
+
+(document
+  (zeroth_section
+    properties: (property_drawer
+      (node_property
+        name: (property_name))
+      (node_property
+        name: (property_name))
+      (node_property
+        name: (property_name)
+        value: (property_value)))))
+
+================
+Property value with colon
+================
+:PROPERTIES:
+:FIELD: value
+:SOME_KEY: value:test
+:END:
+
+---
+
+(document
+  (zeroth_section
+    properties: (property_drawer
+      (node_property
+        name: (property_name)
+        value: (property_value))
+      (node_property
+        name: (property_name)
+        value: (property_value)))))
+
+================
+Indented drawer
+================
+  :DRAWER:
+  :END:
+
+---
+
+(document
+  (zeroth_section
+    (drawer
+      (drawer_name))))
+
+================
+Indented property drawer in heading
+================
+* H
+  :PROPERTIES:
+  :KEY: ~/test/value
+  :END:
+
+---
+
+(document
+  (heading
+    stars: (stars)
+    title: (plain_text)
+    properties: (property_drawer
+      (node_property
+        name: (property_name)
+        value: (property_value)))))
+
+================
+Custom drawer with key-like empty value line
+================
+:DRAWER:
+:TEST:
+:END:
+
+---
+
+(document
+  (zeroth_section
+    (drawer
+      name: (drawer_name)
+      body: (drawer_kv_line))))
