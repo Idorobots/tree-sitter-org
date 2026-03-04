@@ -52,6 +52,22 @@ List items with inline code and trailing whitespace
           body: (code_content))))))
 
 ================
+Horizontal rule after list
+================
+- List item
+
+----- 
+
+---
+
+(document
+  (zeroth_section
+    (plain_list
+      (item
+        first_line: (plain_text)))
+    (horizontal_rule)))
+
+================
 Multiple list items starting with inline markup
 ================
 - *Plurals* (controversial): some style guides permit =the 1990's= -- others forbid it.

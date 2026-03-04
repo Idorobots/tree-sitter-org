@@ -752,8 +752,67 @@ static int scan_list_start(Scanner *s, TSLexer *lexer, const bool *valid_symbols
 //   '*' at col > 0 — unordered star bullet (col 0 would be a heading)
 //
 // Everything else (heading '*' at col 0, '#', ':', etc.) ends the list.
-static bool scan_list_end(Scanner *s, TSLexer *lexer) {
-  if (s->list_depth == 0) return false;
+static bool is_space_or_tab(int32_t ch) {
+  return ch == ' ' || ch == '\t';
+}
+
+// Probe whether the current line starts with a valid Org list bullet.
+//
+// This function may advance lexer lookahead while probing; callers must either
+// emit a token in this scan call or return false from the outer scan function so
+// tree-sitter rewinds before other token checks.
+//
+// Return values:
+//   1  -> valid list bullet prefix found
+//   0  -> not a valid list bullet prefix
+static int probe_list_bullet_prefix(TSLexer *lexer, uint32_t col) {
+  int32_t ch = lookahead(lexer);
+
+  // Unordered bullets: '-', '+', '*' followed by space/tab.
+  if (ch == '-' || ch == '+') {
+    advance(lexer);
+    return is_space_or_tab(lookahead(lexer)) ? 1 : 0;
+  }
+
+  if (ch == '*') {
+    if (col == 0) return 0;  // heading starter, never an unordered list bullet
+    advance(lexer);
+    return is_space_or_tab(lookahead(lexer)) ? 1 : 0;
+  }
+
+  // Ordered bullets: [0-9]+[.)][ \t]
+  if (ch >= '0' && ch <= '9') {
+    do {
+      advance(lexer);
+      ch = lookahead(lexer);
+    } while (ch >= '0' && ch <= '9');
+
+    if (ch != '.' && ch != ')') return 0;
+    advance(lexer);
+    return is_space_or_tab(lookahead(lexer)) ? 1 : 0;
+  }
+
+  // Ordered bullets: [a-z][.)][ \t]
+  if (ch >= 'a' && ch <= 'z') {
+    advance(lexer);
+    ch = lookahead(lexer);
+    if (ch != '.' && ch != ')') return 0;
+    advance(lexer);
+    return is_space_or_tab(lookahead(lexer)) ? 1 : 0;
+  }
+
+  return 0;
+}
+
+// _LIST_END: zero-width token emitted when the plain_list closes.
+//
+// Return values:
+//   1  -> LIST_END emitted
+//   0  -> list continues, no advance performed
+//  -1  -> list continues, probe advanced; caller must return false so
+//         tree-sitter rewinds before other scanners run.
+static int scan_list_end(Scanner *s, TSLexer *lexer) {
+  if (s->list_depth == 0) return 0;
 
   mark_end(lexer);  // zero-width; position set here (may be after whitespace
                     // if scan_listitem_indent advanced in the -1 case)
@@ -761,23 +820,29 @@ static bool scan_list_end(Scanner *s, TSLexer *lexer) {
   if (eof(lexer)) {
     s->list_depth--;
     lexer->result_symbol = TOKEN_LIST_END;
-    return true;
+    return 1;
   }
 
   int32_t ch = lookahead(lexer);
   uint32_t col = get_column(lexer);
 
-  if (ch == '\n') return false;                 // blank line
-  if (ch == ' ' || ch == '\t') return false;    // whitespace (LISTITEM_INDENT)
-  if (ch == '-' || ch == '+') return false;     // unordered bullet
-  if (ch >= '0' && ch <= '9') return false;     // ordered bullet (digit)
-  if (ch >= 'a' && ch <= 'z') return false;     // ordered bullet (letter)
-  if (ch == '*' && col > 0) return false;       // star bullet (non-heading)
+  if (ch == '\n') return 0;                 // blank line
+  if (ch == ' ' || ch == '\t') return 0;    // whitespace (LISTITEM_INDENT)
+
+  // For bullet-like starters, verify full bullet shape rather than just first
+  // character so lines like "-----" correctly end the list.
+  if (ch == '-' || ch == '+' || ch == '*' ||
+      (ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'z')) {
+    if (probe_list_bullet_prefix(lexer, col)) return -1;
+    s->list_depth--;
+    lexer->result_symbol = TOKEN_LIST_END;
+    return 1;
+  }
 
   // Heading '*' at col 0, keywords ('#'), drawers (':'), etc. — end the list.
   s->list_depth--;
   lexer->result_symbol = TOKEN_LIST_END;
-  return true;
+  return 1;
 }
 
 // _ITEM_END: only emit at EOF or double blank line when in a list
@@ -1577,7 +1642,9 @@ bool tree_sitter_org_external_scanner_scan(
       // Indented non-bullet content. Lexer is now past the whitespace.
       // Fall directly to scan_list_end; skip LIST_START (can't start inside list).
       if (valid_symbols[TOKEN_LIST_END]) {
-        if (scan_list_end(s, lexer)) return true;
+        int end_result = scan_list_end(s, lexer);
+        if (end_result == 1) return true;
+        if (end_result == -1) return false;
       }
       return false;
     }
@@ -1594,7 +1661,9 @@ bool tree_sitter_org_external_scanner_scan(
   }
 
   if (valid_symbols[TOKEN_LIST_END]) {
-    if (scan_list_end(s, lexer)) return true;
+    int result = scan_list_end(s, lexer);
+    if (result == 1) return true;
+    if (result == -1) return false;
   }
 
   if (valid_symbols[TOKEN_ITEM_END]) {
