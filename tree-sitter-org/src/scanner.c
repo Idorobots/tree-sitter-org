@@ -1128,9 +1128,11 @@ static int scan_listitem_indent(TSLexer *lexer) {
 
   int32_t ch = lookahead(lexer);
 
-  // Bullet characters: unordered (-, +, *) or ordered (digit, lowercase letter)
-  if (ch == '+' || ch == '-' || ch == '*' ||
-      (ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'z')) {
+  // Bullet characters for indented items: unordered (-, +, *).
+  // Ordered counters are intentionally excluded here because a large class of
+  // indented continuation paragraphs starts with digits (e.g. "  28 days...")
+  // and would otherwise be misclassified as list-item starters.
+  if (ch == '+' || ch == '-' || ch == '*') {
     lexer->result_symbol = TOKEN_LISTITEM_INDENT;
     mark_end(lexer);
     return 1;

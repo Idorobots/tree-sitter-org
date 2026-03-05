@@ -405,7 +405,7 @@ module.exports = grammar({
     // parsed at the grammar level; continuation lines are handled in post-
     // processing by examining the indent field of subsequent items.
     item: $ => seq(
-      optional(field('indent', $._LISTITEM_INDENT)),
+      optional(field('indent', alias($._LISTITEM_INDENT, $.item_indent))),
       field('bullet', $._bullet),
       optional(field('counter_set', $.counter_set)),
       optional(field('checkbox', $.checkbox)),
