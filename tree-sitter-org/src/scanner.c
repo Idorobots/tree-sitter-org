@@ -55,6 +55,7 @@ enum TokenType {
   TOKEN_PLAN_KW,
   TOKEN_DYNBLOCK_SYNC,
   TOKEN_TODO_SETUP_SYNC,
+  TOKEN_AFFILIATED_SYNC,
   TOKEN_ERROR_SENTINEL,
   TOKEN_TABLE_START,   // zero-width gate emitted once at the start of each org_table
   TOKEN_FIXED_WIDTH_COLON, // consumes optional indent + ':' only at BOL context
@@ -1837,6 +1838,20 @@ static bool scan_dynblock_sync(Scanner *s, TSLexer *lexer) {
   return true;
 }
 
+// _AFFILIATED_SYNC: zero-width sync point used on affiliated-keyword lines.
+//
+// Affiliated keywords can appear between two tables. Depending on parse path,
+// the scanner may not be consulted in a way that clears table state between
+// them, causing the next table opener to be suppressed. Emitting this token in
+// affiliated keyword rules guarantees a scanner callback and clears stale
+// table-open state before the following element is parsed.
+static bool scan_affiliated_sync(Scanner *s, TSLexer *lexer) {
+  s->in_table = false;
+  mark_end(lexer);
+  lexer->result_symbol = TOKEN_AFFILIATED_SYNC;
+  return true;
+}
+
 // _TODO_SETUP_SYNC: zero-width sync point used on special_keyword lines.
 //
 // When positioned at a line that begins with "#+TODO:", parse the remainder
@@ -1986,6 +2001,11 @@ bool tree_sitter_org_external_scanner_scan(
   // Special-keyword sync hook used to update TODO keyword set from #+TODO.
   if (valid_symbols[TOKEN_TODO_SETUP_SYNC]) {
     if (scan_todo_setup_sync(s, lexer)) return true;
+  }
+
+  // Affiliated-keyword sync hook used to reset table state between elements.
+  if (valid_symbols[TOKEN_AFFILIATED_SYNC]) {
+    if (scan_affiliated_sync(s, lexer)) return true;
   }
 
   // _NL is a grammar regex and never updates prev_char.  Reset it to 0

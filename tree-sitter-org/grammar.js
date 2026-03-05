@@ -58,6 +58,7 @@ module.exports = grammar({
     $._PLAN_KW_EXT,       // Planning keyword (DEADLINE/SCHEDULED/CLOSED)
     $._DYNBLOCK_SYNC,     // Zero-width sync point for dynamic-block boundaries
     $._TODO_SETUP_SYNC,   // Zero-width sync point to update TODO keyword set
+    $._AFFILIATED_SYNC,   // Zero-width sync point for affiliated-keyword boundaries
     $._ERROR_SENTINEL,
     $._TABLE_START,   // Zero-width gate: emitted once at the start of each org_table
     $._FIXED_WIDTH_COLON, // Consumes optional indent + ':' only at BOL context
@@ -167,7 +168,7 @@ module.exports = grammar({
     ),
 
     _zs_element_affiliated: $ => seq(
-      repeat1($.caption_keyword),
+      repeat1($._affiliated_keyword),
       $._affiliatable,
     ),
 
@@ -179,12 +180,12 @@ module.exports = grammar({
     ),
 
     _section_element_affiliated: $ => seq(
-      repeat1($.caption_keyword),
+      repeat1($._affiliated_keyword),
       $._affiliatable,
     ),
 
     _section_element_affiliated_no_drawer: $ => seq(
-      repeat1($.caption_keyword),
+      repeat1($._affiliated_keyword),
       $._affiliatable_no_drawer,
     ),
 
@@ -755,10 +756,42 @@ module.exports = grammar({
     ))),
 
     // --- 7.9 Affiliated Keywords ---
+    _affiliated_keyword: $ => choice(
+      $.caption_keyword,
+      $.tblname_keyword,
+      $.results_keyword,
+      $.plot_keyword,
+    ),
+
     caption_keyword: $ => seq(
       token(prec(2, ci('#+caption'))),
       optional(field('optval', $._caption_optval)),
       ':',
+      $._AFFILIATED_SYNC,
+      optional(field('value', seq($._S, alias($._REST_OF_LINE, $.plain_text)))),
+      $._NL,
+    ),
+
+    tblname_keyword: $ => seq(
+      token(prec(2, ci('#+tblname'))),
+      ':',
+      $._AFFILIATED_SYNC,
+      optional(field('value', seq($._S, alias($._REST_OF_LINE, $.plain_text)))),
+      $._NL,
+    ),
+
+    results_keyword: $ => seq(
+      token(prec(2, ci('#+results'))),
+      ':',
+      $._AFFILIATED_SYNC,
+      optional(field('value', seq($._S, alias($._REST_OF_LINE, $.plain_text)))),
+      $._NL,
+    ),
+
+    plot_keyword: $ => seq(
+      token(prec(2, ci('#+plot'))),
+      ':',
+      $._AFFILIATED_SYNC,
       optional(field('value', seq($._S, alias($._REST_OF_LINE, $.plain_text)))),
       $._NL,
     ),

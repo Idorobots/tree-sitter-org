@@ -25,6 +25,9 @@
 (special_keyword
   (keyword_key) @keyword) @keyword
 (caption_keyword) @keyword
+(tblname_keyword) @keyword
+(results_keyword) @keyword
+(plot_keyword) @keyword
 
 ; --- Comments ---
 (comment) @comment

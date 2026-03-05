@@ -243,3 +243,101 @@ Table.el header only
         (table_cell
           (plain_text))))
     (tableel_table)))
+
+================
+Affiliated keywords between tables
+================
+| A |
+|---|
+
+#+CAPTION: first split
+| B |
+|---|
+
+#+TBLNAME: second split
+| C |
+|---|
+
+#+RESULTS:
+| D |
+|---|
+
+#+PLOT: type:2d
+| E |
+|---|
+
+---
+
+(document
+  (zeroth_section
+    (org_table
+      (table_row
+        (table_cell
+          (plain_text)))
+      (table_row
+        (table_rule)))
+    (caption_keyword
+      (plain_text))
+    (org_table
+      (table_row
+        (table_cell
+          (plain_text)))
+      (table_row
+        (table_rule)))
+    (tblname_keyword
+      (plain_text))
+    (org_table
+      (table_row
+        (table_cell
+          (plain_text)))
+      (table_row
+        (table_rule)))
+    (results_keyword)
+    (org_table
+      (table_row
+        (table_cell
+          (plain_text)))
+      (table_row
+        (table_rule)))
+    (plot_keyword
+      (plain_text))
+    (org_table
+      (table_row
+        (table_cell
+          (plain_text)))
+      (table_row
+        (table_rule)))))
+
+================
+Affiliated keywords before table
+================
+#+TBLNAME: inventory
+#+RESULTS: cached
+#+PLOT: type:2d
+| Item | Qty |
+|------+-----|
+| Pen  | 12  |
+
+---
+
+(document
+  (zeroth_section
+    (tblname_keyword
+      (plain_text))
+    (results_keyword
+      (plain_text))
+    (plot_keyword
+      (plain_text))
+    (org_table
+      (table_row
+        (table_cell
+          (plain_text))
+        (table_cell
+          (plain_text)))
+      (table_row
+        (table_rule))
+      (table_row
+        (table_cell
+          (plain_text))
+        (table_cell
+          (plain_text))))))
