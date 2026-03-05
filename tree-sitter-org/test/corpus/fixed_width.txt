@@ -99,6 +99,7 @@ Test paragraph:
     (paragraph
       (plain_text))))
 
+
 ================
 Colon in middle of paragraph is not fixed-width
 ================
@@ -110,18 +111,3 @@ Another test: yes, it passes
   (zeroth_section
     (paragraph
       (plain_text))))
-
-================
-Indented fixed-width inside list item (TODO: currently parsed as fixed-width)
-================
-- item
-  : fixed-width body
-
----
-
-(document
-  (zeroth_section
-    (plain_list
-      (item
-        (plain_text)))
-    (fixed_width)))

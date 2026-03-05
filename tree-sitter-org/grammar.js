@@ -401,10 +401,9 @@ module.exports = grammar({
       $._LIST_END,
     ),
 
-    // Items are single-line: bullet (+ optional indent, counter_set, checkbox)
-    // followed by either a tag line or a content line.  No multi-line body is
-    // parsed at the grammar level; continuation lines are handled in post-
-    // processing by examining the indent field of subsequent items.
+    // Items are a first bullet line plus optional continuation lines.
+    // Continuation lines must be indented and are attached to the same item.
+    // Indented bullet lines still parse as sibling items (flat list model).
     item: $ => seq(
       optional(field('indent', alias($._LISTITEM_INDENT, $.item_indent))),
       field('bullet', $._bullet),
@@ -414,9 +413,53 @@ module.exports = grammar({
         seq(field('tag', $.item_tag), $._NL),
         seq(optional(field('first_line', $._item_first_line)), optional($._TRAILING), $._NL),
       ),
+      repeat(field('body', choice(
+        alias($._item_drawer, $.drawer),
+        $.fixed_width,
+        $._item_block,
+        $.item_continuation_line,
+      ))),
+    ),
+
+    _item_block: $ => choice(
+      $.dynamic_block,
+      $._greater_block,
+      $._lesser_block,
+    ),
+
+    _item_drawer: $ => seq(
+      optional($._INDENT),
+      token(prec(2, ':')),
+      field('name', alias($._DRAWER_NAME_NO_END, $.drawer_name)),
+      ':',
+      optional($._TRAILING),
+      $._NL,
+      field('body', optional($._drawer_body)),
+      optional($._INDENT),
+      token(prec(2, ci(':end:'))),
+      optional($._TRAILING),
+      $._NL,
+    ),
+
+    _DRAWER_NAME_NO_END: _ => choice(
+      /[A-DF-Za-df-z0-9_\-][A-Za-z0-9_\-]*/,
+      /[Ee]/,
+      /[Ee][A-MO-Za-mo-z0-9_\-][A-Za-z0-9_\-]*/,
+      /[Ee][Nn]/,
+      /[Ee][Nn][A-CE-Za-ce-z0-9_\-][A-Za-z0-9_\-]*/,
+      /[Ee][Nn][Dd][A-Za-z0-9_\-]+/,
     ),
 
     _item_first_line: $ => repeat1($._object),
+
+    item_continuation_line: $ => seq(
+      $._INDENT,
+      field('content', alias($._ITEM_CONTINUATION_TEXT, $.plain_text)),
+      optional($._TRAILING),
+      $._NL,
+    ),
+
+    _ITEM_CONTINUATION_TEXT: _ => /[^\n#|][^\n]*/,
 
     _bullet: $ => choice(
       $._unordered_bullet,

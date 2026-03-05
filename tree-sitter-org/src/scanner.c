@@ -229,6 +229,10 @@ static inline bool is_ascii_upper(int32_t ch) {
   return ch >= 'A' && ch <= 'Z';
 }
 
+static inline bool is_fixed_width_tail_char(int32_t ch, bool at_eof) {
+  return ch == ' ' || ch == '\n' || at_eof;
+}
+
 static inline bool can_start_inline_hyphen_text(const Scanner *s, uint32_t col) {
   if (col == 0) return false;
   if (s->prev_char == 0) return false;
@@ -1032,6 +1036,7 @@ static int scan_list_end(Scanner *s, TSLexer *lexer) {
 
   int32_t ch = lookahead(lexer);
   uint32_t col = get_column(lexer);
+  uint16_t current_indent = s->list_indents[s->list_depth - 1];
 
   if (ch == '\n') return 0;                 // blank line
   if (ch == ' ' || ch == '\t') return 0;    // whitespace (LISTITEM_INDENT)
@@ -1052,6 +1057,10 @@ static int scan_list_end(Scanner *s, TSLexer *lexer) {
     lexer->result_symbol = TOKEN_LIST_END;
     return 1;
   }
+
+  // Deeper-indented colon lines visually belong to the current item body
+  // (drawers/fixed-width/continuation), so keep the list open.
+  if (ch == ':' && col > current_indent) return 0;
 
   // Heading '*' at col 0, keywords ('#'), drawers (':'), etc. — end the list.
   s->list_depth--;
@@ -1119,14 +1128,32 @@ static bool scan_item_tag_end(TSLexer *lexer) {
 //  -2  — whitespace + '\n' or EOF (whitespace-only line): advance made, no token;
 //         the outer function should return false so tree-sitter resets the lexer
 //         and the internal _blank_line rule can match "[ \t]*\n"
-static int scan_listitem_indent(TSLexer *lexer) {
+//  -3  — whitespace + bullet-like prefix that is NOT a valid bullet (e.g. "-1"):
+//         advance made for probing, no token; caller must return false so the
+//         lexer rewinds and grammar can parse the line as plain continuation text.
+//   2  — whitespace + deeper-indented fixed-width starter (': ' / ':\n'):
+//         TOKEN_FIXED_WIDTH_COLON emitted directly.
+//  -4  — whitespace + non-bullet line that starts an element-like construct
+//         (e.g. '|', or ':'/'#' at same/shallower indent); caller should
+//         fall through to LIST_END.
+static int scan_listitem_indent(const Scanner *s, TSLexer *lexer, const bool *valid_symbols) {
+  if (s->list_depth == 0) return 0;
+
   if (lookahead(lexer) != ' ' && lookahead(lexer) != '\t') return 0;
+
+  // Indent token is only valid at the beginning of a line. Mid-line spaces
+  // (e.g. "React + Redux") must remain plain text.
+  if (get_column(lexer) != 0) return 0;
 
   mark_end(lexer);
 
   while (lookahead(lexer) == ' ' || lookahead(lexer) == '\t') {
     advance(lexer);
   }
+
+  mark_end(lexer);
+
+  uint32_t indent_col = get_column(lexer);
 
   int32_t ch = lookahead(lexer);
 
@@ -1135,16 +1162,47 @@ static int scan_listitem_indent(TSLexer *lexer) {
   // indented continuation paragraphs starts with digits (e.g. "  28 days...")
   // and would otherwise be misclassified as list-item starters.
   if (ch == '+' || ch == '-' || ch == '*') {
+    advance(lexer);
+    if (lookahead(lexer) != ' ' && lookahead(lexer) != '\t') return -3;
+
     lexer->result_symbol = TOKEN_LISTITEM_INDENT;
-    mark_end(lexer);
     return 1;
   }
 
   // Whitespace-only line or EOF after whitespace — let _blank_line handle it.
   if (ch == '\n' || eof(lexer)) return -2;
 
+  // Indented non-bullet lines that clearly start other constructs should end
+  // the current list instead of being treated as item continuation text.
+  if (ch == ':' && s->list_depth > 0) {
+    // Deeper-indented colon lines visually belong to the current item body.
+    // Same-indentation (or shallower) colon lines terminate the current list.
+    uint16_t current_indent = s->list_indents[s->list_depth - 1];
+    if (indent_col > current_indent && valid_symbols[TOKEN_FIXED_WIDTH_COLON]) {
+      advance(lexer);  // consume ':'
+      int32_t next = lookahead(lexer);
+      if (is_fixed_width_tail_char(next, eof(lexer))) {
+        mark_end(lexer);
+        lexer->result_symbol = TOKEN_FIXED_WIDTH_COLON;
+        return 2;
+      }
+      return -1;
+    }
+    return (indent_col > current_indent) ? -1 : -4;
+  }
+
+  if (ch == '#' && s->list_depth > 0) {
+    // Deeper-indented block/keyword/comment lines visually belong to the
+    // current item body. Same-indentation (or shallower) lines terminate the
+    // current list.
+    uint16_t current_indent = s->list_indents[s->list_depth - 1];
+    return (indent_col > current_indent) ? -1 : -4;
+  }
+
+  if (ch == '|') return -4;
+
   // Non-bullet, non-blank content (e.g. "  some paragraph") — the list should
-  // end here; signal the outer function to fall through to scan_list_end.
+  // stay open and this line can be parsed as item continuation text.
   return -1;
 }
 
@@ -1988,11 +2046,14 @@ static int scan_fixed_width_colon(Scanner *s, TSLexer *lexer, const bool *valid_
   bool advanced = false;
 
   if (get_column(lexer) == 0) {
+    if (s->list_depth > 0) return 0;
+
     // Skip optional leading whitespace (indentation)
     while (lookahead(lexer) == ' ' || lookahead(lexer) == '\t') {
       advance(lexer);
       advanced = true;
     }
+
   } else {
     // Mid-line: only valid if no visible external text was consumed on this
     // line. `prev_char` can be 0 (pure BOL path) or a synthesized space from
@@ -2112,24 +2173,35 @@ bool tree_sitter_org_external_scanner_scan(
   //
   // Return-code protocol for scan_listitem_indent:
   //    1  → LISTITEM_INDENT emitted; done.
+  //    2  → TOKEN_FIXED_WIDTH_COLON emitted for deeper-indented ': ' / ':\n'.
   //    0  → no leading whitespace; fall through to LIST_START / LIST_END.
-  //   -1  → whitespace consumed, non-bullet follows; fall through to LIST_END
-  //          so it can fire at the non-bullet character (consuming the whitespace
-  //          as part of the hidden LIST_END token is acceptable).
+  //   -1  → whitespace consumed, non-bullet follows; return false so lexer
+  //          rewinds and grammar can parse an item continuation line.
   //   -2  → whitespace consumed, blank line follows; return false so tree-sitter
   //          resets the lexer and the internal _blank_line rule can match.
+  //   -3  → whitespace + bullet-like but invalid item prefix (e.g. "-1");
+  //          return false so lexer rewinds and grammar can parse continuation text.
+  //   -4  → whitespace + element-like starter ('|', or ':'/'#' that should
+  //          terminate the current list); fall through to LIST_END so
+  //          non-item constructs can follow the list.
   if (valid_symbols[TOKEN_LISTITEM_INDENT]) {
-    int result = scan_listitem_indent(lexer);
+    int result = scan_listitem_indent(s, lexer, valid_symbols);
     if (result == 1) return true;
+    if (result == 2) return true;
     if (result == -2) return false;   // whitespace-only line — reset for _blank_line
-    if (result == -1) {
-      // Indented non-bullet content. Lexer is now past the whitespace.
-      // Fall directly to scan_list_end; skip LIST_START (can't start inside list).
+    if (result == -3) return false;   // invalid bullet probe — reset for continuation text
+    if (result == -4) {
+      // Indented line starts another construct; close list if needed.
       if (valid_symbols[TOKEN_LIST_END]) {
         int end_result = scan_list_end(s, lexer);
         if (end_result == 1) return true;
         if (end_result == -1) return false;
       }
+      return false;
+    }
+    if (result == -1) {
+      // Indented non-bullet content: let grammar attempt item continuation
+      // lines by rewinding to the original position.
       return false;
     }
     // result == 0: no leading whitespace; fall through normally.

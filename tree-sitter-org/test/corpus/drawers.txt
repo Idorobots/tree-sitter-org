@@ -249,9 +249,9 @@ Indented LOGBOOK drawer with note line
               dayname: (ts_dayname)
               time: (ts_time))
             first_line: (plain_text)
-            first_line: (line_break)))
-        body: (paragraph
-          (plain_text))))))
+            first_line: (line_break)
+            body: (item_continuation_line
+              content: (plain_text))))))))
 
 ================
 Fully indented custom drawer with timestamp line

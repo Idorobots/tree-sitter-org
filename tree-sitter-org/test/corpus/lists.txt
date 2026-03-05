@@ -144,6 +144,25 @@ Plus sign in list item text is not a new bullet
         first_line: (plain_text)))))
 
 ================
+Inline plus in list item text
+================
+- React + Redux
+- Elm sucks
+- Reframe on CLJS
+
+---
+
+(document
+  (zeroth_section
+    (plain_list
+      (item
+        first_line: (plain_text))
+      (item
+        first_line: (plain_text))
+      (item
+        first_line: (plain_text)))))
+
+================
 Drawer-like tail stays plain text in list items
 ================
 - DONE Core string, list, hash, set, sorted set operations. :feature:
@@ -264,7 +283,7 @@ Multiple list items starting with inline markup
         first_line: (plain_text)))))
 
 ================
-Drawer after list item parses separately
+Indented drawer stays in list item body
 ================
 - List item
   :DRAWER:
@@ -277,10 +296,73 @@ Drawer after list item parses separately
   (zeroth_section
     (plain_list
       (item
-        first_line: (plain_text)))
-    (drawer
-      name: (drawer_name)
-      body: (drawer_kv_line))))
+        first_line: (plain_text)
+        body: (drawer
+          name: (drawer_name)
+          body: (drawer_kv_line))))))
+
+================
+Indented fixed-width stays in list item body
+================
+- List item
+  : fixed-width body
+
+---
+
+(document
+  (zeroth_section
+    (plain_list
+      (item
+        first_line: (plain_text)
+        body: (fixed_width)))))
+
+================
+Indented nested item drawer belongs to that item
+================
+- Parent
+  - Child
+    :LOGBOOK:
+    :note: hello
+    :END:
+- Next
+
+---
+
+(document
+  (zeroth_section
+    (plain_list
+      (item
+        first_line: (plain_text))
+      (item
+        indent: (item_indent)
+        first_line: (plain_text)
+        body: (drawer
+          name: (drawer_name)
+          body: (drawer_kv_line)))
+      (item
+        first_line: (plain_text)))))
+
+================
+Indented fixed-width belongs to nested list item body
+================
+- Parent
+  - Child
+    : body line
+- Next
+
+---
+
+(document
+  (zeroth_section
+    (plain_list
+      (item
+        first_line: (plain_text))
+      (item
+        indent: (item_indent)
+        first_line: (plain_text)
+        body: (fixed_width))
+      (item
+        first_line: (plain_text)))))
 
 ================
 Indented quote block after list item
@@ -302,11 +384,38 @@ Indented quote block after list item
     body: (section
       (plain_list
         (item
-          first_line: (plain_text)))
-      (quote_block
-        body: (paragraph
-          (plain_text)
-          (plain_text))))))
+          first_line: (plain_text)
+          body: (quote_block
+            body: (paragraph
+              (plain_text)
+              (plain_text))))))))
+
+================
+Indented src block belongs to nested list item body
+================
+- Parent
+  - Child
+    #+begin_src sh
+    echo ok
+    #+end_src
+- Sibling
+
+---
+
+(document
+  (zeroth_section
+    (plain_list
+      (item
+        first_line: (plain_text))
+      (item
+        indent: (item_indent)
+        first_line: (plain_text)
+        body: (src_block
+          language: (language)
+          body: (src_block_body
+            (src_line))))
+      (item
+        first_line: (plain_text)))))
 
 ================
 Ordered list with numbers
@@ -467,7 +576,7 @@ Blank-line-separated list items
         first_line: (plain_text)))))
 
 ================
-Indented numeric continuation lines stay paragraphs
+Indented numeric continuation lines stay in list items
 ================
 - Days off
   28 days off accounted for (224 days a year working days, ~8 holidays as well)
@@ -480,14 +589,51 @@ Indented numeric continuation lines stay paragraphs
   (zeroth_section
     (plain_list
       (item
-        first_line: (plain_text)))
-    (paragraph
-      (plain_text))
+        first_line: (plain_text)
+        body: (item_continuation_line
+          content: (plain_text)))
+      (item
+        first_line: (plain_text)
+        body: (item_continuation_line
+          content: (plain_text))))))
+
+================
+List items with bullet-like continuation paragraphs
+================
+- State "CANCELLED"  from "TODO"       [2014-06-06 pią 08:26] \\
+  -1 - any child at all.
+- State "CANCELLED"  from "TODO"       [2014-06-05 czw 15:31] \\
+  Wat. 0 = any child, same group, -1 = any child.
+
+---
+
+(document
+  (zeroth_section
     (plain_list
       (item
-        first_line: (plain_text)))
-    (paragraph
-      (plain_text))))
+        first_line: (plain_text)
+        first_line: (timestamp
+          year: (ts_year)
+          month: (ts_month)
+          day: (ts_day)
+          dayname: (ts_dayname)
+          time: (ts_time))
+        first_line: (plain_text)
+        first_line: (line_break)
+        body: (item_continuation_line
+          content: (plain_text)))
+      (item
+        first_line: (plain_text)
+        first_line: (timestamp
+          year: (ts_year)
+          month: (ts_month)
+          day: (ts_day)
+          dayname: (ts_dayname)
+          time: (ts_time))
+        first_line: (plain_text)
+        first_line: (line_break)
+        body: (item_continuation_line
+          content: (plain_text))))))
 
 ================
 List items with completion counter variants
