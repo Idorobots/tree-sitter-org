@@ -936,11 +936,18 @@ module.exports = grammar({
 
     angle_link: $ => seq(
       '<',
-      field('type', alias($._LINK_TYPE, $.link_type)),
-      ':',
-      field('path', alias(/[^>]*/, $.link_path)),
+      choice(
+        seq(
+          field('type', alias($._LINK_TYPE, $.link_type)),
+          ':',
+          field('path', alias(/[^>]*/, $.link_path)),
+        ),
+        field('path', alias($._ANGLE_EMAIL_PATH, $.link_path)),
+      ),
       '>',
     ),
+
+    _ANGLE_EMAIL_PATH: _ => /[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9.-]+\.[A-Za-z0-9-]+/,
 
     regular_link: $ => choice(
       seq('[[', field('path', alias($._link_path, $.link_path)), ']]'),

@@ -304,7 +304,8 @@ static inline void set_marker_open(Scanner *s, int32_t marker, bool open) {
 static bool probe_markup_close_in_rest_of_line(
     TSLexer *lexer,
     int32_t marker,
-    int32_t *last_consumed_char
+    int32_t *last_consumed_char,
+    bool stop_before_right_bracket
 );
 
 // ---------------------------------------------------------------------------
@@ -786,7 +787,7 @@ static int scan_markup_open(
 
   mark_end(lexer);
 
-  if (!probe_markup_close_in_rest_of_line(lexer, marker, NULL)) {
+  if (!probe_markup_close_in_rest_of_line(lexer, marker, NULL, false)) {
     if (valid_symbols[TOKEN_PLAIN_TEXT]) {
       lexer->result_symbol = TOKEN_PLAIN_TEXT;
       s->prev_char = marker;
@@ -1199,6 +1200,14 @@ static bool is_ascii_digit(int32_t ch) {
   return ch >= '0' && ch <= '9';
 }
 
+static bool is_angle_email_char(int32_t ch) {
+  return is_ascii_alpha(ch) || is_ascii_digit(ch) ||
+         ch == '.' || ch == '!' || ch == '#' || ch == '$' || ch == '%' ||
+         ch == '&' || ch == '\'' || ch == '*' || ch == '+' || ch == '/' ||
+         ch == '=' || ch == '?' || ch == '^' || ch == '_' || ch == '`' ||
+         ch == '{' || ch == '|' || ch == '}' || ch == '~' || ch == '-';
+}
+
 static bool probe_date_like_then_closing(TSLexer *lexer, int32_t closing) {
   for (int i = 0; i < 4; i++) {
     if (!is_ascii_digit(lookahead(lexer))) return false;
@@ -1237,7 +1246,25 @@ static bool probe_angle_construct_after_lt(TSLexer *lexer) {
     advance(lexer);
   }
 
-  return lookahead(lexer) == ':';
+  if (lookahead(lexer) == ':') return true;
+
+  bool seen_at = false;
+  bool seen_dot_after_at = false;
+  while (!eof(lexer) && lookahead(lexer) != '\n' && lookahead(lexer) != '>') {
+    int32_t ch = lookahead(lexer);
+    if (ch == '@') {
+      if (seen_at) return false;
+      seen_at = true;
+      advance(lexer);
+      continue;
+    }
+
+    if (!is_angle_email_char(ch)) return false;
+    if (seen_at && ch == '.') seen_dot_after_at = true;
+    advance(lexer);
+  }
+
+  return lookahead(lexer) == '>' && seen_at && seen_dot_after_at;
 }
 
 static bool probe_bracket_construct_after_lbracket(TSLexer *lexer) {
@@ -1334,7 +1361,8 @@ static bool probe_bracket_construct_after_lbracket(TSLexer *lexer) {
 static bool probe_markup_close_in_rest_of_line(
     TSLexer *lexer,
     int32_t marker,
-    int32_t *last_consumed_char
+    int32_t *last_consumed_char,
+    bool stop_before_right_bracket
 ) {
   bool has_body = false;
   int32_t prev = marker;
@@ -1343,6 +1371,7 @@ static bool probe_markup_close_in_rest_of_line(
 
   while (!eof(lexer) && lookahead(lexer) != '\n') {
     int32_t ch = lookahead(lexer);
+    if (stop_before_right_bracket && ch == ']') return false;
     advance(lexer);
     if (last_consumed_char) *last_consumed_char = ch;
 
@@ -1461,7 +1490,7 @@ static bool scan_plain_text(Scanner *s, TSLexer *lexer, const bool *valid_symbol
         // recovery nodes.
         if (can_open) {
           int32_t last = ch;
-          if (probe_markup_close_in_rest_of_line(lexer, ch, &last)) {
+          if (probe_markup_close_in_rest_of_line(lexer, ch, &last, ch == '+')) {
             if (!found_any) return false;
             break;
           }
@@ -1510,6 +1539,20 @@ static bool scan_plain_text(Scanner *s, TSLexer *lexer, const bool *valid_symbol
         continue;
       }
 
+      if (ch == '|') {
+        if (s->in_table) {
+          if (!found_any) return false;
+          break;
+        }
+        if (!found_any && get_column(lexer) == 0) return false;
+
+        s->prev_char = '|';
+        advance(lexer);
+        mark_end(lexer);
+        found_any = true;
+        continue;
+      }
+
       if (ch == '@') {
         advance(lexer);
         if (lookahead(lexer) == '@') {
@@ -1528,21 +1571,16 @@ static bool scan_plain_text(Scanner *s, TSLexer *lexer, const bool *valid_symbol
       }
 
       if (ch == '>') {
-        bool text_gt =
-          s->prev_char == 0 || s->prev_char == ' ' || s->prev_char == '\t' ||
-          s->prev_char == '(' || s->prev_char == '[' || s->prev_char == '{' ||
-          s->prev_char == '\'' || s->prev_char == '"';
-
-        if (text_gt) {
-          advance(lexer);
-          s->prev_char = ch;
-          mark_end(lexer);
-          found_any = true;
-          continue;
+        advance(lexer);
+        if (lookahead(lexer) == '>') {
+          if (!found_any) return false;
+          break;
         }
 
-        if (!found_any) return false;
-        break;
+        s->prev_char = ch;
+        mark_end(lexer);
+        found_any = true;
+        continue;
       }
 
       if (ch == ']') {
@@ -1663,6 +1701,17 @@ static bool scan_plain_text(Scanner *s, TSLexer *lexer, const bool *valid_symbol
     return true;
   }
 
+  if (ch == '|') {
+    if (s->in_table) return false;
+    if (get_column(lexer) == 0) return false;
+
+    advance(lexer);
+    s->prev_char = ch;
+    mark_end(lexer);
+    lexer->result_symbol = TOKEN_PLAIN_TEXT;
+    return true;
+  }
+
   if (ch == '@') {
     advance(lexer);
     if (lookahead(lexer) == '@') return false;
@@ -1670,13 +1719,9 @@ static bool scan_plain_text(Scanner *s, TSLexer *lexer, const bool *valid_symbol
   }
 
   if (ch == '>') {
-    bool text_gt =
-      s->prev_char == 0 || s->prev_char == ' ' || s->prev_char == '\t' ||
-      s->prev_char == '(' || s->prev_char == '[' || s->prev_char == '{' ||
-      s->prev_char == '\'' || s->prev_char == '"';
-    if (!text_gt) return false;
-
     advance(lexer);
+    if (lookahead(lexer) == '>') return false;
+
     s->prev_char = ch;
     mark_end(lexer);
     lexer->result_symbol = TOKEN_PLAIN_TEXT;

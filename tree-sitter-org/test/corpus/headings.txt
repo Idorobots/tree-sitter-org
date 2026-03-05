@@ -11,6 +11,29 @@ Level 1 heading
     (plain_text)))
 
 ================
+Heading with multiple regular links and plus in description
+================
+*** TODO [[definitely][durchaus]], [[according to][zufolge (+dat.)]], [[according to][laut (+dat.)]]
+
+---
+
+(document
+  (heading
+    (stars)
+    (todo_keyword)
+    (regular_link
+      (link_path)
+      (plain_text))
+    (plain_text)
+    (regular_link
+      (link_path)
+      (plain_text))
+    (plain_text)
+    (regular_link
+      (link_path)
+      (plain_text))))
+
+================
 Heading counters with TODO and priority variants
 ================
 * TODO [#A] [%] Priority and empty counter

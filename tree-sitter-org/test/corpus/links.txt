@@ -54,6 +54,67 @@ Angle link
         (link_path)))))
 
 ================
+Angle link bare email address
+================
+<test@example.com>
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (angle_link
+        (link_path)))))
+
+================
+Angle link mailto and bare email in text
+================
+Test <test@example.com>,
+Test <mailto:test@example.com>,
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (plain_text)
+      (angle_link
+        (link_path))
+      (plain_text)
+      (plain_text)
+      (angle_link
+        (link_type)
+        (link_path))
+      (plain_text))))
+
+================
+Quoted text with pipe before angle email
+================
+"Test. Test | Test" <test.test-test@example.com>,
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (plain_text)
+      (angle_link
+        (link_path))
+      (plain_text))))
+
+================
+Plain URL with placeholders and ampersands
+================
+OTA updates: https://fota.pintracview.com/fota/T9/check_update.php?carrier=<CARRIER>&rev=<CURRENTVERSION>&imei=<IMEI>
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (plain_text))))
+
+================
 Multiline angle link
 ================
 <https://very-long-domain-name.example.com/with/a/very/long/
