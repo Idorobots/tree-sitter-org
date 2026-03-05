@@ -218,10 +218,54 @@ Table.el grid table
           (plain_text))
         (table_cell
           (plain_text))
+          (table_cell
+            (plain_text))))
+    (tableel_table)
+    (org_table
+      (table_row
+        (table_cell
+          (plain_text))
+        (table_cell
+          (plain_text))
+        (table_cell
+          (plain_text)))
+      (table_row
+        (table_cell
+          (plain_text))
+        (table_cell
+          (plain_text))
+        (table_cell
+          (plain_text)))
+      (table_row
+        (table_cell
+          (plain_text))
+        (table_cell
+          (plain_text))
+        (table_cell
+          (plain_text)))
+      (table_row
+        (table_cell
+          (plain_text))
+        (table_cell
+          (plain_text))
         (table_cell
           (plain_text))))
     (tableel_table)
-    (tableel_table)
+    (org_table
+      (table_row
+        (table_cell
+          (plain_text))
+        (table_cell
+          (plain_text))
+        (table_cell
+          (plain_text)))
+      (table_row
+        (table_cell
+          (plain_text))
+        (table_cell
+          (plain_text))
+        (table_cell
+          (plain_text))))
     (tableel_table)))
 
 ================
@@ -337,6 +381,34 @@ Affiliated keywords before table
       (table_row
         (table_rule))
       (table_row
+        (table_cell
+          (plain_text))
+        (table_cell
+          (plain_text))))))
+
+================
+Tables separated by blank line
+================
+| Foo | Bar |
+
+| Baz | | Bar | Foo |
+
+---
+
+(document
+  (zeroth_section
+    (org_table
+      (table_row
+        (table_cell
+          (plain_text))
+        (table_cell
+          (plain_text))))
+    (org_table
+      (table_row
+        (table_cell
+          (plain_text))
+        (table_cell
+          (plain_text))
         (table_cell
           (plain_text))
         (table_cell

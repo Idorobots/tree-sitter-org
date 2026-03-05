@@ -58,6 +58,7 @@ enum TokenType {
   TOKEN_AFFILIATED_SYNC,
   TOKEN_ERROR_SENTINEL,
   TOKEN_TABLE_START,   // zero-width gate emitted once at the start of each org_table
+  TOKEN_TABLE_BREAK_SYNC, // zero-width sync emitted when current org_table must end
   TOKEN_FIXED_WIDTH_COLON, // consumes optional indent + ':' only at BOL context
 };
 
@@ -1925,6 +1926,29 @@ static int scan_table_start(Scanner *s, TSLexer *lexer) {
   return 1;
 }
 
+// _TABLE_BREAK_SYNC: zero-width sync point used to close org_table boundaries.
+//
+// This token is placed at the end of org_table in grammar.js. It emits only
+// when the next non-whitespace character on the current line is NOT '|', which
+// means the current table must end at this position.
+//
+// If the next non-whitespace character is '|', we are still in the same table
+// and this token must not match (to prevent premature table reduction and
+// split-table GLR paths).
+static bool scan_table_break_sync(Scanner *s, TSLexer *lexer) {
+  mark_end(lexer);  // zero-width token
+
+  while (lookahead(lexer) == ' ' || lookahead(lexer) == '\t') {
+    advance(lexer);
+  }
+
+  if (lookahead(lexer) == '|') return false;
+
+  s->in_table = false;
+  lexer->result_symbol = TOKEN_TABLE_BREAK_SYNC;
+  return true;
+}
+
 // _DYNBLOCK_SYNC: zero-width sync point used at dynamic-block boundaries.
 //
 // Dynamic-block begin/end lines are internal regex tokens. Depending on parse
@@ -2228,6 +2252,10 @@ bool tree_sitter_org_external_scanner_scan(
   if (valid_symbols[TOKEN_TABLE_START]) {
     int result = scan_table_start(s, lexer);
     if (result == 1) return true;
+  }
+
+  if (valid_symbols[TOKEN_TABLE_BREAK_SYNC]) {
+    if (scan_table_break_sync(s, lexer)) return true;
   }
 
   // --- FNDEF_END ---

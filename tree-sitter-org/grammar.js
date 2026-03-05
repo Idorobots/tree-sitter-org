@@ -61,6 +61,7 @@ module.exports = grammar({
     $._AFFILIATED_SYNC,   // Zero-width sync point for affiliated-keyword boundaries
     $._ERROR_SENTINEL,
     $._TABLE_START,   // Zero-width gate: emitted once at the start of each org_table
+    $._TABLE_BREAK_SYNC, // Zero-width sync: emitted only when current table must end
     $._FIXED_WIDTH_COLON, // Consumes optional indent + ':' only at BOL context
   ],
 
@@ -551,6 +552,7 @@ module.exports = grammar({
       $._TABLE_START,
       repeat1($.table_row),
       repeat($.tblfm_line),
+      $._TABLE_BREAK_SYNC,
     )),
 
     table_row: $ => seq(
