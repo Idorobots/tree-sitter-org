@@ -28,10 +28,37 @@ Property drawer
   (heading
     (stars)
     (plain_text)
-    (property_drawer
-      (node_property
-        (property_name)
-        (property_value)))))
+    (section
+      (property_drawer
+        (node_property
+          (property_name)
+          (property_value))))))
+
+================
+Property drawer timestamp value
+================
+** TODO Test
+:PROPERTIES:
+:LAST_REPEAT: [2025-06-28 sob 14:16]
+:END:
+
+---
+
+(document
+  (heading
+    (stars)
+    (todo_keyword)
+    (plain_text)
+    (section
+      (property_drawer
+        (node_property
+          (property_name)
+          (timestamp
+            (ts_year)
+            (ts_month)
+            (ts_day)
+            (ts_dayname)
+            (ts_time)))))))
 
 ================
 Property drawer with multiple properties
@@ -48,13 +75,14 @@ Property drawer with multiple properties
   (heading
     (stars)
     (plain_text)
-    (property_drawer
-      (node_property
-        (property_name)
-        (property_value))
-      (node_property
-        (property_name)
-        (property_value)))))
+    (section
+      (property_drawer
+        (node_property
+          (property_name)
+          (property_value))
+        (node_property
+          (property_name)
+          (property_value))))))
 
 ================
 Property drawer with empty body
@@ -138,10 +166,199 @@ Indented property drawer in heading
   (heading
     stars: (stars)
     title: (plain_text)
+    body: (section
+      (property_drawer
+        (node_property
+          name: (property_name)
+          value: (property_value))))))
+
+================
+Property link with multiline description
+================
+:PROPERTIES:
+:context:  [[file:/flood/src/flood_manager.erl::handle_call(Request,%20From,%20State)%20->%0A%20lager:warning("Unhandled%20Manager%20call%20change."),%0A%20{reply,%20ok,%20State}.%0A][file:/flood/src/flood_manager.erl::handle_call(Request, From, State) ->
+    lager:warning("Unhandled Manager call change."),
+    {reply, ok, State}.
+    ]]
+:END:
+
+---
+
+(document
+  (zeroth_section
     properties: (property_drawer
       (node_property
         name: (property_name)
-        value: (property_value)))))
+        value: (regular_link
+          path: (link_path)
+          description: (plain_text)
+          description: (plain_text)
+          description: (plain_text)
+          description: (plain_text))))))
+
+================
+Drawer transition after property link keeps logbook timestamp
+================
+:PROPERTIES:
+:context: [[file:~/tmp::*Default FILE to *.org in cwd][Default FILE to *.org in cwd]]
+:END:
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-02-21 Sat 17:52]
+:END:
+
+---
+
+(document
+  (zeroth_section
+    properties: (property_drawer
+      (node_property
+        name: (property_name)
+        value: (regular_link
+          path: (link_path)
+          description: (plain_text))))
+    (drawer
+      name: (drawer_name)
+      body: (plain_list
+        (item
+          first_line: (plain_text)
+          first_line: (timestamp
+            year: (ts_year)
+            month: (ts_month)
+            day: (ts_day)
+            dayname: (ts_dayname)
+            time: (ts_time)))))))
+
+================
+Indented logbook then properties with multiline link
+================
+*** Test
+    :LOGBOOK:
+- State "DONE"       from "TODO"       [2013-08-28 śro 08:51]
+    :END:
+    :PROPERTIES:
+    :context:  [[file:/flood/src/flood_manager.erl::handle_call(Request,%20From,%20State)%20->%0A%20lager:warning("Unhandled%20Manager%20call%20change."),%0A%20{reply,%20ok,%20State}.%0A][file:/flood/src/flood_manager.erl::handle_call(Request, From, State) ->
+    lager:warning("Unhandled Manager call change."),
+    {reply, ok, State}.
+    ]]
+    :END:
+
+---
+
+(document
+  (heading
+    stars: (stars)
+    title: (plain_text)
+    body: (section
+      (drawer
+        name: (drawer_name)
+        body: (plain_list
+          (item
+            first_line: (plain_text)
+            first_line: (timestamp
+              year: (ts_year)
+              month: (ts_month)
+              day: (ts_day)
+              dayname: (ts_dayname)
+              time: (ts_time)))))
+      (property_drawer
+        (node_property
+          name: (property_name)
+          value: (regular_link
+            path: (link_path)
+            description: (plain_text)
+            description: (plain_text)
+            description: (plain_text)
+            description: (plain_text)))))))
+
+================
+Property drawer after logbook in heading body
+================
+** Test
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2013-05-20 pon 09:28]
+:END:
+:PROPERTIES:
+:context: [[file:/test.erl::handle_call({kill_clients,%20Number},%20_,%20Clients)%20->][file:/brain-flood/src/flood_serv.erl::handle_call({kill_clients, Number}, _, Clients) ->]]
+:END:
+
+---
+
+(document
+  (heading
+    stars: (stars)
+    title: (plain_text)
+    body: (section
+      (drawer
+        name: (drawer_name)
+        body: (plain_list
+          (item
+            first_line: (plain_text)
+            first_line: (timestamp
+              year: (ts_year)
+              month: (ts_month)
+              day: (ts_day)
+              dayname: (ts_dayname)
+              time: (ts_time)))))
+      (property_drawer
+        (node_property
+          name: (property_name)
+          value: (regular_link
+            path: (link_path)
+            description: (plain_text)))))))
+
+================
+Malformed property link value does not break next heading drawer
+================
+*** Test
+    :PROPERTIES:
+    :context:  [[file:/flood/src/flood_fsm.erl::{Url,%20%5B{"connection","keep-alive"},][file:flood/src/flood_fsm.erl::{Url, [{"connection","keep-alive"},]]
+    :END:
+    Ibrowse with set_max_sessions seems to work, but requires host and port.
+
+*** Another test
+    :LOGBOOK:
+- State "DONE"       from "ACTIVE"     [2013-08-19 pon 15:00]
+- State "ACTIVE"     from "TODO"       [2013-08-19 pon 12:58]
+    :END:
+
+---
+
+(document
+  (heading
+    stars: (stars)
+    title: (plain_text)
+    body: (section
+      (property_drawer
+        (node_property
+          name: (property_name)
+          value: (regular_link
+            path: (link_path)
+            description: (plain_text))))
+      (paragraph
+        (plain_text))))
+  (heading
+    stars: (stars)
+    title: (plain_text)
+    body: (section
+      (drawer
+        name: (drawer_name)
+        body: (plain_list
+          (item
+            first_line: (plain_text)
+            first_line: (timestamp
+              year: (ts_year)
+              month: (ts_month)
+              day: (ts_day)
+              dayname: (ts_dayname)
+              time: (ts_time)))
+          (item
+            first_line: (plain_text)
+            first_line: (timestamp
+              year: (ts_year)
+              month: (ts_month)
+              day: (ts_day)
+              dayname: (ts_dayname)
+              time: (ts_time))))))))
 
 ================
 Custom drawer with key-like empty value line
@@ -310,6 +527,180 @@ Indented LOGBOOK drawer with note line
             first_line: (line_break)
             body: (item_continuation_line
               content: (plain_text))))))))
+
+================
+LOGBOOK drawer start line with inline text and unindented list
+================
+*** DONE Test
+    :LOGBOOK:  1
+- State "DONE"       from "ACTIVE"     [2013-08-19 pon 16:08]
+- State "ACTIVE"     from "TODO"       [2013-08-19 pon 15:00]
+    :END:
+
+---
+
+(document
+  (heading
+    stars: (stars)
+    todo: (todo_keyword)
+    title: (plain_text)
+    body: (section
+      (drawer
+        name: (drawer_name)
+        body: (drawer_start_text)
+        body: (plain_list
+          (item
+            first_line: (plain_text)
+            first_line: (timestamp
+              year: (ts_year)
+              month: (ts_month)
+              day: (ts_day)
+              dayname: (ts_dayname)
+              time: (ts_time)))
+          (item
+            first_line: (plain_text)
+            first_line: (timestamp
+              year: (ts_year)
+              month: (ts_month)
+              day: (ts_day)
+              dayname: (ts_dayname)
+              time: (ts_time))))))))
+
+================
+Indented property drawer with >>> in link description
+================
+ :PROPERTIES:
+ :context:  [[file:/deps/websocket_client/src/websocket_client.erl::io:format("---->>>%20m:%20~s",%20%5BBuffer%5D),][file:/deps/websocket_client/src/websocket_client.erl::io:format("---->>> m: ~s", [Buffer]),]]
+ :END:
+
+---
+
+(document
+  (zeroth_section
+    properties: (property_drawer
+      (node_property
+        name: (property_name)
+        value: (regular_link
+          path: (link_path)
+          description: (plain_text)
+          description: (plain_text)
+          description: (plain_text))))))
+
+================
+Non-indented property drawer with >>> in link description
+================
+:PROPERTIES:
+:context:  [[file:/deps/websocket_client/src/websocket_client.erl::io:format("---->>>%20m:%20~s",%20%5BBuffer%5D),][file:/deps/websocket_client/src/websocket_client.erl::io:format("---->>> m: ~s", [Buffer]),]]
+:END:
+
+---
+
+(document
+  (zeroth_section
+    properties: (property_drawer
+      (node_property
+        name: (property_name)
+        value: (regular_link
+          path: (link_path)
+          description: (plain_text)
+          description: (plain_text)
+          description: (plain_text))))))
+
+================
+Property link description ending with []] in archive-style heading
+================
+*** DONE JSON.
+    :PROPERTIES:
+    :gamify_exp: 15
+    :capture_time: [2013-08-23 pią 08:29]
+    :context:  [[file:/examples/2.json::%5B"on_socketio",%20{"opcode"%20:%20"0",%20"do"%20:%20%5B][file:/examples/2.json::["on_socketio", {"opcode" : "0", "do" : []]
+    :END:
+
+---
+
+(document
+  (heading
+    stars: (stars)
+    todo: (todo_keyword)
+    title: (plain_text)
+    body: (section
+      (property_drawer
+        (node_property
+          name: (property_name)
+          value: (property_value))
+        (node_property
+          name: (property_name)
+          value: (timestamp
+            year: (ts_year)
+            month: (ts_month)
+            day: (ts_day)
+            dayname: (ts_dayname)
+            time: (ts_time)))
+        (node_property
+          name: (property_name)
+          value: (regular_link
+            path: (link_path)
+            description: (plain_text)
+            description: (plain_text)
+            description: (plain_text)))))))
+
+================
+Logbook before properties with []] link description tail
+================
+*** DONE More JSON
+    :LOGBOOK:
+- State "ACTIVE"     from "TODO"       [2013-08-23 pią 13:39]
+    :END:
+    :PROPERTIES:
+    :context:  [[file:/flood/examples/2.json::%5B"on_socketio",%20{"opcode"%20:%20"0",%20"do"%20:%20%5B][file:/examples/2.json::["on_socketio", {"opcode" : "0", "do" : []]
+    :END:
+
+---
+
+(document
+  (heading
+    stars: (stars)
+    todo: (todo_keyword)
+    title: (plain_text)
+    body: (section
+      (drawer
+        name: (drawer_name)
+        body: (plain_list
+          (item
+            first_line: (plain_text)
+            first_line: (timestamp
+              year: (ts_year)
+              month: (ts_month)
+              day: (ts_day)
+              dayname: (ts_dayname)
+              time: (ts_time)))))
+      (property_drawer
+        (node_property
+          name: (property_name)
+          value: (regular_link
+            path: (link_path)
+            description: (plain_text)))))))
+
+================
+Property link description with bracket list and <<":">> fragment
+================
+    :PROPERTIES:
+    :context:  [[file:/src/flood_fsm.erl::%5BSid,%20_Heartbeat,%20_Timeout,%20_Transports%5D%20%3D%20binary:split(Msg,%20<<":">>,%20%5Bglobal%5D),][file:/src/flood_fsm.erl::[Sid, _Heartbeat, _Timeout, _Transports] = binary:split(Msg, <<":">>, [global]),]]
+    :END:
+
+---
+
+(document
+  (zeroth_section
+    properties: (property_drawer
+      (node_property
+        name: (property_name)
+        value: (regular_link
+          path: (link_path)
+          description: (plain_text)
+          description: (target
+            value: (target_text))
+          description: (plain_text))))))
 
 ================
 Fully indented custom drawer with timestamp line

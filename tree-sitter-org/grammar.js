@@ -72,7 +72,11 @@ module.exports = grammar({
     [$.zeroth_section, $._zs_element],
     [$.item, $.item_tag],
     [$.heading, $.section],
+    [$.heading, $._section_element],
     [$._object, $._object_min],
+    [$.regular_link, $._PROP_REST_OF_LINE],
+    [$.regular_link, $._DRAWER_KV_REST],
+    [$.drawer, $._affiliatable_no_drawer],
     // footnote definition vs footnote reference (both start with [fn:LABEL])
     [$.footnote_definition, $._fn_ref_labeled],
   ],
@@ -176,6 +180,7 @@ module.exports = grammar({
     _section_element: $ => choice(
       $._section_element_affiliated,
       $.special_keyword,
+      $.property_drawer,
       $._non_affiliatable,
       $._affiliatable,
     ),
@@ -305,9 +310,10 @@ module.exports = grammar({
       optional($._INDENT),
       token(prec(2, ':')),
       field('name', alias($._DRAWER_NAME, $.drawer_name)),
-      ':',
-      optional($._TRAILING),
-      $._NL,
+      choice(
+        seq(':', $._NL),
+        seq(':', field('body', $.drawer_start_text), $._NL),
+      ),
       field('body', optional($._drawer_body)),
       optional($._INDENT),
       token(prec(2, ci(':end:'))),
@@ -317,7 +323,10 @@ module.exports = grammar({
 
     _DRAWER_NAME: _ => /[A-Za-z0-9_\-]+/,
 
+    drawer_start_text: _ => /[^\n]+/,
+
     _drawer_body: $ => repeat1(choice(
+      $.plain_list,
       $._drawer_indented_list,
       $._drawer_indented_timestamp_line,
       $.drawer_kv_line,
@@ -338,18 +347,30 @@ module.exports = grammar({
       $._NL,
     )),
 
-    drawer_kv_line: $ => seq(
+    drawer_kv_line: $ => prec(1, seq(
       optional($._INDENT),
       ':',
       /[^:\n]+/,
       ':',
-      /[^\n]*/,
+      choice(
+        seq(
+          $._S,
+          choice(
+            $.regular_link,
+            $.timestamp,
+            prec(-1, $._DRAWER_KV_REST),
+          ),
+        ),
+        optional($._TRAILING),
+      ),
       $._NL,
-    ),
+    )),
+
+    _DRAWER_KV_REST: _ => /[^\n\[][^\n]*/,
 
     drawer_double_colon_line: $ => seq(
       optional($._INDENT),
-      /[^\n]*::[^\n]*/,
+      /[^:\n \t][^\n]*::[^\n]*/,
       $._NL,
     ),
 
@@ -461,9 +482,10 @@ module.exports = grammar({
       optional($._INDENT),
       token(prec(2, ':')),
       field('name', alias($._DRAWER_NAME_NO_END, $.drawer_name)),
-      ':',
-      optional($._TRAILING),
-      $._NL,
+      choice(
+        seq(':', $._NL),
+        seq(':', field('body', $.drawer_start_text), $._NL),
+      ),
       field('body', optional($._drawer_body)),
       optional($._INDENT),
       token(prec(2, ci(':end:'))),
@@ -555,11 +577,17 @@ module.exports = grammar({
       field('name', alias($._PROP_NAME, $.property_name)),
       ':',
       choice(
-        seq($._S, field('value', alias($._REST_OF_LINE, $.property_value))),
+        seq($._S, field('value', choice(
+          $.regular_link,
+          $.timestamp,
+          prec(-1, alias($._PROP_REST_OF_LINE, $.property_value)),
+        ))),
         optional($._TRAILING),
       ),
       $._NL,
     ),
+
+    _PROP_REST_OF_LINE: _ => /[^\n\[][^\n]*/,
 
     _PROP_NAME: _ => /[^ \t\n:+]+\+?/,
 
@@ -1027,7 +1055,7 @@ module.exports = grammar({
 
     _link_path: _ => /([^\[\]]|\\.)*/,
 
-    _link_description: $ => repeat1($._object_min),
+    _link_description: $ => repeat1(choice($._object_min, $._NL)),
 
     // radio_link — deferred to Python post-processing
     radio_link: $ => repeat1($._object_min),

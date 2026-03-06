@@ -12,9 +12,52 @@ Regular link path only
         (link_path)))))
 
 ================
+Regular link with free-form description and trailing brackets
+================
+[[file:/brain-server/.config::{backend,%20cowboy}%5D}%5D][file:/brain-server/.config::{backend, cowboy}]}]]]
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (regular_link
+        (link_path)
+        (plain_text))
+      (plain_text))))
+
+================
 Regular link description with search option and path fragment
 ================
 [[file:~/code/asm/tests/asm/unions.d::if(isOP)%20{%20//%20TODO%20Pretty%20up%20or%20make%20a%20binary%20dump.][file:~/code/asm/tests/asm/unions.d::if(isOP) { // TODO Pretty up or make a binary dump.]]
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (regular_link
+        (link_path)
+        (plain_text)))))
+
+================
+Regular link description with bracket before close paren
+================
+[[file:/flood/src/floodfsm.erl::io:format("~w:%20~s\n",%20%5Bself(),%20Msg%5D).][file:/flood/src/floodfsm.erl::io:format("~w: ~s\n", [self(), Msg]).]]
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (regular_link
+        (link_path)
+        (plain_text)))))
+
+================
+Regular link with wildcard star text
+================
+[[file:~/tmp::*Default FILE to *.org in cwd][Default FILE to *.org in cwd]]
 
 ---
 
@@ -65,6 +108,22 @@ Regular link description with literal square brackets
     (paragraph
       (regular_link
         (link_path)
+        (plain_text)))))
+
+================
+Regular link description keeps unparsed radio target text
+================
+[[file:x][io:format("---->>> m: ~s", [Buffer]),]]
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (regular_link
+        (link_path)
+        (plain_text)
+        (plain_text)
         (plain_text)))))
 
 ================

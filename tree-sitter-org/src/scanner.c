@@ -1477,6 +1477,7 @@ static bool scan_plain_text(Scanner *s, TSLexer *lexer, const bool *valid_symbol
 
   bool found_any = false;
   uint32_t plain_lbracket_depth = 0;
+  bool saw_plain_lbracket = false;
   bool maybe_clock_kw = (get_column(lexer) == 0 || s->prev_char == 0);
   int consumed_len = 0;
 
@@ -1583,7 +1584,7 @@ static bool scan_plain_text(Scanner *s, TSLexer *lexer, const bool *valid_symbol
         // recovery nodes.
         if (can_open) {
           int32_t last = ch;
-          if (probe_markup_close_in_rest_of_line(lexer, ch, &last, ch == '+' || ch == '~' || ch == '/')) {
+          if (probe_markup_close_in_rest_of_line(lexer, ch, &last, ch == '+' || ch == '~' || ch == '/' || ch == '*' || ch == '_')) {
             if (!found_any) return false;
             break;
           }
@@ -1591,8 +1592,7 @@ static bool scan_plain_text(Scanner *s, TSLexer *lexer, const bool *valid_symbol
           s->prev_char = last;
           mark_end(lexer);
           found_any = true;
-          lexer->result_symbol = TOKEN_PLAIN_TEXT;
-          return true;
+          continue;
         }
 
         // Marker is plain text here.
@@ -1666,7 +1666,19 @@ static bool scan_plain_text(Scanner *s, TSLexer *lexer, const bool *valid_symbol
       if (ch == '>') {
         advance(lexer);
         if (lookahead(lexer) == '>') {
-          if (!found_any) return false;
+          if (!found_any) {
+            bool likely_plain_gt_run =
+              s->prev_char == '-' || s->prev_char == '>' || s->prev_char == ':' ||
+              s->prev_char == '"' || s->prev_char == '\'' || s->prev_char == ')' ||
+              s->prev_char == ',';
+            if (likely_plain_gt_run) {
+              s->prev_char = ch;
+              mark_end(lexer);
+              found_any = true;
+              continue;
+            }
+            return false;
+          }
           break;
         }
 
@@ -1692,7 +1704,26 @@ static bool scan_plain_text(Scanner *s, TSLexer *lexer, const bool *valid_symbol
         // Preserve link/citation-style closing delimiters unless this closes
         // a plain-text '[' previously consumed in the current token.
         if (next == ']') {
-          if (plain_lbracket_depth > 0) {
+          if (!saw_plain_lbracket) {
+            plain_lbracket_depth = 0;
+          }
+
+          if (s->prev_char == '>') {
+            if (!found_any) return false;
+            break;
+          }
+
+          bool prefer_link_close_with_unmatched_plain_lbracket =
+            saw_plain_lbracket &&
+            ((plain_lbracket_depth == 1 && (s->prev_char == ',' || s->prev_char == '}')) ||
+             (plain_lbracket_depth > 0 && s->prev_char == '['));
+
+          if (prefer_link_close_with_unmatched_plain_lbracket) {
+            if (!found_any) return false;
+            break;
+          }
+
+          if (plain_lbracket_depth > 0 && saw_plain_lbracket) {
             plain_lbracket_depth--;
             s->prev_char = ch;
             mark_end(lexer);
@@ -1704,7 +1735,10 @@ static bool scan_plain_text(Scanner *s, TSLexer *lexer, const bool *valid_symbol
           break;
         }
 
-        if (!(plain_lbracket_depth > 0 || spaced_text || lone_bol_text)) {
+        bool trailing_after_bracket_close = (next == '\n' || eof(lexer)) &&
+          (s->prev_char == ']' || s->prev_char == '}');
+        bool bracket_ok = plain_lbracket_depth > 0 || saw_plain_lbracket || spaced_text || lone_bol_text || next == ')' || next == '}' || trailing_after_bracket_close;
+        if (!bracket_ok) {
           if (!found_any) return false;
           break;
         }
@@ -1730,7 +1764,10 @@ static bool scan_plain_text(Scanner *s, TSLexer *lexer, const bool *valid_symbol
           break;
         }
 
-        if (ch == '[') plain_lbracket_depth++;
+        if (ch == '[') {
+          plain_lbracket_depth++;
+          saw_plain_lbracket = true;
+        }
         s->prev_char = ch;
         mark_end(lexer);
         found_any = true;
@@ -1854,7 +1891,18 @@ static bool scan_plain_text(Scanner *s, TSLexer *lexer, const bool *valid_symbol
 
   if (ch == '>') {
     advance(lexer);
-    if (lookahead(lexer) == '>') return false;
+    if (lookahead(lexer) == '>') {
+      bool likely_plain_gt_run =
+        s->prev_char == '-' || s->prev_char == '>' || s->prev_char == ':' ||
+        s->prev_char == '"' || s->prev_char == '\'' || s->prev_char == ')' ||
+        s->prev_char == ',';
+      if (!likely_plain_gt_run) return false;
+
+      s->prev_char = ch;
+      mark_end(lexer);
+      lexer->result_symbol = TOKEN_PLAIN_TEXT;
+      return true;
+    }
 
     s->prev_char = ch;
     mark_end(lexer);
@@ -1876,7 +1924,20 @@ static bool scan_plain_text(Scanner *s, TSLexer *lexer, const bool *valid_symbol
     bool lone_bol_text = get_column(lexer) == 1 && (next == '\n' || eof(lexer));
 
     if (next == ']') {
-      if (plain_lbracket_depth > 0) {
+      if (!saw_plain_lbracket) {
+        plain_lbracket_depth = 0;
+      }
+
+      if (s->prev_char == '>') return false;
+
+      bool prefer_link_close_with_unmatched_plain_lbracket =
+        saw_plain_lbracket &&
+        ((plain_lbracket_depth == 1 && (s->prev_char == ',' || s->prev_char == '}')) ||
+         (plain_lbracket_depth > 0 && s->prev_char == '['));
+
+      if (prefer_link_close_with_unmatched_plain_lbracket) return false;
+
+      if (plain_lbracket_depth > 0 && saw_plain_lbracket) {
         plain_lbracket_depth--;
         s->prev_char = ch;
         mark_end(lexer);
@@ -1886,7 +1947,11 @@ static bool scan_plain_text(Scanner *s, TSLexer *lexer, const bool *valid_symbol
 
       return false;
     }
-    if (!(plain_lbracket_depth > 0 || spaced_text || lone_bol_text)) return false;
+
+    bool trailing_after_bracket_close = (next == '\n' || eof(lexer)) &&
+      (s->prev_char == ']' || s->prev_char == '}');
+    bool bracket_ok = plain_lbracket_depth > 0 || saw_plain_lbracket || spaced_text || lone_bol_text || next == ')' || next == '}' || trailing_after_bracket_close;
+    if (!bracket_ok) return false;
 
     if (plain_lbracket_depth > 0) {
       plain_lbracket_depth--;
@@ -1904,6 +1969,11 @@ static bool scan_plain_text(Scanner *s, TSLexer *lexer, const bool *valid_symbol
       ? probe_angle_construct_after_lt(lexer)
       : probe_bracket_construct_after_lbracket(lexer);
     if (starts_object) return false;
+
+    if (ch == '[') {
+      plain_lbracket_depth++;
+      saw_plain_lbracket = true;
+    }
 
     s->prev_char = ch;
     mark_end(lexer);
