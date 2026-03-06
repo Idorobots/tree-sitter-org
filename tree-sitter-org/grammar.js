@@ -578,7 +578,8 @@ module.exports = grammar({
       ':',
       choice(
         seq($._S, field('value', choice(
-          $.regular_link,
+          prec(1, alias($._PROP_MALFORMED_LINK_REST, $.property_value)),
+          alias($._PROP_REGULAR_LINK, $.regular_link),
           $.timestamp,
           prec(-1, alias($._PROP_REST_OF_LINE, $.property_value)),
         ))),
@@ -588,6 +589,25 @@ module.exports = grammar({
     ),
 
     _PROP_REST_OF_LINE: _ => /[^\n\[][^\n]*/,
+
+    _PROP_MALFORMED_LINK_REST: _ => /\[\[[^\n]*\]\]\][^\n]*/,
+
+    _PROP_REGULAR_LINK: $ => prec(1, choice(
+      seq('[[', field('path', alias($._link_path, $.link_path)), ']]'),
+      seq(
+        '[[',
+        field('path', alias($._link_path, $.link_path)),
+        '][',
+        field('description', repeat1(choice(
+          alias($._PROP_LINK_TEXT, $.plain_text),
+          ']',
+          $._NL,
+        ))),
+        ']]',
+      ),
+    )),
+
+    _PROP_LINK_TEXT: _ => /[^\]\n]+/,
 
     _PROP_NAME: _ => /[^ \t\n:+]+\+?/,
 

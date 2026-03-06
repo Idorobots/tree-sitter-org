@@ -583,7 +583,6 @@ Indented property drawer with >>> in link description
         value: (regular_link
           path: (link_path)
           description: (plain_text)
-          description: (plain_text)
           description: (plain_text))))))
 
 ================
@@ -602,7 +601,6 @@ Non-indented property drawer with >>> in link description
         name: (property_name)
         value: (regular_link
           path: (link_path)
-          description: (plain_text)
           description: (plain_text)
           description: (plain_text))))))
 
@@ -640,8 +638,6 @@ Property link description ending with []] in archive-style heading
           name: (property_name)
           value: (regular_link
             path: (link_path)
-            description: (plain_text)
-            description: (plain_text)
             description: (plain_text)))))))
 
 ================
@@ -698,8 +694,98 @@ Property link description with bracket list and <<":">> fragment
         value: (regular_link
           path: (link_path)
           description: (plain_text)
-          description: (target
-            value: (target_text))
+          description: (plain_text)
+          description: (plain_text))))))
+
+================
+Property link-like value with unmatched trailing brackets falls back to property_value
+================
+:PROPERTIES:
+:context: [[file:/brain-server/.config::{backend,%20cowboy}%5D}%5D][file:/brain-server/.config::{backend, cowboy}]}]]]
+:END:
+
+---
+
+(document
+  (zeroth_section
+    properties: (property_drawer
+      (node_property
+        name: (property_name)
+        value: (property_value)))))
+
+================
+Property link with C++ stream operators in description
+================
+:properties:
+:context: [[file:~/main.cpp::std::cout%20<<%20i->first%20<<%20"%20-->%20"%20<<%20i->second%20<<%20"\n"%3B][file:~c/main.cpp::std::cout << i->first << " --> " << i->second << "\n";]]
+:end:
+
+---
+
+(document
+  (zeroth_section
+    properties: (property_drawer
+      (node_property
+        name: (property_name)
+        value: (regular_link
+          path: (link_path)
+          description: (plain_text))))))
+
+================
+Property link with Erlang tuple and records in description
+================
+:properties:
+:context: [[file:/echo_hook.erl::Ack%20->%20{reply,%20%5B#sio_message{type%20%3D%20ack,%20data%20%3D%20hive_socketio_parser:encode_id(Ack)}%5D,%20State}][file:/echo_hook.erl::Ack -> {reply, [#sio_message{type = ack, data = hive_socketio_parser:encode_id(Ack)}], State}]]
+:end:
+
+---
+
+(document
+  (zeroth_section
+    properties: (property_drawer
+      (node_property
+        name: (property_name)
+        value: (regular_link
+          path: (link_path)
+          description: (plain_text)
+          description: (plain_text))))))
+
+================
+Property link with templated command and bracketed key
+================
+:properties:
+:context: [[file:/hive-server.conf.j2::command%5Bcheck_hive_uptime%5D%3D/usr/lib/nagios/plugins/check_http%20-I%20localhost%20-u%20"/socket.io/1/"%20-p%20{{%20hive_port%20}}%20-r%20-w%200.5%20-c%201.0][file:/hive-server.conf.j2::command[check_hive_uptime]=/usr/lib/nagios/plugins/check_http -I localhost -u "/socket.io/1/" -p {{ hive_port }} -r -w 0.5 -c 1.0]]
+:end:
+
+---
+
+(document
+  (zeroth_section
+    properties: (property_drawer
+      (node_property
+        name: (property_name)
+        value: (regular_link
+          path: (link_path)
+          description: (plain_text)
+          description: (plain_text))))))
+
+================
+Property link with templated filters and quoted headers
+================
+:properties:
+:context: [[file:/hive-server.conf.j2::command%5Bcheck_hive_connection%20%5D%3D/usr/lib/nagios/plugins/check_http%20-I%20localhost%20-u%20"/socket.io/1/"%20-r%20"Hive"%20-p%20{{%20hive_port|mandatory%20}}%20-k%20"Origin:%20{{%20market_vars.domain%20}}"%20-w%200.5%20-c%201.0][file:/hive-server.conf.j2::command[check_hive_connection ]=/usr/lib/nagios/plugins/check_http -I localhost -u "/socket.io/1/" -r "Hive" -p {{ hive_port|mandatory }} -k "Origin: {{ market_vars.domain }}" -w 0.5 -c 1.0]]
+:end:
+
+---
+
+(document
+  (zeroth_section
+    properties: (property_drawer
+      (node_property
+        name: (property_name)
+        value: (regular_link
+          path: (link_path)
+          description: (plain_text)
           description: (plain_text))))))
 
 ================
