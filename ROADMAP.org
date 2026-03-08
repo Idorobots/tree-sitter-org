@@ -2021,7 +2021,10 @@ For the remaining drawer types, have a dedicated =Drawer= element that represent
 
 All drawers should be mutable and marked dirty when mutated.
 
-*** TODO Heading/Document drawers
+*** DONE Heading/Document drawers
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-08 Sun 22:02]
+:END:
 Update the =Document= class with fields dedicated to properties and the logbook. These fields should be populated based on the properties & logbook drawers found on the parse tree. If there are multiple such drawers attached to a document's zeroth section merge their values into a single element dedicated to the given drawer type.
 
 Update =Heading= class with fields dedicated to properties and the logbook. These fields should be populated based on the properties & logbook drawers found on the parse tree. If there are multiple such drawers attached to the heading merge their values into a single element dedicated to the given drawer type.
@@ -2030,21 +2033,58 @@ These extracted drawers should still be mutable and reflect their changes in the
 
 Other drawers can stay in the bodies of their respective owning elements. No need to handle them specially.
 
-*** Block
+*** DONE Block
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-08 Sun 22:49]
+:END:
+Add a dedicated =Element= subclass for the various blocks: =ExampleBlock=, =VerseBlock=, =SourceBlock=, =DynamicBlock=, =FixedWidthBlock=, etc. The classes should represent the different blocks of the Tree Sitter parse tree. Blocks should be mutable, with the contents of the blocks specifically being mutable. Mutation should be handled the same way as of the other elements.
 
-*** List
-*** Repeat
-- Parse any logbook lists to extract the repeats
-- Add those separately to the owning heading
+Add support for these new elements when processing document/heading bodies that can contain blocks.
 
-*** Error parse fallback
-- When encountering errors in the parse tree, assume text.
+*** DONE List
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-08 Sun 23:15]
+:END:
+Add a dedicated =Element= subclass for the =List='s. The class should represent a list comprised of =ListItem='s. List items should support all the features of the list items, such as the completion counters, checkboxes, item tags, rich text first line, the continuation lines, etc. List items should be mutable, and so is the list itself - it should be possible to add extra line items to the list.
+
+Add support for this new element when processing document/heading bodies that can contain lists. Do also add support for these in drawer bodies.
+
+*** TODO Repeated tasks
+Add a dedicated =Element= subclass for repeated tasks. A =Repeat= is a list item stored in the =LogbookDrawer= as one of the following forms:
+
+#+begin_example
+- State "<after_state>" from "<before_state>" <timestamp>
+
+- State "<after_state>" from "<before_state>" <timestamp> \\
+  <state_change_note>
+#+end_example
+
+That is, it is a line item with a specific text content followed by a timestamp and an optional linebreak and optional continuation line containing a short note. The items and continuation lines can be arbitrarily indented. Here are some actual examples:
+
+#+begin_example
+- State "DONE"       from "TODO"       [2026-03-08 Sun 17:59]
+- State "CANCELLED"  from "TODO"       [2026-03-08 Sun 13:18] \\
+  No need for that with the semantic nodes.
+#+end_example
+
+The line item content should be parsed to extract the =after= and =before= states as well as the =timestamp= and the optional =note=. The =Repeat= class should cache these values internally and allow their mutation (causing the containing list to become dirty).
+
+The =Repeat= class should specifically be used in the logbook drawer. No other lists should be parsed for the repeated task format.
+
+Add a new field to the =Heading= class called =repeated_tasks: list[Repeat]=. It should contain all the repeats from the logbook drawers of that heading. The filed should be mutable and allow adding extra repeats (effectively mutates the list found in the logbook).
+
+*** TODO Error parse fallback
+Add a semantic fallback whenever a parse error node is encountered - the invalid parse node should be treated as a =RichText= element.
+
+Add special handling of these error situations in extraction code, so that the resulting semantic node tree uses those =RichText= elements instead of throwing any errors or ignoring the error condition. The goal is to recover from the error condition and make the remained of the parse tree usable as is.
+
+At the same time, whenever a parse tree error is encountered, please store that error parse node in the root =Document= class under the =errors= list. This can be useful for determining if there are any errors present in the file (linting, etc).
 
 *** TODO raw()
 Add a method called =raw= for each object that returns the raw Tree-Sitter parse tree nodes that were used to construct those objects.
 
 *** Convenience fields
-- extra fields for convevience - parent, children, siblings, latest_timestamp, earliest_timestamp, is_completed, is_root, is_terminal
+Add extra fields for convevience - latest_timestamp, earliest_timestamp, is_completed, is_root, is_terminal, 
 
 *** iterator interface
 Document, Heading and RichText should support an iterator interface.
@@ -2062,12 +2102,10 @@ Invoke the tree sitter parser on text mutation.
 ** Recover list & element nesting
 - List nesting & item bodies should be adjusted to support the indent-level objects
 
-** Recover repeats
 ** Recover inherited tags
 - nodes tags & inherited tags field (file-order lists not sets)
 
 ** Recover inherited categories
 - nodes category & inherited category field
 ** Semantic node documentation
-** Document.errors property listing any parse errors
 ** Document.format method for re-formatting the text

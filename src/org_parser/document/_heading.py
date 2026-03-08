@@ -12,6 +12,7 @@ from org_parser.element import (
     ExampleBlock,
     ExportBlock,
     FixedWidthBlock,
+    List,
     Logbook,
     Properties,
     QuoteBlock,
@@ -57,6 +58,7 @@ _EXPORT_BLOCK = "export_block"
 _SRC_BLOCK = "src_block"
 _VERSE_BLOCK = "verse_block"
 _FIXED_WIDTH = "fixed_width"
+_PLAIN_LIST = "plain_list"
 
 
 class Heading:
@@ -633,6 +635,7 @@ def _extract_body_element(
         _SRC_BLOCK: SourceBlock.from_node,
         _VERSE_BLOCK: VerseBlock.from_node,
         _FIXED_WIDTH: FixedWidthBlock.from_node,
+        _PLAIN_LIST: List.from_node,
     }
     factory = dispatch.get(node.type)
     if factory is None:

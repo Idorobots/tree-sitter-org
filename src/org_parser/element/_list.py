@@ -1,0 +1,467 @@
+"""Semantic element classes for Org plain lists and list items."""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from org_parser.element._element import Element
+from org_parser.text._rich_text import RichText
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    import tree_sitter
+
+    from org_parser.document._document import Document
+    from org_parser.document._heading import Heading
+
+__all__ = ["List", "ListItem", "ListItemContinuation"]
+
+
+class ListItemContinuation(Element):
+    """Indented continuation line that belongs to one list item."""
+
+    def __init__(
+        self,
+        *,
+        indent: str,
+        content: RichText,
+        parent: Document | Heading | Element | None = None,
+        source_text: str = "",
+    ) -> None:
+        super().__init__(
+            node_type="item_continuation_line",
+            source_text=source_text,
+            parent=parent,
+        )
+        self._indent = indent
+        self._content = content
+        self._content.set_parent(self, mark_dirty=False)
+
+    @classmethod
+    def from_node(
+        cls,
+        node: tree_sitter.Node,
+        source: bytes,
+        *,
+        parent: Document | Heading | Element | None = None,
+    ) -> ListItemContinuation:
+        """Create a continuation line from one ``item_continuation_line`` node."""
+        source_text = source[node.start_byte : node.end_byte].decode()
+        content_nodes = node.children_by_field_name("content")
+        parsed = RichText.from_nodes(content_nodes, source)
+        continuation = cls(
+            indent=_extract_leading_indent(source_text),
+            content=RichText("") if parsed is None else parsed,
+            parent=parent,
+            source_text=source_text,
+        )
+        continuation._node = node
+        return continuation
+
+    @property
+    def indent(self) -> str:
+        """Leading indentation for the continuation line."""
+        return self._indent
+
+    @indent.setter
+    def indent(self, value: str) -> None:
+        """Set leading indentation and mark continuation as dirty."""
+        self._indent = value
+        self._mark_dirty()
+
+    @property
+    def content(self) -> RichText:
+        """Mutable continuation rich-text content."""
+        return self._content
+
+    @content.setter
+    def content(self, value: RichText) -> None:
+        """Set continuation content and mark continuation as dirty."""
+        self._content = value
+        self._content.set_parent(self, mark_dirty=False)
+        self._mark_dirty()
+
+    def __str__(self) -> str:
+        """Render continuation line text."""
+        if not self.dirty and self._node is not None:
+            return self.source_text
+        return f"{self._indent}{self._content}\n"
+
+
+class ListItem(Element):
+    """One mutable plain-list item with all item-level metadata."""
+
+    def __init__(
+        self,
+        *,
+        indent: str | None = None,
+        bullet: str,
+        ordered_counter: str | None = None,
+        counter_set: str | None = None,
+        checkbox: str | None = None,
+        item_tag: RichText | None = None,
+        first_line: RichText | None = None,
+        body: list[Element] | None = None,
+        parent: Document | Heading | Element | None = None,
+        source_text: str = "",
+    ) -> None:
+        super().__init__(node_type="item", source_text=source_text, parent=parent)
+        self._indent = indent
+        self._bullet = bullet
+        self._ordered_counter = ordered_counter
+        self._counter_set = counter_set
+        self._checkbox = checkbox
+        self._item_tag = item_tag
+        self._first_line = first_line
+        self._body = body if body is not None else []
+
+        if self._item_tag is not None:
+            self._item_tag.set_parent(self, mark_dirty=False)
+        if self._first_line is not None:
+            self._first_line.set_parent(self, mark_dirty=False)
+        self._adopt_body(self._body)
+
+    @classmethod
+    def from_node(
+        cls,
+        node: tree_sitter.Node,
+        source: bytes,
+        *,
+        parent: Document | Heading | Element | None = None,
+    ) -> ListItem:
+        """Create one :class:`ListItem` from an ``item`` parse node."""
+        source_text = source[node.start_byte : node.end_byte].decode()
+        item = cls(
+            indent=_extract_optional_field_text(node, source, "indent"),
+            bullet=_extract_bullet(node, source),
+            ordered_counter=_extract_optional_field_text(node, source, "counter"),
+            counter_set=_extract_counter_set(node, source),
+            checkbox=_extract_checkbox(node, source),
+            item_tag=_extract_item_tag(node, source),
+            first_line=_extract_first_line(node, source),
+            body=[
+                _extract_list_item_body_element(child, source)
+                for child in node.children_by_field_name("body")
+            ],
+            parent=parent,
+            source_text=source_text,
+        )
+        item._node = node
+        return item
+
+    @property
+    def indent(self) -> str | None:
+        """Leading indentation for this flat-list item, if present."""
+        return self._indent
+
+    @indent.setter
+    def indent(self, value: str | None) -> None:
+        """Set indentation and mark item dirty."""
+        self._indent = value
+        self._mark_dirty()
+
+    @property
+    def bullet(self) -> str:
+        """Bullet marker (``-``, ``+``, ``*``, ``.``, or ``)``)."""
+        return self._bullet
+
+    @bullet.setter
+    def bullet(self, value: str) -> None:
+        """Set bullet marker and mark item dirty."""
+        self._bullet = value
+        self._mark_dirty()
+
+    @property
+    def ordered_counter(self) -> str | None:
+        """Ordered-list counter value for numeric/alpha bullets."""
+        return self._ordered_counter
+
+    @ordered_counter.setter
+    def ordered_counter(self, value: str | None) -> None:
+        """Set ordered-list counter value and mark item dirty."""
+        self._ordered_counter = value
+        self._mark_dirty()
+
+    @property
+    def counter_set(self) -> str | None:
+        """Counter-set cookie value without wrapper syntax."""
+        return self._counter_set
+
+    @counter_set.setter
+    def counter_set(self, value: str | None) -> None:
+        """Set counter-set cookie value and mark item dirty."""
+        self._counter_set = value
+        self._mark_dirty()
+
+    @property
+    def checkbox(self) -> str | None:
+        """Checkbox status character: ``" "``, ``"X"``, ``"-"``, or ``None``."""
+        return self._checkbox
+
+    @checkbox.setter
+    def checkbox(self, value: str | None) -> None:
+        """Set checkbox status and mark item dirty."""
+        self._checkbox = value
+        self._mark_dirty()
+
+    @property
+    def item_tag(self) -> RichText | None:
+        """Descriptive-list tag rich text before ``::`` when present."""
+        return self._item_tag
+
+    @item_tag.setter
+    def item_tag(self, value: RichText | None) -> None:
+        """Set item tag and mark item dirty."""
+        self._item_tag = value
+        if self._item_tag is not None:
+            self._item_tag.set_parent(self, mark_dirty=False)
+        self._mark_dirty()
+
+    @property
+    def first_line(self) -> RichText | None:
+        """First-line rich text after bullet metadata."""
+        return self._first_line
+
+    @first_line.setter
+    def first_line(self, value: RichText | None) -> None:
+        """Set first-line rich text and mark item dirty."""
+        self._first_line = value
+        if self._first_line is not None:
+            self._first_line.set_parent(self, mark_dirty=False)
+        self._mark_dirty()
+
+    @property
+    def body(self) -> list[Element]:
+        """Mutable body elements for this list item."""
+        return self._body
+
+    @body.setter
+    def body(self, value: list[Element]) -> None:
+        """Set body elements and mark item dirty."""
+        self._body = value
+        self._adopt_body(self._body)
+        self._mark_dirty()
+
+    def append_body(self, element: Element) -> None:
+        """Append one body element and mark item dirty."""
+        element.set_parent(self, mark_dirty=False)
+        self._body.append(element)
+        self._mark_dirty()
+
+    def _adopt_body(self, body: Sequence[Element]) -> None:
+        """Assign this item as parent for all body elements."""
+        for element in body:
+            element.set_parent(self, mark_dirty=False)
+
+    def __str__(self) -> str:
+        """Render list-item text from semantic fields when dirty."""
+        if not self.dirty and self._node is not None:
+            return self.source_text
+
+        parts: list[str] = []
+        if self._indent is not None:
+            parts.append(self._indent)
+
+        if self._ordered_counter is not None and self._bullet in {".", ")"}:
+            parts.append(f"{self._ordered_counter}{self._bullet} ")
+        else:
+            parts.append(f"{self._bullet} ")
+
+        if self._counter_set is not None:
+            parts.append(f"[@{self._counter_set}] ")
+
+        if self._checkbox is not None:
+            parts.append(f"[{self._checkbox}] ")
+
+        if self._item_tag is not None:
+            parts.append(f"{self._item_tag} ::")
+        elif self._first_line is not None:
+            parts.append(str(self._first_line))
+
+        parts.append("\n")
+        parts.extend(_ensure_trailing_newline(str(element)) for element in self._body)
+        return "".join(parts)
+
+
+class List(Element):
+    """Plain list element containing mutable :class:`ListItem` instances."""
+
+    def __init__(
+        self,
+        *,
+        items: list[ListItem] | None = None,
+        parent: Document | Heading | Element | None = None,
+        source_text: str = "",
+    ) -> None:
+        super().__init__(node_type="plain_list", source_text=source_text, parent=parent)
+        self._items = items if items is not None else []
+        self._adopt_items(self._items)
+
+    @classmethod
+    def from_node(
+        cls,
+        node: tree_sitter.Node,
+        source: bytes,
+        *,
+        parent: Document | Heading | Element | None = None,
+    ) -> List:
+        """Create a :class:`List` from a ``plain_list`` node."""
+        items = [
+            ListItem.from_node(child, source)
+            for child in node.named_children
+            if child.type == "item"
+        ]
+        parsed = cls(
+            items=items,
+            parent=parent,
+            source_text=source[node.start_byte : node.end_byte].decode(),
+        )
+        parsed._node = node
+        return parsed
+
+    @property
+    def items(self) -> list[ListItem]:
+        """Mutable list items in source order."""
+        return self._items
+
+    @items.setter
+    def items(self, value: list[ListItem]) -> None:
+        """Set list items and mark list dirty."""
+        self._items = value
+        self._adopt_items(self._items)
+        self._mark_dirty()
+
+    def append_item(self, item: ListItem) -> None:
+        """Append one list item and mark list dirty."""
+        item.set_parent(self, mark_dirty=False)
+        self._items.append(item)
+        self._mark_dirty()
+
+    def insert_item(self, index: int, item: ListItem) -> None:
+        """Insert one list item at *index* and mark list dirty."""
+        item.set_parent(self, mark_dirty=False)
+        self._items.insert(index, item)
+        self._mark_dirty()
+
+    def _adopt_items(self, items: Sequence[ListItem]) -> None:
+        """Assign this list as parent for all items."""
+        for item in items:
+            item.set_parent(self, mark_dirty=False)
+
+    def __str__(self) -> str:
+        """Render list text preserving source while clean and parse-backed."""
+        if not self.dirty and self._node is not None:
+            return self.source_text
+        return "".join(str(item) for item in self._items)
+
+
+def _extract_list_item_body_element(node: tree_sitter.Node, source: bytes) -> Element:
+    """Build one semantic element for a list item's body child node."""
+    from org_parser.element._block import (
+        CenterBlock,
+        CommentBlock,
+        DynamicBlock,
+        ExampleBlock,
+        ExportBlock,
+        FixedWidthBlock,
+        QuoteBlock,
+        SourceBlock,
+        SpecialBlock,
+        VerseBlock,
+    )
+    from org_parser.element._drawer import Drawer, Logbook, Properties
+
+    dispatch = {
+        "item_continuation_line": ListItemContinuation.from_node,
+        "drawer": Drawer.from_node,
+        "logbook_drawer": Logbook.from_node,
+        "property_drawer": Properties.from_node,
+        "fixed_width": FixedWidthBlock.from_node,
+        "center_block": CenterBlock.from_node,
+        "quote_block": QuoteBlock.from_node,
+        "special_block": SpecialBlock.from_node,
+        "dynamic_block": DynamicBlock.from_node,
+        "comment_block": CommentBlock.from_node,
+        "example_block": ExampleBlock.from_node,
+        "export_block": ExportBlock.from_node,
+        "src_block": SourceBlock.from_node,
+        "verse_block": VerseBlock.from_node,
+    }
+    factory = dispatch.get(node.type)
+    if factory is None:
+        return Element.from_node(node, source)
+    return factory(node, source)
+
+
+def _extract_optional_field_text(
+    node: tree_sitter.Node,
+    source: bytes,
+    field_name: str,
+) -> str | None:
+    """Return one optional field's text, or ``None`` when absent."""
+    field_node = node.child_by_field_name(field_name)
+    if field_node is None:
+        return None
+    value = source[field_node.start_byte : field_node.end_byte].decode()
+    return value if value != "" else None
+
+
+def _extract_bullet(node: tree_sitter.Node, source: bytes) -> str:
+    """Return bullet marker text from one list item node."""
+    bullet_nodes = node.children_by_field_name("bullet")
+    if not bullet_nodes:
+        return "-"
+    bullet_node = bullet_nodes[-1]
+    return source[bullet_node.start_byte : bullet_node.end_byte].decode()
+
+
+def _extract_counter_set(node: tree_sitter.Node, source: bytes) -> str | None:
+    """Return counter-set value from ``[@n]`` syntax without wrappers."""
+    counter_set = _extract_optional_field_text(node, source, "counter_set")
+    if counter_set is None:
+        return None
+    stripped = counter_set.strip()
+    if stripped.startswith("[@") and stripped.endswith("]"):
+        value = stripped[2:-1].strip()
+        return value if value != "" else None
+    return stripped if stripped != "" else None
+
+
+def _extract_checkbox(node: tree_sitter.Node, source: bytes) -> str | None:
+    """Return checkbox status character from one list item node."""
+    checkbox_node = node.child_by_field_name("checkbox")
+    if checkbox_node is None:
+        return None
+    status_node = checkbox_node.child_by_field_name("status")
+    if status_node is None:
+        return None
+    return source[status_node.start_byte : status_node.end_byte].decode()
+
+
+def _extract_item_tag(node: tree_sitter.Node, source: bytes) -> RichText | None:
+    """Return descriptive-list tag rich text, if present."""
+    tag_node = node.child_by_field_name("tag")
+    if tag_node is None:
+        return None
+    return RichText.from_nodes(tag_node.named_children, source)
+
+
+def _extract_first_line(node: tree_sitter.Node, source: bytes) -> RichText | None:
+    """Return first-line rich text composed from all ``first_line`` objects."""
+    return RichText.from_nodes(node.children_by_field_name("first_line"), source)
+
+
+def _extract_leading_indent(value: str) -> str:
+    """Return leading indentation from one line of source text."""
+    indent_end = 0
+    while indent_end < len(value) and value[indent_end] in {" ", "\t"}:
+        indent_end += 1
+    return value[:indent_end]
+
+
+def _ensure_trailing_newline(value: str) -> str:
+    """Return *value* with one trailing newline when non-empty."""
+    if value == "" or value.endswith("\n"):
+        return value
+    return f"{value}\n"

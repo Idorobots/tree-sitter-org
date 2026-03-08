@@ -25,6 +25,7 @@ from org_parser.element._block import (
 from org_parser.element._drawer import Drawer, Logbook, Properties
 from org_parser.element._element import Element
 from org_parser.element._keyword import Keyword
+from org_parser.element._list import List, ListItem, ListItemContinuation
 from org_parser.element._paragraph import Paragraph
 from org_parser.element._table import Table, TableCell, TableRow
 
@@ -38,6 +39,9 @@ __all__ = [
     "ExportBlock",
     "FixedWidthBlock",
     "Keyword",
+    "List",
+    "ListItem",
+    "ListItemContinuation",
     "Logbook",
     "Paragraph",
     "Properties",
