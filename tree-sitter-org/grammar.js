@@ -77,6 +77,7 @@ module.exports = grammar({
     [$.regular_link, $._PROP_REST_OF_LINE],
     [$.regular_link, $._DRAWER_KV_REST],
     [$.drawer, $._affiliatable_no_drawer],
+    [$.logbook_drawer, $._affiliatable_no_drawer],
     // footnote definition vs footnote reference (both start with [fn:LABEL])
     [$.footnote_definition, $._fn_ref_labeled],
   ],
@@ -200,6 +201,7 @@ module.exports = grammar({
     _affiliatable: $ => choice(
       $._greater_block,
       $.drawer,
+      $.logbook_drawer,
       $.dynamic_block,
       $.footnote_definition,
       $._indented_object_line,
@@ -376,7 +378,22 @@ module.exports = grammar({
       $._NL,
     ),
 
-    // --- 6.3 Dynamic Blocks ---
+    // --- 6.3 LOGBOOK Drawers ---
+    logbook_drawer: $ => seq(
+      optional($._INDENT),
+      token(prec(3, ci(':logbook:'))),
+      choice(
+        $._NL,
+        seq(field('body', $.drawer_start_text), $._NL),
+      ),
+      field('body', optional($._drawer_body)),
+      optional($._INDENT),
+      token(prec(3, ci(':end:'))),
+      optional($._TRAILING),
+      $._NL,
+    ),
+
+    // --- 6.4 Dynamic Blocks ---
     dynamic_block: $ => seq(
       optional($._INDENT),
       token(prec(3, ci('#+begin:'))),

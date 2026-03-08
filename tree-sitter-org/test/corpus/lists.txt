@@ -414,8 +414,7 @@ Indented nested item drawer starts after list
       (item
         indent: (item_indent)
         first_line: (plain_text)))
-    (drawer
-      name: (drawer_name)
+    (logbook_drawer
       body: (drawer_kv_line))
     (plain_list
       (item

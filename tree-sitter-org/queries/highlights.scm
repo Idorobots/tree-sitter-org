@@ -17,6 +17,7 @@
 
 ; --- Sections & Elements ---
 (property_drawer) @property
+(logbook_drawer) @property
 (node_property
   (property_name) @property
   (property_value) @string)

@@ -61,8 +61,7 @@ Clock inside drawer with indentation
     (stars)
     (plain_text)
     (section
-      (drawer
-        (drawer_name)
+      (logbook_drawer
         (clock
           (ts_year)
           (ts_month)
