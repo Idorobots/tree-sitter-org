@@ -229,17 +229,14 @@ def _extract_counter(
 ) -> str | None:
     """Scan title children for a ``completion_counter`` and return its inner value.
 
-    The tree-sitter token text includes brackets, e.g. ``[1/3]`` or ``[50%]``.
-    This function strips the surrounding brackets and returns the inner value
-    (e.g. ``"1/3"`` or ``"50%"``).
+    The completion counter node stores its value in the ``value`` field.
     """
     for n in title_nodes:
         if n.type == _COMPLETION_COUNTER:
-            if n.text is None:
+            value_node = n.child_by_field_name("value")
+            if value_node is None or value_node.text is None:
                 continue  # pragma: no cover - defensive
-            raw = n.text.decode()
-            # Strip surrounding '[' and ']'.
-            return raw[1:-1] if len(raw) >= 2 else raw
+            return value_node.text.decode() or None
     return None
 
 

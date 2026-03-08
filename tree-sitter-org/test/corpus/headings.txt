@@ -70,21 +70,24 @@ Heading counters with TODO and priority variants
     (todo_keyword)
     (priority
       (priority_value))
-    (completion_counter)
+    (completion_counter
+      (completion_counter_value))
     (plain_text))
   (heading
     (stars)
     (todo_keyword)
     (priority
       (priority_value))
-    (completion_counter)
+    (completion_counter
+      (completion_counter_value))
     (plain_text))
   (heading
     (stars)
     (todo_keyword)
     (priority
       (priority_value))
-    (completion_counter)
+    (completion_counter
+      (completion_counter_value))
     (plain_text))
   (heading
     (stars)
@@ -92,12 +95,14 @@ Heading counters with TODO and priority variants
     (priority
       (priority_value))
     (plain_text)
-    (completion_counter))
+    (completion_counter
+      (completion_counter_value)))
   (heading
     (stars)
     (todo_keyword)
     (plain_text)
-    (completion_counter)
+    (completion_counter
+      (completion_counter_value))
     (plain_text)))
 
 ================
@@ -322,7 +327,8 @@ Heading with slash completion counter
   (heading
     (stars)
     (plain_text)
-    (completion_counter)))
+    (completion_counter
+      (completion_counter_value))))
 
 ================
 Heading with TODO, priority, and empty completion counter
@@ -337,7 +343,8 @@ Heading with TODO, priority, and empty completion counter
     (todo_keyword)
     (priority
       (priority_value))
-    (completion_counter)
+    (completion_counter
+      (completion_counter_value))
     (plain_text)))
 
 ================
@@ -413,7 +420,8 @@ Heading keeps non-cookie bracket text and trailing counter
   (heading
     (stars)
     (plain_text)
-    (completion_counter)))
+    (completion_counter
+      (completion_counter_value))))
 
 ================
 Nested headings three levels

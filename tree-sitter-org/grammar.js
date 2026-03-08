@@ -545,14 +545,15 @@ module.exports = grammar({
       $._S,
     ),
 
-    completion_counter: _ => token(seq(
+    completion_counter: $ => seq(
       '[',
-      /[0-9]*/,
-      choice(
-        seq('/', /[0-9]*/),
-        '%',
-      ),
+      field('value', $.completion_counter_value),
       ']',
+    ),
+
+    completion_counter_value: _ => token(choice(
+      /[0-9]*\/[0-9]*/,
+      /[0-9]*%/,
     )),
 
     item_tag: $ => seq(

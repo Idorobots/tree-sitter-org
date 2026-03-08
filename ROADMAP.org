@@ -1739,14 +1739,17 @@ In the above example, it would be ideal if the parser extracted the value =A= an
 
 Please update the semantic nodes to use that extracted value instead.
 
-*** TODO Counter value abstraction in the parser
+*** DONE Counter value abstraction in the parser
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-08 Sun 14:07]
+:END:
 Completion counter values are not bound in the parser, but should for easier extraction of the value:
 
 #+begin_example
 ,* TODO Test [1/2]
 #+end_example
 
-In the above example, it would be ideal if the parser extracted the value =1/2= and bound it as a subnode of the priority node under the name =value=.
+In the above example, it would be ideal if the parser extracted the value =1/2= and bound it as a subnode of the counter node under the name =value=.
 
 Please update the semantic nodes to use that extracted value instead.
 
