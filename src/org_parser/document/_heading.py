@@ -213,20 +213,15 @@ def _extract_todo(node: tree_sitter.Node) -> str | None:
 def _extract_priority(node: tree_sitter.Node) -> str | None:
     """Return the priority value (letter or number), or *None*.
 
-    The priority node text has the form ``[#A] `` or ``[#10] ``.  The value
-    is extracted by stripping the ``[#`` prefix and ``]`` suffix because the
-    regex-matched value child is optimised away by tree-sitter and is not
-    available via ``child_by_field_name``.
+    The priority node stores its value in the ``value`` field.
     """
     prio_node = node.child_by_field_name("priority")
     if prio_node is None or prio_node.text is None:
         return None
-    raw = prio_node.text.decode()
-    start = raw.find("[#")
-    end = raw.find("]", start + 2 if start >= 0 else 0)
-    if start >= 0 and end > start + 2:
-        return raw[start + 2 : end]
-    return None  # pragma: no cover - defensive
+    value_node = prio_node.child_by_field_name("value")
+    if value_node is None or value_node.text is None:
+        return None
+    return value_node.text.decode() or None
 
 
 def _extract_counter(

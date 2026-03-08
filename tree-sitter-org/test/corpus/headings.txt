@@ -68,25 +68,29 @@ Heading counters with TODO and priority variants
   (heading
     (stars)
     (todo_keyword)
-    (priority)
+    (priority
+      (priority_value))
     (completion_counter)
     (plain_text))
   (heading
     (stars)
     (todo_keyword)
-    (priority)
+    (priority
+      (priority_value))
     (completion_counter)
     (plain_text))
   (heading
     (stars)
     (todo_keyword)
-    (priority)
+    (priority
+      (priority_value))
     (completion_counter)
     (plain_text))
   (heading
     (stars)
     (todo_keyword)
-    (priority)
+    (priority
+      (priority_value))
     (plain_text)
     (completion_counter))
   (heading
@@ -303,7 +307,8 @@ Heading with priority
 (document
   (heading
     (stars)
-    (priority)
+    (priority
+      (priority_value))
     (plain_text)))
 
 ================
@@ -330,7 +335,8 @@ Heading with TODO, priority, and empty completion counter
   (heading
     (stars)
     (todo_keyword)
-    (priority)
+    (priority
+      (priority_value))
     (completion_counter)
     (plain_text)))
 
@@ -360,7 +366,8 @@ Heading with TODO, priority, and tags
   (heading
     (stars)
     (todo_keyword)
-    (priority)
+    (priority
+      (priority_value))
     (plain_text)
     (tags
       (tag)

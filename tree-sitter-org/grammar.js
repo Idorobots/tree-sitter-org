@@ -128,10 +128,12 @@ module.exports = grammar({
 
     priority: $ => seq(
       '[#',
-      field('value', choice(/[A-Z]/, /[0-9]+/)),
+      field('value', $.priority_value),
       ']',
       $._S,
     ),
+
+    priority_value: _ => token(choice(/[A-Z]/, /[0-9]+/)),
 
     _COMMENT_TOKEN: _ => 'COMMENT',
 

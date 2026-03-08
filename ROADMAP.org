@@ -1725,7 +1725,10 @@ This will be used by semantic analysis to recover list nesting.
 :END:
 Add an abstraction over the heading line, so that the heading consists of a =heading_line= and a =body=.
 
-*** TODO Priority value abstraction in the parser
+*** DONE Priority value abstraction in the parser
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-08 Sun 13:56]
+:END:
 Priority values are not bound in the parser, but should for easier extraction of the value:
 
 #+begin_example
