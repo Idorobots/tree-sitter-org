@@ -239,6 +239,10 @@ static inline bool is_ascii_upper(int32_t ch) {
   return ch >= 'A' && ch <= 'Z';
 }
 
+static inline bool is_todo_keyword_char(int32_t ch) {
+  return is_ascii_upper(ch) || ch == '-' || ch == '_';
+}
+
 static inline bool is_fixed_width_tail_char(int32_t ch, bool at_eof) {
   return ch == ' ' || ch == '\n' || at_eof;
 }
@@ -669,7 +673,7 @@ static bool scan_todo_kw(Scanner *s, TSLexer *lexer, const bool *valid_symbols) 
   // Mark position before consuming
   mark_end(lexer);
 
-  while (lookahead(lexer) >= 'A' && lookahead(lexer) <= 'Z' && len < MAX_TODO_KW_LEN - 1) {
+  while (is_todo_keyword_char(lookahead(lexer)) && len < MAX_TODO_KW_LEN - 1) {
     word[len++] = (char)lookahead(lexer);
     advance(lexer);
   }
@@ -2291,19 +2295,22 @@ static bool scan_todo_setup_sync(Scanner *s, TSLexer *lexer) {
 
     char keyword[MAX_TODO_KW_LEN];
     int kw_len = 0;
+    bool saw_upper = false;
     for (int i = 0; i < token_len; i++) {
       if (token[i] == '(') break;
-      if (!is_ascii_upper(token[i])) {
+      if (!is_todo_keyword_char(token[i])) {
         kw_len = 0;
+        saw_upper = false;
         break;
       }
+      if (is_ascii_upper(token[i])) saw_upper = true;
       if (kw_len < MAX_TODO_KW_LEN - 1) {
         keyword[kw_len++] = token[i];
       }
     }
     keyword[kw_len] = '\0';
 
-    if (kw_len > 0) {
+    if (kw_len > 0 && saw_upper) {
       scanner_add_todo_keyword(s, keyword);
     }
   }

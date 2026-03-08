@@ -156,6 +156,29 @@ TODO keywords accumulate from #+TODO lines
     (plain_text)))
 
 ================
+TODO keywords allow dash and underscore
+================
+#+TODO: TODO IN-PROGRESS IN_PROGRESS | DONE
+* IN-PROGRESS Hyphenated task
+* IN_PROGRESS Underscored task
+
+---
+
+(document
+  (zeroth_section
+    (special_keyword
+      (keyword_key)
+      (keyword_value)))
+  (heading
+    (stars)
+    (todo_keyword)
+    (plain_text))
+  (heading
+    (stars)
+    (todo_keyword)
+    (plain_text)))
+
+================
 Heading title contains colon before real tags
 ================
 * TODO Try to debug the ejabberd_tls:send timouts.                :Debugging:Erlang:XMPP:

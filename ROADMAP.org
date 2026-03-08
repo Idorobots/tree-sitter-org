@@ -1712,14 +1712,56 @@ Let's try something different, make the script only find the leaf errors and dis
 By leaf errors I mean errors that are as close to a leaf as possible, not the top level errors, not necessarily errors at the very leaf of the expression - just the final level at which an error occurs that does not have an error embedded in them.
 
 ** TODO Parser extensions
-*** TODO Support for Babel call syntax
-*** TODO Support for Org entities
-*** TODO Support for subscript/superscript
-*** TODO Better support for tableel tables
-*** TODO Bind indent in lesser/greater elements
+*** Support for Babel call syntax
+*** Support for Org entities
+*** Support for subscript/superscript
+*** Better support for tableel tables
+*** Bind indent in lesser/greater elements
 This will be used by semantic analysis to recover list nesting.
-*** TODO Heading line abstraction
+*** CANCELLED Heading line abstraction
+:LOGBOOK:
+- State "CANCELLED"  from "TODO"       [2026-03-08 Sun 13:18] \\
+  No need for that with the semantic nodes.
+:END:
 Add an abstraction over the heading line, so that the heading consists of a =heading_line= and a =body=.
+
+*** TODO Priority value abstraction in the parser
+Priority values are not bound in the parser, but should for easier extraction of the value:
+
+#+begin_example
+,* TODO [#A] Test
+#+end_example
+
+In the above example, it would be ideal if the parser extracted the value =A= and bound it as a subnode of the priority node under the name =value=.
+
+Please update the semantic nodes to use that extracted value instead.
+
+*** TODO Counter value abstraction in the parser
+Completion counter values are not bound in the parser, but should for easier extraction of the value:
+
+#+begin_example
+,* TODO Test [1/2]
+#+end_example
+
+In the above example, it would be ideal if the parser extracted the value =1/2= and bound it as a subnode of the priority node under the name =value=.
+
+Please update the semantic nodes to use that extracted value instead.
+
+** TODO Parser bugfixes
+*** DONE Dashes in #+TODO states
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-08 Sun 13:44]
+:END:
+The value =IN-PROGRESS= doesn't parse as a todo state when configured, but should.
+
+#+begin_example
+#+TODO: TODO IN-PROGRESS | DONE
+,* TODO Test
+,* DONE test
+,* IN-PROGRESS Test
+#+end_example
+
+Adjust the parse rules for todo states to allow for =-= and =_= in state names.
 
 * Semantic nodes implementation
 ** DONE Python scaffold
