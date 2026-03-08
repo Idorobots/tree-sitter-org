@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from org_parser.element._element import Element
 from org_parser.text._inline import CompletionCounter
 from org_parser.text._rich_text import RichText
+from org_parser.time import Timestamp
 
 if TYPE_CHECKING:
     import tree_sitter
@@ -19,6 +20,9 @@ __all__ = ["Heading"]
 _HEADING = "heading"
 _COMPLETION_COUNTER = "completion_counter"
 _TAG = "tag"
+_PLANNING = "planning"
+_PLANNING_KEYWORD = "planning_keyword"
+_TIMESTAMP = "timestamp"
 
 
 class Heading:
@@ -53,6 +57,9 @@ class Heading:
         title: RichText | None = None,
         counter: CompletionCounter | None = None,
         tags: list[str] | None = None,
+        scheduled: Timestamp | None = None,
+        closed: Timestamp | None = None,
+        deadline: Timestamp | None = None,
         body: list[Element] | None = None,
         children: list[Heading] | None = None,
     ) -> None:
@@ -64,6 +71,9 @@ class Heading:
         self._title = title
         self._counter = counter
         self._tags: list[str] = tags if tags is not None else []
+        self._scheduled = scheduled
+        self._closed = closed
+        self._deadline = deadline
         self._body: list[Element] = body if body is not None else []
         self._children: list[Heading] = children if children is not None else []
         self._node: tree_sitter.Node | None = None
@@ -99,6 +109,7 @@ class Heading:
         title = RichText.from_nodes(title_nodes, source)
         counter = _extract_counter(title_nodes)
         tags = _extract_tags(node)
+        scheduled, deadline, closed = _extract_planning(node, source)
         body = _extract_body(node, source)
 
         heading = cls(
@@ -110,6 +121,9 @@ class Heading:
             title=title,
             counter=counter,
             tags=tags,
+            scheduled=scheduled,
+            deadline=deadline,
+            closed=closed,
             body=body,
         )
         heading._node = node
@@ -204,6 +218,39 @@ class Heading:
     def tags(self, value: list[str]) -> None:
         """Set tag strings and mark this heading as dirty."""
         self._tags = value
+        self._mark_dirty()
+
+    @property
+    def scheduled(self) -> Timestamp | None:
+        """The ``SCHEDULED`` planning timestamp, or *None*."""
+        return self._scheduled
+
+    @scheduled.setter
+    def scheduled(self, value: Timestamp | None) -> None:
+        """Set the ``SCHEDULED`` planning timestamp and mark dirty."""
+        self._scheduled = value
+        self._mark_dirty()
+
+    @property
+    def closed(self) -> Timestamp | None:
+        """The ``CLOSED`` planning timestamp, or *None*."""
+        return self._closed
+
+    @closed.setter
+    def closed(self, value: Timestamp | None) -> None:
+        """Set the ``CLOSED`` planning timestamp and mark dirty."""
+        self._closed = value
+        self._mark_dirty()
+
+    @property
+    def deadline(self) -> Timestamp | None:
+        """The ``DEADLINE`` planning timestamp, or *None*."""
+        return self._deadline
+
+    @deadline.setter
+    def deadline(self, value: Timestamp | None) -> None:
+        """Set the ``DEADLINE`` planning timestamp and mark dirty."""
+        self._deadline = value
         self._mark_dirty()
 
     @property
@@ -362,6 +409,38 @@ def _extract_body(
     return [Element.from_node(child, source) for child in section_node.named_children]
 
 
+def _extract_planning(
+    node: tree_sitter.Node,
+    source: bytes,
+) -> tuple[Timestamp | None, Timestamp | None, Timestamp | None]:
+    """Return ``(scheduled, deadline, closed)`` planning timestamps."""
+    planning_node = node.child_by_field_name("planning")
+    if planning_node is None or planning_node.type != _PLANNING:
+        return None, None, None
+
+    scheduled: Timestamp | None = None
+    deadline: Timestamp | None = None
+    closed: Timestamp | None = None
+    current_keyword: str | None = None
+
+    for child in planning_node.named_children:
+        if child.type == _PLANNING_KEYWORD:
+            current_keyword = source[child.start_byte : child.end_byte].decode().upper()
+            continue
+        if child.type != _TIMESTAMP or current_keyword is None:
+            continue
+
+        timestamp = Timestamp.from_node(child, source)
+        if current_keyword == "SCHEDULED":
+            scheduled = timestamp
+        elif current_keyword == "DEADLINE":
+            deadline = timestamp
+        elif current_keyword == "CLOSED":
+            closed = timestamp
+
+    return scheduled, deadline, closed
+
+
 def _find_first_subheading(node: tree_sitter.Node) -> tree_sitter.Node | None:
     """Return the first direct sub-heading node, if present."""
     for child in node.children:
@@ -389,5 +468,15 @@ def _render_heading_dirty(heading: Heading) -> str:
         headline = f"{headline} :{':'.join(heading.tags)}:"
 
     parts = [f"{headline}\n"]
+    planning_entries: list[str] = []
+    if heading.scheduled is not None:
+        planning_entries.append(f"SCHEDULED: {heading.scheduled}")
+    if heading.deadline is not None:
+        planning_entries.append(f"DEADLINE: {heading.deadline}")
+    if heading.closed is not None:
+        planning_entries.append(f"CLOSED: {heading.closed}")
+    if planning_entries:
+        parts.append(f"{' '.join(planning_entries)}\n")
+
     parts.extend(str(element) for element in heading.body)
     return "".join(parts)

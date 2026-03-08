@@ -22,11 +22,11 @@ from org_parser.text._inline import (
     RegularLink,
     StrikeThrough,
     Target,
-    Timestamp,
     Underline,
     Verbatim,
 )
 from org_parser.text._rich_text import RichText
+from org_parser.time import Timestamp
 
 __all__ = [
     "AngleLink",

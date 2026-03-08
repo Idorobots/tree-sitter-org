@@ -1937,6 +1937,8 @@ Ideally, =Timestamp= should be moved to a dedicated module =org_parser.time= as 
 
 Timestamps should have a =start= and =end= properties, with =end= being optional (only available if the timestamp has a duration). Timestamp should be convertible to a Python datetime (use the =start= property). There is no need to make the timestamp fields mutable.
 
+No need to reimplement the timestamp parsing in Python - use the tree sitter node properties directly.
+
 Add the planning fields to the =Heading= class:
 - =scheduled: Timestamp | None=
 - =closed: Timestamp | None=
@@ -1949,7 +1951,10 @@ These fields should be mutable. Update the representation for =Heading= to take 
 
 - should have a parent element that can be marked as dirty when child is dirty
 
-*** Paragraph, Keywords, Table, List
+*** Keywords
+*** Paragraph
+*** Table
+*** List
 *** Properties, Logbook, Drawer
 - supports any drawers, spacial treatment for logbook & properties
 - update document with properties and logbook (merge if multiple are defined)

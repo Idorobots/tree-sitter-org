@@ -93,3 +93,19 @@ def test_heading_str_dirty_rebuilds_and_omits_children(
     assert rendered.startswith("* DONE [#A] First top-level heading :ops:critical:\n")
     assert "Section content under the first heading." in rendered
     assert "** First sub-heading" not in rendered
+
+
+def test_heading_str_dirty_includes_planning_line(
+    example_file: Callable[[str], Path],
+) -> None:
+    """Dirty heading rendering includes canonical planning line order."""
+    document = load(str(example_file("planning-basic.org")))
+    heading = document.children[3]
+
+    heading.todo = "DONE"
+
+    rendered = str(heading)
+    assert (
+        "SCHEDULED: <2025-01-01 Wed> DEADLINE: <2025-01-10 Fri> "
+        "CLOSED: [2025-01-08 Wed 14:23]\n"
+    ) in rendered

@@ -26,10 +26,10 @@ from org_parser.text._inline import (
     RegularLink,
     StrikeThrough,
     Target,
-    Timestamp,
     Underline,
     Verbatim,
 )
+from org_parser.time import Timestamp
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -330,7 +330,7 @@ def _parse_inline_node(  # noqa: PLR0911,PLR0912,PLR0915
         return RadioTarget(body=_parse_inline_nodes(body_nodes, source))
 
     if node_type == _TIMESTAMP:
-        return Timestamp(value=text)
+        return Timestamp.from_node(node, source)
 
     return PlainText(text)
 

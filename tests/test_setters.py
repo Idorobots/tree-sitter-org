@@ -8,6 +8,7 @@ from org_parser import load
 from org_parser.document import Document, Heading
 from org_parser.element import Element
 from org_parser.text import CompletionCounter, RichText
+from org_parser.time import Timestamp
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -87,6 +88,32 @@ def test_heading_setters_mark_heading_and_document_dirty() -> None:
     heading.title = RichText("Heading")
     heading.counter = CompletionCounter("1/2")
     heading.tags = ["work", "next"]
+    heading.scheduled = Timestamp(
+        raw="<2025-03-01 Sat>",
+        is_active=True,
+        start_year=2025,
+        start_month=3,
+        start_day=1,
+        start_dayname="Sat",
+    )
+    heading.deadline = Timestamp(
+        raw="<2025-03-05 Wed>",
+        is_active=True,
+        start_year=2025,
+        start_month=3,
+        start_day=5,
+        start_dayname="Wed",
+    )
+    heading.closed = Timestamp(
+        raw="[2025-03-02 Sun 09:00]",
+        is_active=False,
+        start_year=2025,
+        start_month=3,
+        start_day=2,
+        start_dayname="Sun",
+        start_hour=9,
+        start_minute=0,
+    )
     heading.body = [Element(node_type="paragraph", source_text="Text")]
     heading.parent = document
     heading.children = []
@@ -100,6 +127,9 @@ def test_heading_setters_mark_heading_and_document_dirty() -> None:
     assert heading.title == "Heading"
     assert heading.counter == CompletionCounter("1/2")
     assert heading.tags == ["work", "next"]
+    assert heading.scheduled is not None
+    assert heading.deadline is not None
+    assert heading.closed is not None
     assert len(heading.body) == 1
     assert heading.parent is document
     assert heading.children == []

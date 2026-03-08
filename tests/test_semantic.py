@@ -143,6 +143,9 @@ class TestHeadingManual:
         assert h.title is None
         assert h.counter is None
         assert h.tags == []
+        assert h.scheduled is None
+        assert h.deadline is None
+        assert h.closed is None
         assert h.body == []
         assert h.children == []
 
@@ -381,6 +384,34 @@ class TestHeadingFields:
         doc = _load_document(org)
         assert doc.children[0].title is not None
         assert str(doc.children[0].title) == "Tasks [2/5] to finish"
+
+    def test_planning_fields(self, example_file: Callable[[str], Path]) -> None:
+        """Planning timestamps are extracted into heading planning fields."""
+        doc = _load_document(example_file("planning-basic.org"))
+
+        scheduled_heading = doc.children[0]
+        deadline_heading = doc.children[1]
+        closed_heading = doc.children[2]
+        all_three_heading = doc.children[3]
+
+        assert scheduled_heading.scheduled is not None
+        assert str(scheduled_heading.scheduled) == "<2025-03-01 Sat>"
+        assert scheduled_heading.deadline is None
+        assert scheduled_heading.closed is None
+
+        assert deadline_heading.deadline is not None
+        assert str(deadline_heading.deadline) == "<2025-04-30 Wed>"
+        assert deadline_heading.scheduled is None
+        assert deadline_heading.closed is None
+
+        assert closed_heading.closed is not None
+        assert str(closed_heading.closed) == "[2025-01-05 Sun 17:00]"
+        assert closed_heading.scheduled is None
+        assert closed_heading.deadline is None
+
+        assert all_three_heading.scheduled is not None
+        assert all_three_heading.deadline is not None
+        assert all_three_heading.closed is not None
 
 
 # ===================================================================

@@ -9,6 +9,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol
 
+from org_parser.time import Timestamp
+
 __all__ = [
     "AngleLink",
     "Bold",
@@ -38,6 +40,7 @@ class InlineObject(Protocol):
 
     def __str__(self) -> str:
         """Render this inline object to Org text."""
+        ...
 
 
 def _render_parts(parts: list[InlineObject]) -> str:
@@ -265,14 +268,3 @@ class RadioTarget:
     def __str__(self) -> str:
         """Render radio target."""
         return f"<<<{_render_parts(self.body)}>>>"
-
-
-@dataclass(frozen=True, slots=True)
-class Timestamp:
-    """Timestamp object represented by its full textual value."""
-
-    value: str
-
-    def __str__(self) -> str:
-        """Render timestamp."""
-        return self.value
