@@ -1,12 +1,15 @@
 """Greater and lesser element representations.
 
-This subpackage will provide Python types that wrap individual tree-sitter
-nodes corresponding to Org Mode *elements* — the structural building blocks
-of an org document such as headings, plain lists, source blocks, drawers, and
+This subpackage provides Python types that wrap individual tree-sitter nodes
+corresponding to Org Mode *elements* — the structural building blocks of an
+org document such as paragraphs, plain lists, source blocks, drawers, and
 planning entries.
 
-This module is currently a placeholder. Implementations will be added in
+The primary public type is :class:`Element`, a stub that preserves the node
+type and verbatim source text.  Per-element semantics will be added in
 subsequent iterations.
 """
 
-__all__: list[str] = []
+from org_parser.element._element import Element
+
+__all__ = ["Element"]
