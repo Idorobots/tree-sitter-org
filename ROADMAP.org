@@ -1719,7 +1719,6 @@ By leaf errors I mean errors that are as close to a leaf as possible, not the to
 *** Support for Babel call syntax
 *** Support for Org entities
 *** Support for subscript/superscript
-*** Better support for tableel tables
 *** Bind indent in lesser/greater elements
 This will be used by semantic analysis to recover list nesting.
 *** CANCELLED Heading line abstraction
@@ -1776,6 +1775,7 @@ Adjust the parse rules for todo states to allow for =-= and =_= in state names.
 *** TODO Special handling for LOGBOOK
 The =LOGBOOK= drawer should be treated in the same way as the =PROPERTIES= drawer, i.e. it should have a dedicated parse tree node associated with it. Other custom drawers can be left as-is.
 
+*** Better support for tableel tables
 * Semantic nodes implementation
 ** DONE Python scaffold
 :LOGBOOK:
@@ -1931,7 +1931,10 @@ All of these abstractions should be publicly available via the =org_parser.text.
 
 Update the =Heading.counter= property to return a =CompletionCounter= instead of plain string.
 
-*** Heading planing
+*** DONE Heading planing
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-08 Sun 16:15]
+:END:
 Expand the =Timestamp= class to store all the individual values of a timestamp, including the date, time, optionally a duration, active/inactive state etc.
 Ideally, =Timestamp= should be moved to a dedicated module =org_parser.time= as there will be more related abstractions there.
 
@@ -1946,15 +1949,36 @@ Add the planning fields to the =Heading= class:
 
 These fields should be mutable. Update the representation for =Heading= to take them into account when the heading is marked as dirty.
 
-*** Element
-=org_parser.elements.*=
+*** TODO Element
+Expand the abstract =Element= class with an =parent= property. The parent can be either a =Document=, a =Heading= or another =Element=.
 
-- should have a parent element that can be marked as dirty when child is dirty
+Whenever an =Element= is mutated, the parent element must be marked as dirty in addition to marking the current element as dirty. The same is true for the =Heading=, a mutation at a nested level should mark all intermediate levels as dirty, all the way to the root element - the =Document=, unless an element along the chain is already marked as dirty. This way a mutation at a lower level will be reflected when stringifying the whole =Document=.
 
-*** Keywords
-*** Paragraph
+Both =RichText= and =Timestamp= can be made into full-fledged elements if that makes sense.
+
+**** COMMENT
+Codex decided that making rich text an element doesn't make sense.
+
+*** TODO Keywords
+Add a dedicated =Element= subclass for the special keywords called =Keyword=.
+The class should represent a special keyword. The keyword value should be mutable.
+
+Update the =Document= to extract and store these new =Keyword= objects instead of =RichText= directly.
+
+*** TODO Paragraph
+Add a dedicated =Element= subclass for the paragraph element - =Paragraph=. The class should store the values that are found in =paragraph= node of the parse tree. The paragraph body should be mutable.
+
+Add support for this new element type when processing document/heading bodies that can contain paragraphs.
+
 *** Table
-*** List
+Add a dedicated =Element= subclass for the table element - =Table=. The class should represent an Org table or a Table.el table, with dedicated abstractions for table rows and table cells. Table cells and rows should be mutable, marking the whole table as dirty. Table cell values can remain =RichText= for now, but the parent element of these rich text elements should be the table.
+
+Tables should also support the table formula lines.
+
+When the element is marked dirty, the table should be formatted according to the Org Table rules, not Table.el. Make sure to align the table columns based on the size of the cell values. The resulting table should be "nicely" formatted and aligned.
+
+Add support for this new element type when processing document/heading bodies that can contain tables.
+
 *** Properties, Logbook, Drawer
 - supports any drawers, spacial treatment for logbook & properties
 - update document with properties and logbook (merge if multiple are defined)
@@ -1962,12 +1986,13 @@ These fields should be mutable. Update the representation for =Heading= to take 
 - other drawes can stay in the body
 - all drawers should be mutable and marked dirty when mutated
 
+*** Block
+
 *** Clock
+*** List
 *** Repeat
 - Parse any logbook lists to extract the repeats
 - Add those separately to the owning heading
-
-*** Block
 
 *** Error parse fallback
 - When encountering errors in the parse tree, assume text.
@@ -1990,6 +2015,7 @@ Document, Heading and RichText should support an iterator interface.
 
 ** Programatically create RichText from strings
 Invoke the tree sitter parser on text mutation.
+** Attach CAPTION to the following element
 ** Recover list & element nesting
 - List nesting & item bodies should be adjusted to support the indent-level objects
 
@@ -2000,3 +2026,5 @@ Invoke the tree sitter parser on text mutation.
 ** Recover inherited categories
 - nodes category & inherited category field
 ** Semantic node documentation
+** Document.errors property listing any parse errors
+** Document.format method for re-formatting the text

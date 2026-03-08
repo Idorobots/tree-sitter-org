@@ -79,6 +79,12 @@ class Heading:
         self._node: tree_sitter.Node | None = None
         self._dirty = False
 
+        if self._title is not None:
+            self._title.set_parent(self, mark_dirty=False)
+
+        self._adopt_body_elements(self._body)
+        self._adopt_children(self._children)
+
     # -- factory method ------------------------------------------------------
 
     @classmethod
@@ -110,7 +116,7 @@ class Heading:
         counter = _extract_counter(title_nodes)
         tags = _extract_tags(node)
         scheduled, deadline, closed = _extract_planning(node, source)
-        body = _extract_body(node, source)
+        body = _extract_body(node, source, parent=parent)
 
         heading = cls(
             level=level,
@@ -127,6 +133,9 @@ class Heading:
             body=body,
         )
         heading._node = node
+
+        # Re-home body elements to this heading instance (not its parent).
+        heading._adopt_body_elements(heading._body)
 
         # Recursively build sub-headings.
         for child in node.children:
@@ -152,7 +161,11 @@ class Heading:
     def document(self, value: Document) -> None:
         """Set the owning document and mark this heading as dirty."""
         self._document = value
-        self._mark_dirty()
+        self._dirty = True
+        if not self._parent.dirty:
+            self._parent.mark_dirty()
+        if not value.dirty:
+            value.mark_dirty()
 
     @property
     def level(self) -> int:
@@ -196,6 +209,8 @@ class Heading:
     def title(self, value: RichText | None) -> None:
         """Set the heading title and mark this heading as dirty."""
         self._title = value
+        if self._title is not None:
+            self._title.set_parent(self, mark_dirty=False)
         self._mark_dirty()
 
     @property
@@ -262,6 +277,7 @@ class Heading:
     def body(self, value: list[Element]) -> None:
         """Set body elements and mark this heading as dirty."""
         self._body = value
+        self._adopt_body_elements(self._body)
         self._mark_dirty()
 
     @property
@@ -272,8 +288,18 @@ class Heading:
     @parent.setter
     def parent(self, value: Heading | Document) -> None:
         """Set the parent reference and mark this heading as dirty."""
+        self.set_parent(value)
+
+    def set_parent(
+        self,
+        value: Heading | Document,
+        *,
+        mark_dirty: bool = True,
+    ) -> None:
+        """Set parent object with optional dirty propagation."""
         self._parent = value
-        self._mark_dirty()
+        if mark_dirty:
+            self._mark_dirty()
 
     @property
     def children(self) -> list[Heading]:
@@ -284,6 +310,7 @@ class Heading:
     def children(self, value: list[Heading]) -> None:
         """Set direct sub-headings and mark this heading as dirty."""
         self._children = value
+        self._adopt_children(self._children)
         self._mark_dirty()
 
     @property
@@ -292,13 +319,26 @@ class Heading:
         return self._dirty
 
     def _mark_dirty(self) -> None:
-        """Mark this heading and its document as dirty."""
+        """Mark this heading dirty and bubble to its parent chain."""
+        if self._dirty:
+            return
         self._dirty = True
-        self._document.mark_dirty()
+        if not self._parent.dirty:
+            self._parent.mark_dirty()
 
     def mark_dirty(self) -> None:
-        """Mark this heading and its document as dirty."""
+        """Mark this heading dirty and bubble to its parent chain."""
         self._mark_dirty()
+
+    def _adopt_body_elements(self, body: list[Element]) -> None:
+        """Assign this heading as parent for all body elements."""
+        for element in body:
+            element.set_parent(self, mark_dirty=False)
+
+    def _adopt_children(self, children: list[Heading]) -> None:
+        """Assign this heading as parent for direct sub-headings."""
+        for child in children:
+            child.set_parent(self, mark_dirty=False)
 
     @property
     def siblings(self) -> list[Heading]:
@@ -401,12 +441,17 @@ def _extract_tags(node: tree_sitter.Node) -> list[str]:
 def _extract_body(
     node: tree_sitter.Node,
     source: bytes,
+    *,
+    parent: Heading | Document,
 ) -> list[Element]:
     """Return :class:`Element` instances for each child of the body section."""
     section_node = node.child_by_field_name("body")
     if section_node is None:
         return []
-    return [Element.from_node(child, source) for child in section_node.named_children]
+    return [
+        Element.from_node(child, source, parent=parent)
+        for child in section_node.named_children
+    ]
 
 
 def _extract_planning(

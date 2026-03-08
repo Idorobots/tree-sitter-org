@@ -13,6 +13,9 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     import tree_sitter
 
+    from org_parser.document._document import Document
+    from org_parser.document._heading import Heading
+
 __all__ = ["Element"]
 
 
@@ -29,21 +32,30 @@ class Element:
         *,
         node_type: str = "",
         source_text: str = "",
+        parent: Document | Heading | Element | None = None,
     ) -> None:
         self._node_type = node_type
         self._source_text = source_text
+        self._parent = parent
         self._node: tree_sitter.Node | None = None
         self._dirty = False
 
     # -- factory method ------------------------------------------------------
 
     @classmethod
-    def from_node(cls, node: tree_sitter.Node, source: bytes) -> Element:
+    def from_node(
+        cls,
+        node: tree_sitter.Node,
+        source: bytes,
+        *,
+        parent: Document | Heading | Element | None = None,
+    ) -> Element:
         """Create an :class:`Element` from a tree-sitter node.
 
         Args:
             node: The tree-sitter node to wrap.
             source: The full source bytes of the document.
+            parent: Optional parent object that owns this element.
 
         Returns:
             A new :class:`Element` preserving the node type and verbatim
@@ -52,6 +64,7 @@ class Element:
         elem = cls(
             node_type=node.type,
             source_text=source[node.start_byte : node.end_byte].decode(),
+            parent=parent,
         )
         elem._node = node
         return elem
@@ -81,13 +94,42 @@ class Element:
         self._mark_dirty()
 
     @property
+    def parent(self) -> Document | Heading | Element | None:
+        """Parent object that contains this element, if any."""
+        return self._parent
+
+    @parent.setter
+    def parent(self, value: Document | Heading | Element | None) -> None:
+        """Set the parent object and mark this element as dirty."""
+        self.set_parent(value)
+
+    def set_parent(
+        self,
+        value: Document | Heading | Element | None,
+        *,
+        mark_dirty: bool = True,
+    ) -> None:
+        """Set parent object with optional dirty propagation."""
+        self._parent = value
+        if mark_dirty:
+            self._mark_dirty()
+
+    @property
     def dirty(self) -> bool:
         """Whether this element has been mutated after creation."""
         return self._dirty
 
     def _mark_dirty(self) -> None:
-        """Mark this element as dirty."""
+        """Mark this element dirty and bubble to parent objects."""
+        if self._dirty:
+            return
         self._dirty = True
+        parent = self._parent
+        if parent is None:
+            return
+        dirty_parent = parent
+        if not dirty_parent.dirty:
+            dirty_parent.mark_dirty()
 
     def mark_dirty(self) -> None:
         """Mark this element as dirty."""

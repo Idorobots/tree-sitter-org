@@ -25,15 +25,40 @@ def test_rich_text_setter_marks_dirty() -> None:
     assert rich_text.dirty is True
 
 
+def test_rich_text_mutation_bubbles_to_heading_and_document() -> None:
+    """Mutating heading title rich text marks heading and document dirty."""
+    document = Document(filename="doc.org")
+    heading = Heading(
+        level=1, document=document, parent=document, title=RichText("Old")
+    )
+    assert document.dirty is False
+    assert heading.dirty is False
+    assert heading.title is not None
+
+    heading.title.text = "New"
+
+    assert heading.title.dirty is True
+    assert heading.dirty is True
+    assert document.dirty is True
+
+
 def test_element_setters_mark_dirty() -> None:
     """Element setters update values and dirty state."""
-    element = Element(node_type="paragraph", source_text="old")
+    document = Document(filename="doc.org")
+    heading = Heading(level=1, document=document, parent=document)
+    element = Element(node_type="paragraph", source_text="old", parent=heading)
     assert element.dirty is False
+    assert heading.dirty is False
+    assert document.dirty is False
+
     element.node_type = "quote_block"
     element.source_text = "new"
+
     assert element.node_type == "quote_block"
     assert element.source_text == "new"
     assert element.dirty is True
+    assert heading.dirty is True
+    assert document.dirty is True
 
 
 def test_document_setters_mark_dirty() -> None:
@@ -137,6 +162,23 @@ def test_heading_setters_mark_heading_and_document_dirty() -> None:
     assert heading.dirty is True
     assert document.dirty is True
     assert new_document.dirty is True
+
+
+def test_nested_heading_mutation_bubbles_to_root_document() -> None:
+    """Child heading mutation marks parent headings and document dirty."""
+    document = Document(filename="doc.org")
+    parent = Heading(level=1, document=document, parent=document)
+    child = Heading(level=2, document=document, parent=parent)
+
+    assert document.dirty is False
+    assert parent.dirty is False
+    assert child.dirty is False
+
+    child.todo = "DONE"
+
+    assert child.dirty is True
+    assert parent.dirty is True
+    assert document.dirty is True
 
 
 def test_parsed_objects_start_clean(example_file: Callable[[str], Path]) -> None:

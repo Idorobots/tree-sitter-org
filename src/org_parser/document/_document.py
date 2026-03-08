@@ -67,6 +67,15 @@ class Document:
         self._source: bytes = b""
         self._dirty = False
 
+        self._adopt_rich_text(self._title)
+        self._adopt_rich_text(self._author)
+        self._adopt_rich_text(self._category)
+        self._adopt_rich_text(self._description)
+        self._adopt_rich_text(self._todo)
+        self._adopt_keyword_values(self._keywords)
+        self._adopt_body_elements(self._body)
+        self._adopt_children(self._children)
+
     # -- factory method ------------------------------------------------------
 
     @classmethod
@@ -92,22 +101,27 @@ class Document:
 
         root = tree.root_node
 
-        # --- extract zeroth-section data ------------------------------------
-        all_kw, body = _parse_zeroth_section(root, source)
-
-        # Pop dedicated keywords; everything left stays in the generic dict.
-        doc = cls(
-            filename=filename,
-            title=all_kw.pop("TITLE", None),
-            author=all_kw.pop("AUTHOR", None),
-            category=all_kw.pop("CATEGORY", None),
-            description=all_kw.pop("DESCRIPTION", None),
-            todo=all_kw.pop("TODO", None),
-            keywords=all_kw,
-            body=body,
-        )
+        # --- create document shell ------------------------------------------
+        doc = cls(filename=filename)
         doc._node = root
         doc._source = source
+
+        # --- extract zeroth-section data ------------------------------------
+        all_kw, body = _parse_zeroth_section(root, source, parent=doc)
+        doc._title = all_kw.pop("TITLE", None)
+        doc._author = all_kw.pop("AUTHOR", None)
+        doc._category = all_kw.pop("CATEGORY", None)
+        doc._description = all_kw.pop("DESCRIPTION", None)
+        doc._todo = all_kw.pop("TODO", None)
+        doc._keywords = all_kw
+        doc._body = body
+        doc._adopt_rich_text(doc._title)
+        doc._adopt_rich_text(doc._author)
+        doc._adopt_rich_text(doc._category)
+        doc._adopt_rich_text(doc._description)
+        doc._adopt_rich_text(doc._todo)
+        doc._adopt_keyword_values(doc._keywords)
+        doc._adopt_body_elements(doc._body)
 
         # --- build top-level headings ---------------------------------------
         for child in root.children:
@@ -144,6 +158,7 @@ class Document:
     def title(self, value: RichText | None) -> None:
         """Set the ``#+TITLE:`` value and mark the document as dirty."""
         self._title = value
+        self._adopt_rich_text(self._title)
         self._mark_dirty()
 
     @property
@@ -155,6 +170,7 @@ class Document:
     def author(self, value: RichText | None) -> None:
         """Set the ``#+AUTHOR:`` value and mark the document as dirty."""
         self._author = value
+        self._adopt_rich_text(self._author)
         self._mark_dirty()
 
     @property
@@ -166,6 +182,7 @@ class Document:
     def category(self, value: RichText | None) -> None:
         """Set the ``#+CATEGORY:`` value and mark the document as dirty."""
         self._category = value
+        self._adopt_rich_text(self._category)
         self._mark_dirty()
 
     @property
@@ -177,6 +194,7 @@ class Document:
     def description(self, value: RichText | None) -> None:
         """Set the ``#+DESCRIPTION:`` value and mark the document as dirty."""
         self._description = value
+        self._adopt_rich_text(self._description)
         self._mark_dirty()
 
     @property
@@ -188,6 +206,7 @@ class Document:
     def todo(self, value: RichText | None) -> None:
         """Set the ``#+TODO:`` value and mark the document as dirty."""
         self._todo = value
+        self._adopt_rich_text(self._todo)
         self._mark_dirty()
 
     @property
@@ -199,6 +218,7 @@ class Document:
     def keywords(self, value: dict[str, RichText]) -> None:
         """Set non-dedicated keywords and mark the document as dirty."""
         self._keywords = value
+        self._adopt_keyword_values(self._keywords)
         self._mark_dirty()
 
     @property
@@ -210,6 +230,7 @@ class Document:
     def body(self, value: list[Element]) -> None:
         """Set zeroth-section body elements and mark the document as dirty."""
         self._body = value
+        self._adopt_body_elements(self._body)
         self._mark_dirty()
 
     @property
@@ -221,6 +242,7 @@ class Document:
     def children(self, value: list[Heading]) -> None:
         """Set top-level headings and mark the document as dirty."""
         self._children = value
+        self._adopt_children(self._children)
         self._mark_dirty()
 
     @property
@@ -250,6 +272,27 @@ class Document:
         mutation state up to the owning document.
         """
         self._mark_dirty()
+
+    def _adopt_rich_text(self, value: RichText | None) -> None:
+        """Assign this document as parent for a rich-text value."""
+        if value is None:
+            return
+        value.set_parent(self, mark_dirty=False)
+
+    def _adopt_keyword_values(self, keywords: dict[str, RichText]) -> None:
+        """Assign this document as parent for all keyword values."""
+        for value in keywords.values():
+            value.set_parent(self, mark_dirty=False)
+
+    def _adopt_body_elements(self, body: list[Element]) -> None:
+        """Assign this document as parent for all body elements."""
+        for element in body:
+            element.set_parent(self, mark_dirty=False)
+
+    def _adopt_children(self, children: list[Heading]) -> None:
+        """Assign this document as parent for all top-level headings."""
+        for child in children:
+            child.set_parent(self, mark_dirty=False)
 
     # -- dunder protocols ----------------------------------------------------
 
@@ -284,6 +327,8 @@ class Document:
 def _parse_zeroth_section(
     root: tree_sitter.Node,
     source: bytes,
+    *,
+    parent: Document,
 ) -> tuple[dict[str, RichText], list[Element]]:
     """Extract all keywords and body elements from the zeroth section.
 
@@ -302,7 +347,7 @@ def _parse_zeroth_section(
                     key, value = _extract_keyword(sc, source)
                     keywords[key] = value
                 else:
-                    body.append(Element.from_node(sc, source))
+                    body.append(Element.from_node(sc, source, parent=parent))
             break  # only one zeroth section
 
     return keywords, body

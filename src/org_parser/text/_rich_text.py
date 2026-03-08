@@ -36,6 +36,10 @@ if TYPE_CHECKING:
 
     import tree_sitter
 
+    from org_parser.document._document import Document
+    from org_parser.document._heading import Heading
+    from org_parser.element._element import Element
+
 __all__ = ["RichText"]
 
 
@@ -76,11 +80,14 @@ class RichText:
     def __init__(
         self,
         text_or_parts: str | list[InlineObject] = "",
+        *,
+        parent: Document | Heading | Element | None = None,
     ) -> None:
         if isinstance(text_or_parts, str):
             self._parts: list[InlineObject] = [PlainText(text_or_parts)]
         else:
             self._parts = list(text_or_parts)
+        self._parent = parent
         self._node: tree_sitter.Node | None = None
         self._source: bytes = b""
         self._start_byte: int | None = None
@@ -108,9 +115,38 @@ class RichText:
         """Whether this rich text has been mutated after creation."""
         return self._dirty
 
+    @property
+    def parent(self) -> Document | Heading | Element | None:
+        """Parent object that contains this rich text, if any."""
+        return self._parent
+
+    @parent.setter
+    def parent(self, value: Document | Heading | Element | None) -> None:
+        """Set the parent object and mark rich text as dirty."""
+        self.set_parent(value)
+
+    def set_parent(
+        self,
+        value: Document | Heading | Element | None,
+        *,
+        mark_dirty: bool = True,
+    ) -> None:
+        """Set parent object with optional dirty propagation."""
+        self._parent = value
+        if mark_dirty:
+            self._mark_dirty()
+
     def _mark_dirty(self) -> None:
-        """Mark this rich text as dirty."""
+        """Mark this rich text dirty and bubble to parent objects."""
+        if self._dirty:
+            return
         self._dirty = True
+        parent = self._parent
+        if parent is None:
+            return
+        dirty_parent = parent
+        if not dirty_parent.dirty:
+            dirty_parent.mark_dirty()
 
     def mark_dirty(self) -> None:
         """Mark this rich text as dirty."""

@@ -208,6 +208,9 @@ class TestDocumentFromTreeKeywords:
 
         assert doc.category is not None
         assert str(doc.category) == "test"
+        assert doc.title.parent is doc
+        assert doc.author.parent is doc
+        assert doc.category.parent is doc
 
     def test_todo_keyword(self, example_file: Callable[[str], Path]) -> None:
         """The #+TODO keyword is extracted as a dedicated property."""
@@ -239,6 +242,7 @@ class TestDocumentFromTreeKeywords:
         assert len(doc.body) > 0
         node_types = [e.node_type for e in doc.body]
         assert "paragraph" in node_types
+        assert all(e.parent is doc for e in doc.body)
 
 
 # ===================================================================
@@ -346,6 +350,7 @@ class TestHeadingFields:
         doc = _load_document(example_file("nested-headings-basic.org"))
         assert doc.children[0].title is not None
         assert str(doc.children[0].title) == "First top-level heading"
+        assert doc.children[0].title.parent is doc.children[0]
 
     def test_heading_body_elements(self, example_file: Callable[[str], Path]) -> None:
         """Heading body contains section elements."""
@@ -353,6 +358,7 @@ class TestHeadingFields:
         first = doc.children[0]
         assert len(first.body) > 0
         assert any(e.node_type == "paragraph" for e in first.body)
+        assert all(e.parent is first for e in first.body)
 
     def test_heading_body_excludes_subheadings(
         self, example_file: Callable[[str], Path]
