@@ -1853,13 +1853,16 @@ The =parent= property should be mandatory when constructing an object while the 
 
 Please add some rudimentary tests for the functionality, but keep in mind that we will be expanding it.
 
-*** TODO load, loads and dump, dumps
-Add the folowing functions:
+*** DONE load, loads and dump, dumps
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-08 Sun 14:23]
+:END:
+Add the folowing functions to the Python wrapper library:
 
 - =load(filename: str): Document= - loads an Org-Mode file from file,
-- ~loads(input: str, filename: str ="<string>"): Document~ - loads an Org-Mode data from a string with an optional ~filename~ assigned to the resulting document,
+- ~loads(input: str, filename: str | None): Document~ - loads an Org-Mode data from a string with an optional ~filename~ assigned to the resulting document,
 - =dumps(document: Document): str= - returns a string representing the contents of the document in Org-Mode format,
-- ~dump(document: Document)~ - saves the Org-Mode file in the file named by =document.filename=,
+- ~dump(document: Document, filename: str | None)~ - saves the Org-Mode file in the file named by =document.filename=,
 
 Add bsic tests for this functionality using the basic examples as test fixtures.
 

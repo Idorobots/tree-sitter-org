@@ -163,6 +163,11 @@ class Document:
         """Top-level headings."""
         return self._children
 
+    @property
+    def source(self) -> bytes:
+        """Original source bytes used to build this document."""
+        return self._source
+
     # -- dunder protocols ----------------------------------------------------
 
     def __repr__(self) -> str:
