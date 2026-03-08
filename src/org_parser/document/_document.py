@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     import tree_sitter
 
     from org_parser.document._heading import Heading
+    from org_parser.text._rich_text import RichText
 
 __all__ = ["Document"]
 
@@ -52,8 +53,10 @@ class Document:
         todo: The ``#+TODO:`` keyword object, or *None*.
         keywords: Remaining special keywords not covered by the dedicated
             properties, keyed by upper-cased keyword name as :class:`Keyword`.
+        properties: Merged zeroth-section ``PROPERTIES`` drawer, or *None*.
+        logbook: Merged zeroth-section ``LOGBOOK`` drawer, or *None*.
         body: Zeroth-section elements (excluding headings and special
-            keywords).
+            keywords and dedicated drawers).
         children: Top-level headings.
     """
 
@@ -67,6 +70,8 @@ class Document:
         description: Keyword | None = None,
         todo: Keyword | None = None,
         keywords: dict[str, Keyword] | None = None,
+        properties: Properties | None = None,
+        logbook: Logbook | None = None,
         body: list[Element] | None = None,
         children: list[Heading] | None = None,
     ) -> None:
@@ -77,6 +82,8 @@ class Document:
         self._description = description
         self._todo = todo
         self._keywords: dict[str, Keyword] = keywords if keywords is not None else {}
+        self._properties = properties
+        self._logbook = logbook
         self._body: list[Element] = body if body is not None else []
         self._children: list[Heading] = children if children is not None else []
         self._node: tree_sitter.Node | None = None
@@ -91,6 +98,8 @@ class Document:
         self._adopt_keyword(self._description)
         self._adopt_keyword(self._todo)
         self._adopt_keywords(self._keywords)
+        self._adopt_properties(self._properties)
+        self._adopt_logbook(self._logbook)
         self._adopt_body_elements(self._body)
         self._adopt_children(self._children)
 
@@ -125,13 +134,17 @@ class Document:
         doc._source = source
 
         # --- extract zeroth-section data ------------------------------------
-        all_kw, body = _parse_zeroth_section(root, source, parent=doc)
+        all_kw, properties, logbook, body = _parse_zeroth_section(
+            root, source, parent=doc
+        )
         doc._title = all_kw.get(_TITLE)
         doc._author = all_kw.get(_AUTHOR)
         doc._category = all_kw.get(_CATEGORY)
         doc._description = all_kw.get(_DESCRIPTION)
         doc._todo = all_kw.get(_TODO)
         doc._keywords = all_kw
+        doc._properties = properties
+        doc._logbook = logbook
         doc._body = body
         doc._adopt_keyword(doc._title)
         doc._adopt_keyword(doc._author)
@@ -139,6 +152,8 @@ class Document:
         doc._adopt_keyword(doc._description)
         doc._adopt_keyword(doc._todo)
         doc._adopt_keywords(doc._keywords)
+        doc._adopt_properties(doc._properties)
+        doc._adopt_logbook(doc._logbook)
         doc._adopt_body_elements(doc._body)
 
         # --- build top-level headings ---------------------------------------
@@ -270,6 +285,30 @@ class Document:
         self._mark_dirty()
 
     @property
+    def properties(self) -> Properties | None:
+        """Merged zeroth-section ``PROPERTIES`` drawer, or *None*."""
+        return self._properties
+
+    @properties.setter
+    def properties(self, value: Properties | None) -> None:
+        """Set merged ``PROPERTIES`` drawer and mark the document dirty."""
+        self._properties = value
+        self._adopt_properties(self._properties)
+        self._mark_dirty()
+
+    @property
+    def logbook(self) -> Logbook | None:
+        """Merged zeroth-section ``LOGBOOK`` drawer, or *None*."""
+        return self._logbook
+
+    @logbook.setter
+    def logbook(self, value: Logbook | None) -> None:
+        """Set merged ``LOGBOOK`` drawer and mark the document dirty."""
+        self._logbook = value
+        self._adopt_logbook(self._logbook)
+        self._mark_dirty()
+
+    @property
     def body(self) -> list[Element]:
         """Zeroth-section body elements (excludes keywords and headings)."""
         return self._body
@@ -331,6 +370,18 @@ class Document:
         """Assign this document as parent for all keyword entries."""
         for value in keywords.values():
             value.set_parent(self, mark_dirty=False)
+
+    def _adopt_properties(self, value: Properties | None) -> None:
+        """Assign this document as parent for merged properties drawer."""
+        if value is None:
+            return
+        value.set_parent(self, mark_dirty=False)
+
+    def _adopt_logbook(self, value: Logbook | None) -> None:
+        """Assign this document as parent for merged logbook drawer."""
+        if value is None:
+            return
+        value.set_parent(self, mark_dirty=False)
 
     def _sync_keywords_with_dedicated(self) -> None:
         """Ensure dedicated keyword properties and map stay aligned."""
@@ -404,15 +455,18 @@ def _parse_zeroth_section(
     source: bytes,
     *,
     parent: Document,
-) -> tuple[dict[str, Keyword], list[Element]]:
+) -> tuple[dict[str, Keyword], Properties | None, Logbook | None, list[Element]]:
     """Extract all keywords and body elements from the zeroth section.
 
     Returns:
-        A ``(keywords, body)`` pair.  *keywords* maps upper-cased keyword
-        names to their :class:`Keyword` values (last-one-wins for
-        duplicates).  *body* contains non-keyword elements.
+        A ``(keywords, properties, logbook, body)`` tuple. *keywords* maps
+        upper-cased keyword names to :class:`Keyword` values. Dedicated
+        drawer values are merged across repeated drawers. *body* contains
+        non-keyword, non-dedicated-drawer elements.
     """
     keywords: dict[str, Keyword] = {}
+    property_drawers: list[Properties] = []
+    logbook_drawers: list[Logbook] = []
     body: list[Element] = []
 
     for child in root.children:
@@ -421,11 +475,71 @@ def _parse_zeroth_section(
                 if sc.type == _SPECIAL_KEYWORD:
                     key, keyword = _extract_keyword(sc, source, parent=parent)
                     keywords[key] = keyword
+                elif sc.type == _PROPERTY_DRAWER:
+                    property_drawers.append(
+                        Properties.from_node(sc, source, parent=parent)
+                    )
+                elif sc.type == _LOGBOOK_DRAWER:
+                    logbook_drawers.append(Logbook.from_node(sc, source, parent=parent))
+                elif sc.type == _DRAWER:
+                    drawer = Drawer.from_node(sc, source, parent=parent)
+                    drawer_name = drawer.name.upper()
+                    if drawer_name == "PROPERTIES":
+                        property_drawers.append(Properties.from_drawer(drawer))
+                    elif drawer_name == "LOGBOOK":
+                        logbook_drawers.append(Logbook.from_drawer(drawer))
+                    else:
+                        body.append(drawer)
                 else:
                     body.append(_extract_body_element(sc, source, parent=parent))
             break  # only one zeroth section
 
-    return keywords, body
+    return (
+        keywords,
+        _merge_properties_drawers(property_drawers, parent=parent),
+        _merge_logbook_drawers(logbook_drawers, parent=parent),
+        body,
+    )
+
+
+def _merge_properties_drawers(
+    drawers: list[Properties],
+    *,
+    parent: Document,
+) -> Properties | None:
+    """Merge repeated properties drawers into one object."""
+    if not drawers:
+        return None
+    merged_values: dict[str, RichText] = {}
+    for drawer in drawers:
+        for key, value in drawer.items():
+            if key in merged_values:
+                del merged_values[key]
+            merged_values[key] = value
+    return Properties(properties=merged_values, parent=parent)
+
+
+def _merge_logbook_drawers(
+    drawers: list[Logbook],
+    *,
+    parent: Document,
+) -> Logbook | None:
+    """Merge repeated logbook drawers into one object."""
+    if not drawers:
+        return None
+    merged_body: list[Element] = []
+    merged_clocks: list[Clock] = []
+    merged_repeats: list[Element] = []
+    for drawer in drawers:
+        merged_body.extend(drawer.body)
+        merged_clocks.extend(drawer.clock_entries)
+        merged_repeats.extend(drawer.repeats)
+    return Logbook(
+        body=merged_body,
+        clock_entries=merged_clocks,
+        repeats=merged_repeats,
+        parent=parent,
+    )
 
 
 def _extract_keyword(
@@ -496,6 +610,11 @@ def _render_document_dirty(document: Document) -> str:
         for key, keyword in document.keywords.items()
         if key not in {_TITLE, _AUTHOR, _CATEGORY, _DESCRIPTION, _TODO}
     )
+
+    if document.properties is not None:
+        parts.append(str(document.properties))
+    if document.logbook is not None:
+        parts.append(str(document.logbook))
 
     parts.extend(str(element) for element in document.body)
 

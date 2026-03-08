@@ -70,6 +70,8 @@ class Heading:
         scheduled: Timestamp | None = None,
         closed: Timestamp | None = None,
         deadline: Timestamp | None = None,
+        properties: Properties | None = None,
+        logbook: Logbook | None = None,
         body: list[Element] | None = None,
         children: list[Heading] | None = None,
     ) -> None:
@@ -84,6 +86,8 @@ class Heading:
         self._scheduled = scheduled
         self._closed = closed
         self._deadline = deadline
+        self._properties = properties
+        self._logbook = logbook
         self._body: list[Element] = body if body is not None else []
         self._children: list[Heading] = children if children is not None else []
         self._node: tree_sitter.Node | None = None
@@ -92,6 +96,8 @@ class Heading:
         if self._title is not None:
             self._title.set_parent(self, mark_dirty=False)
 
+        self._adopt_properties(self._properties)
+        self._adopt_logbook(self._logbook)
         self._adopt_body_elements(self._body)
         self._adopt_children(self._children)
 
@@ -126,7 +132,7 @@ class Heading:
         counter = _extract_counter(title_nodes)
         tags = _extract_tags(node)
         scheduled, deadline, closed = _extract_planning(node, source)
-        body = _extract_body(node, source, parent=parent)
+        properties, logbook, body = _extract_body(node, source, parent=parent)
 
         heading = cls(
             level=level,
@@ -140,11 +146,15 @@ class Heading:
             scheduled=scheduled,
             deadline=deadline,
             closed=closed,
+            properties=properties,
+            logbook=logbook,
             body=body,
         )
         heading._node = node
 
         # Re-home body elements to this heading instance (not its parent).
+        heading._adopt_properties(heading._properties)
+        heading._adopt_logbook(heading._logbook)
         heading._adopt_body_elements(heading._body)
 
         # Recursively build sub-headings.
@@ -291,6 +301,30 @@ class Heading:
         self._mark_dirty()
 
     @property
+    def properties(self) -> Properties | None:
+        """Merged heading ``PROPERTIES`` drawer, or *None*."""
+        return self._properties
+
+    @properties.setter
+    def properties(self, value: Properties | None) -> None:
+        """Set merged heading ``PROPERTIES`` drawer and mark dirty."""
+        self._properties = value
+        self._adopt_properties(self._properties)
+        self._mark_dirty()
+
+    @property
+    def logbook(self) -> Logbook | None:
+        """Merged heading ``LOGBOOK`` drawer, or *None*."""
+        return self._logbook
+
+    @logbook.setter
+    def logbook(self, value: Logbook | None) -> None:
+        """Set merged heading ``LOGBOOK`` drawer and mark dirty."""
+        self._logbook = value
+        self._adopt_logbook(self._logbook)
+        self._mark_dirty()
+
+    @property
     def parent(self) -> Heading | Document:
         """The parent :class:`Heading` or :class:`Document`."""
         return self._parent
@@ -344,6 +378,18 @@ class Heading:
         """Assign this heading as parent for all body elements."""
         for element in body:
             element.set_parent(self, mark_dirty=False)
+
+    def _adopt_properties(self, value: Properties | None) -> None:
+        """Assign this heading as parent for merged properties drawer."""
+        if value is None:
+            return
+        value.set_parent(self, mark_dirty=False)
+
+    def _adopt_logbook(self, value: Logbook | None) -> None:
+        """Assign this heading as parent for merged logbook drawer."""
+        if value is None:
+            return
+        value.set_parent(self, mark_dirty=False)
 
     def _adopt_children(self, children: list[Heading]) -> None:
         """Assign this heading as parent for direct sub-headings."""
@@ -453,21 +499,89 @@ def _extract_body(
     source: bytes,
     *,
     parent: Heading | Document,
-) -> list[Element]:
-    """Return :class:`Element` instances for each child of the body section."""
+) -> tuple[Properties | None, Logbook | None, list[Element]]:
+    """Return merged drawers and body elements for heading section content."""
+    properties_drawers: list[Properties] = []
+    logbook_drawers: list[Logbook] = []
     body: list[Element] = []
     properties_node = node.child_by_field_name("properties")
     if properties_node is not None:
-        body.append(_extract_body_element(properties_node, source, parent=parent))
+        properties_drawers.append(
+            Properties.from_node(properties_node, source, parent=parent)
+        )
 
     section_node = node.child_by_field_name("body")
     if section_node is None:
-        return body
-    body.extend(
-        _extract_body_element(child, source, parent=parent)
-        for child in section_node.named_children
+        return (
+            _merge_properties_drawers(properties_drawers, parent=parent),
+            _merge_logbook_drawers(logbook_drawers, parent=parent),
+            body,
+        )
+
+    for child in section_node.named_children:
+        if child.type == _PROPERTY_DRAWER:
+            properties_drawers.append(
+                Properties.from_node(child, source, parent=parent)
+            )
+        elif child.type == _LOGBOOK_DRAWER:
+            logbook_drawers.append(Logbook.from_node(child, source, parent=parent))
+        elif child.type == _DRAWER:
+            drawer = Drawer.from_node(child, source, parent=parent)
+            drawer_name = drawer.name.upper()
+            if drawer_name == "PROPERTIES":
+                properties_drawers.append(Properties.from_drawer(drawer))
+            elif drawer_name == "LOGBOOK":
+                logbook_drawers.append(Logbook.from_drawer(drawer))
+            else:
+                body.append(drawer)
+        else:
+            body.append(_extract_body_element(child, source, parent=parent))
+
+    return (
+        _merge_properties_drawers(properties_drawers, parent=parent),
+        _merge_logbook_drawers(logbook_drawers, parent=parent),
+        body,
     )
-    return body
+
+
+def _merge_properties_drawers(
+    drawers: list[Properties],
+    *,
+    parent: Heading | Document,
+) -> Properties | None:
+    """Merge repeated heading properties drawers into one object."""
+    if not drawers:
+        return None
+    merged_values: dict[str, RichText] = {}
+    for drawer in drawers:
+        for key, value in drawer.items():
+            if key in merged_values:
+                del merged_values[key]
+            merged_values[key] = value
+    return Properties(properties=merged_values, parent=parent)
+
+
+def _merge_logbook_drawers(
+    drawers: list[Logbook],
+    *,
+    parent: Heading | Document,
+) -> Logbook | None:
+    """Merge repeated heading logbook drawers into one object."""
+    if not drawers:
+        return None
+    merged_body: list[Element] = []
+    merged_clocks: list[Clock] = []
+    merged_repeats: list[Element] = []
+    for drawer in drawers:
+        merged_body.extend(drawer.body)
+        merged_clocks.extend(drawer.clock_entries)
+        merged_repeats.extend(drawer.repeats)
+    return Logbook(
+        body=merged_body,
+        clock_entries=merged_clocks,
+        repeats=merged_repeats,
+        parent=parent,
+    )
 
 
 def _extract_body_element(
@@ -563,6 +677,11 @@ def _render_heading_dirty(heading: Heading) -> str:
         planning_entries.append(f"CLOSED: {heading.closed}")
     if planning_entries:
         parts.append(f"{' '.join(planning_entries)}\n")
+
+    if heading.properties is not None:
+        parts.append(str(heading.properties))
+    if heading.logbook is not None:
+        parts.append(str(heading.logbook))
 
     parts.extend(str(element) for element in heading.body)
     return "".join(parts)
