@@ -1,15 +1,53 @@
-"""Rich text and markup object representations.
+"""Rich text and inline object representations.
 
-This subpackage provides Python types for Org Mode *objects* — the inline
-content that can appear within element titles and body text, such as bold,
-italic, and underline markup, links, timestamps, footnote references, and
-export snippets.
-
-The primary public type is :class:`RichText`, a stub that preserves verbatim
-source text.  Richer inline-object decomposition will be added in subsequent
-iterations.
+This subpackage exposes :class:`RichText` together with public inline object
+abstractions used to construct or inspect rich text programmatically.
 """
 
+from org_parser.text._inline import (
+    AngleLink,
+    Bold,
+    Citation,
+    Code,
+    CompletionCounter,
+    ExportSnippet,
+    FootnoteReference,
+    InlineObject,
+    InlineSourceBlock,
+    Italic,
+    LineBreak,
+    PlainLink,
+    PlainText,
+    RadioTarget,
+    RegularLink,
+    StrikeThrough,
+    Target,
+    Timestamp,
+    Underline,
+    Verbatim,
+)
 from org_parser.text._rich_text import RichText
 
-__all__ = ["RichText"]
+__all__ = [
+    "AngleLink",
+    "Bold",
+    "Citation",
+    "Code",
+    "CompletionCounter",
+    "ExportSnippet",
+    "FootnoteReference",
+    "InlineObject",
+    "InlineSourceBlock",
+    "Italic",
+    "LineBreak",
+    "PlainLink",
+    "PlainText",
+    "RadioTarget",
+    "RegularLink",
+    "RichText",
+    "StrikeThrough",
+    "Target",
+    "Timestamp",
+    "Underline",
+    "Verbatim",
+]
