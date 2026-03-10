@@ -339,11 +339,9 @@ Invalid spaced markup markers stay plain text
     (list_item
       first_line: (plain_text)
       first_line: (plain_text))
-    (ERROR
-      (repeater_mark))
-    (paragraph
-      (plain_text)
-      (newline))
+    (list_item
+      first_line: (plain_text)
+      first_line: (plain_text))
     (list_item
       first_line: (plain_text)
       first_line: (plain_text))))

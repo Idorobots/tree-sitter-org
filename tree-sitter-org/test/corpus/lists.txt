@@ -754,10 +754,9 @@ List items with bullet-like continuation paragraphs
         time: (ts_time))
       first_line: (plain_text)
       first_line: (line_break))
-    (ERROR
-      (indent)
-      (priority_value))
-    (blank_line)
+    (paragraph
+      (plain_text)
+      (newline))
     (list_item
       first_line: (plain_text)
       first_line: (timestamp

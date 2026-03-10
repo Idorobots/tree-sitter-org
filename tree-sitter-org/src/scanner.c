@@ -795,6 +795,8 @@ static bool scan_block_end_match(Scanner *s, TSLexer *lexer) {
   return false;
 }
 
+static bool is_list_line_start_context(const Scanner *s, uint32_t col);
+
 // Markup open scanner.
 // Returns: 1=token emitted, 0=no match without advance, -1=advanced but no token
 static int scan_markup_open(
@@ -804,6 +806,8 @@ static int scan_markup_open(
     enum TokenType token,
     const bool *valid_symbols
 ) {
+  uint32_t marker_col = get_column(lexer);
+
   if (!is_markup_open_pre_for_marker(s->prev_char, marker)) return 0;
   if (lookahead(lexer) != marker) return 0;
 
@@ -813,6 +817,11 @@ static int scan_markup_open(
   int32_t next = lookahead(lexer);
 
   if (marker == '+' && (next == ' ' || next == '\t' || next == '-')) {
+    if (!is_list_line_start_context(s, marker_col) && valid_symbols[TOKEN_PLAIN_TEXT]) {
+      lexer->result_symbol = TOKEN_PLAIN_TEXT;
+      s->prev_char = marker;
+      return 1;
+    }
     return -1;
   }
 
@@ -1024,9 +1033,8 @@ static bool is_space_or_tab(int32_t ch) {
 }
 
 static bool is_list_line_start_context(const Scanner *s, uint32_t col) {
-  (void)s;
-  (void)col;
-  return true;
+  if (col == 0) return true;
+  return s->prev_char == 0;
 }
 
 // Probe whether the current line starts with a valid Org list bullet.
@@ -1569,6 +1577,17 @@ static bool scan_plain_text(Scanner *s, TSLexer *lexer, const bool *valid_symbol
             found_any = true;
             continue;
           }
+        }
+        return false;
+      }
+
+      if (is_list_line_start_context(s, get_column(lexer))) {
+        advance(lexer);
+        if (lookahead(lexer) >= '0' && lookahead(lexer) <= '9') {
+          s->prev_char = '-';
+          mark_end(lexer);
+          found_any = true;
+          continue;
         }
         return false;
       }

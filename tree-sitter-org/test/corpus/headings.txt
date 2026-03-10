@@ -188,6 +188,53 @@ TODO keywords allow dash and underscore
     (plain_text)))
 
 ================
+Heading TODO title starts with plus text
+================
+*** TODO + in list/headings
+
+---
+
+(document
+  (heading
+    stars: (stars)
+    todo: (todo_keyword)
+    title: (plain_text)
+    title: (plain_text)))
+
+================
+Heading title and body list keep plus text
+================
+*** CLJS & Reframe vs Elm vs React + Redux
+ - React + Redux quickly turns into spaghetti code
+
+---
+
+(document
+  (heading
+    stars: (stars)
+    title: (plain_text)
+    title: (plain_text)
+    title: (plain_text)
+    body: (section
+      (list_item
+        indent: (indent)
+        first_line: (plain_text)))))
+
+================
+Unknown uppercase title keeps plus text
+================
+** SUSPENDED The suspended state causes an issue Foo + Bar
+
+---
+
+(document
+  (heading
+    stars: (stars)
+    title: (plain_text)
+    title: (plain_text)
+    title: (plain_text)))
+
+================
 Heading title contains colon before real tags
 ================
 * TODO Try to debug the ejabberd_tls:send timouts.                :Debugging:Erlang:XMPP:
