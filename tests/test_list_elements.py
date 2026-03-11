@@ -30,7 +30,7 @@ def test_document_body_parses_plain_list_with_item_features() -> None:
     assert str(item.first_line) == "Build release [1/2]"
     assert len(item.body) == 2
     assert isinstance(item.body[0], Paragraph)
-    assert str(item.body[0]) == "  Continue with notes\n"
+    assert str(item.body[0]) == "Continue with notes\n"
     assert isinstance(item.body[1], QuoteBlock)
     assert item.parent is parsed
     assert item.body[0].parent is item
@@ -73,13 +73,13 @@ def test_indented_paragraph_mutation_dirties_owner_list_item() -> None:
     assert isinstance(item.body[0], Paragraph)
     paragraph = item.body[0]
 
-    paragraph.body.text = "  changed\n"
+    paragraph.body.text = "changed\n"
 
     assert paragraph.dirty is True
     assert item.dirty is True
     assert parsed.dirty is True
     assert document.dirty is True
-    assert str(parsed) == "- one\n  changed\n"
+    assert str(parsed) == "- one\nchanged\n"
 
 
 def test_list_append_item_supports_mutation_and_adoption() -> None:
@@ -128,7 +128,7 @@ def test_mixed_indent_paragraph_attaches_block_line_and_keeps_tail() -> None:
     item = parsed.items[0]
     assert len(item.body) == 1
     assert isinstance(item.body[0], Paragraph)
-    assert str(item.body[0]) == "  continuation\n"
+    assert str(item.body[0]) == "continuation\n"
     assert isinstance(document.body[1], Paragraph)
     assert str(document.body[1]) == "plain tail\n"
 
@@ -142,7 +142,7 @@ def test_single_blank_line_keeps_continuation_ownership() -> None:
     assert len(parsed.items) == 2
     assert len(parsed.items[0].body) == 1
     assert isinstance(parsed.items[0].body[0], Paragraph)
-    assert str(parsed.items[0].body[0]) == "  continued\n"
+    assert str(parsed.items[0].body[0]) == "continued\n"
 
 
 def test_block_body_breaks_recovered_lists_on_non_list_nodes() -> None:
@@ -166,8 +166,8 @@ def test_consecutive_blocks_of_same_indent_stay_separate() -> None:
     assert len(item.body) == 2
     assert isinstance(item.body[0], Paragraph)
     assert isinstance(item.body[1], Paragraph)
-    assert str(item.body[0]) == "  first\n"
-    assert str(item.body[1]) == "  second\n"
+    assert str(item.body[0]) == "first\n"
+    assert str(item.body[1]) == "second\n"
 
 
 def test_dirty_list_rendering_uses_configurable_class_indent_step() -> None:

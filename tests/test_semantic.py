@@ -77,7 +77,7 @@ class TestElement:
         e = Element(node_type="paragraph", source_text="short")
         r = repr(e)
         assert "paragraph" in r
-        assert "short" in r
+        assert "short" not in r
 
 
 class TestParagraph:
@@ -118,7 +118,7 @@ class TestParagraph:
         )
 
         assert paragraph is not None
-        assert paragraph.indent == "    "
+        assert paragraph.indent is None
 
 
 # ===================================================================
@@ -173,7 +173,10 @@ class TestDocumentManual:
     def test_repr(self) -> None:
         doc = Document(filename="x.org")
         r = repr(doc)
-        assert "x.org" in r
+        assert "Document(" in r
+        assert "filename='x.org'" in r
+        assert "body=" not in r
+        assert "children=" not in r
 
 
 # ===================================================================
@@ -235,8 +238,10 @@ class TestHeadingManual:
         doc = Document(filename="t.org")
         h = Heading(level=2, document=doc, parent=doc, title=RichText("My heading"))
         r = repr(h)
-        assert "**" in r
-        assert "My heading" in r
+        assert "Heading(" in r
+        assert "level=2" in r
+        assert "RichText('My heading')" in r
+        assert "body=" not in r
 
 
 # ===================================================================

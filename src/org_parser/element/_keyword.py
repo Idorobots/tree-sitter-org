@@ -113,4 +113,4 @@ class Keyword(Element):
 
     def __repr__(self) -> str:
         """Return a developer-friendly representation."""
-        return f"Keyword(key={self._key!r}, value={str(self._value)!r})"
+        return f"Keyword(key={self._key!r}, value={self._value!r})"

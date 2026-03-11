@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from org_parser.element._element import Element
+from org_parser.element._element import Element, build_semantic_repr
 from org_parser.text._rich_text import RichText
 
 if TYPE_CHECKING:
@@ -92,7 +92,7 @@ class Paragraph(Element):
 
     def __repr__(self) -> str:
         """Return a developer-friendly representation."""
-        return f"Paragraph(body={str(self._body)!r}, indent={self._indent!r})"
+        return build_semantic_repr("Paragraph", body=self._body, indent=self._indent)
 
 
 def _extract_indent(node: tree_sitter.Node, source: bytes) -> str | None:

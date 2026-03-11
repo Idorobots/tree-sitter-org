@@ -19,6 +19,18 @@ if TYPE_CHECKING:
 __all__ = ["Element"]
 
 
+def build_semantic_repr(class_name: str, /, **fields: object) -> str:
+    """Build a compact repr omitting ``None`` and empty-list fields."""
+    parts = [
+        f"{name}={value!r}"
+        for name, value in fields.items()
+        if value is not None and not (isinstance(value, list) and not value)
+    ]
+    if not parts:
+        return f"{class_name}()"
+    return f"{class_name}({', '.join(parts)})"
+
+
 class Element:
     """Stub for an Org Mode element node.
 
@@ -147,7 +159,4 @@ class Element:
 
     def __repr__(self) -> str:
         """Return a developer-friendly representation."""
-        text_preview = self._source_text[:40]
-        if len(self._source_text) > 40:
-            text_preview += "…"
-        return f"Element(node_type={self._node_type!r}, text={text_preview!r})"
+        return f"Element(node_type={self._node_type!r})"

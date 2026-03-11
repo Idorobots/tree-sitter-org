@@ -497,10 +497,31 @@ class Heading:
         return _render_heading_dirty(self)
 
     def __repr__(self) -> str:
-        """Return a developer-friendly representation."""
-        stars = "*" * self._level
-        title = str(self._title) if self._title else ""
-        return f"Heading({stars} {title!r})"
+        """Return a tree-oriented representation for debugging."""
+        parts = [f"level={self._level!r}"]
+        optional_parts = [
+            ("todo", self._todo),
+            ("priority", self._priority),
+            ("title", self._title),
+            ("counter", self._counter),
+            ("scheduled", self._scheduled),
+            ("deadline", self._deadline),
+            ("closed", self._closed),
+            ("properties", self._properties),
+            ("logbook", self._logbook),
+        ]
+        parts.extend(
+            f"{name}={value!r}" for name, value in optional_parts if value is not None
+        )
+
+        list_parts = [
+            ("tags", self._tags),
+            ("repeated_tasks", self._repeated_tasks),
+            ("body", self._body),
+            ("children", self._children),
+        ]
+        parts.extend(f"{name}={value!r}" for name, value in list_parts if value)
+        return f"Heading({', '.join(parts)})"
 
 
 # ---------------------------------------------------------------------------
@@ -701,12 +722,7 @@ def _extract_indent_block(
     parent: Heading | Document,
 ) -> IndentBlock:
     """Build one :class:`IndentBlock` with recursively parsed body nodes."""
-    indent_node = node.child_by_field_name("indent")
-    indent = None
-    if indent_node is not None:
-        indent = source[indent_node.start_byte : indent_node.end_byte].decode() or None
     return IndentBlock(
-        indent=indent,
         body=[
             _extract_body_element(child, source, parent=parent)
             for child in node.children_by_field_name("body")

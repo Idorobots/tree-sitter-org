@@ -74,9 +74,7 @@ def _recover_stream(
 
         if in_block and isinstance(element, Paragraph):
             flush_list_run()
-            paragraph_run.append(
-                _reindent_paragraph(element, base_indent=base_indent, parent=parent)
-            )
+            paragraph_run.append(element)
             continue
 
         if isinstance(element, IndentBlock):
@@ -96,7 +94,7 @@ def _recover_stream(
                     element.body,
                     parent=parent,
                     in_block=True,
-                    base_indent=_indent_width(element.indent),
+                    base_indent=_source_indent_width(element.source_text),
                 )
             )
             continue
@@ -122,8 +120,8 @@ def _attach_block_to_pending_item(
         return False
 
     item = list_run[-1]
-    item_indent = base_indent + _indent_width(item.indent)
-    block_indent = _indent_width(block.indent)
+    item_indent = base_indent + _source_indent_width(item.source_text)
+    block_indent = _source_indent_width(block.source_text)
     if block_indent <= item_indent:
         return False
 
@@ -153,29 +151,6 @@ def _merge_paragraphs(
     )
 
 
-def _reindent_paragraph(
-    paragraph: Paragraph,
-    *,
-    base_indent: int,
-    parent: Document | Heading | Element | None,
-) -> Paragraph:
-    """Return one paragraph whose lines are prefixed with *base_indent* spaces."""
-    if base_indent <= 0:
-        return paragraph
-
-    prefix = " " * base_indent
-    lines = paragraph.source_text.splitlines(keepends=True)
-    reindented = "".join(
-        f"{prefix}{line}" if line.strip() != "" else line for line in lines
-    )
-    return Paragraph(
-        body=RichText(reindented),
-        indent=prefix,
-        parent=parent,
-        source_text=reindented,
-    )
-
-
 def _indent_width(indent: str | None) -> int:
     """Return indentation width for one optional indent string."""
     if indent is None:
@@ -190,3 +165,12 @@ def _indent_width(indent: str | None) -> int:
             continue
         break
     return width
+
+
+def _source_indent_width(source_text: str) -> int:
+    """Return indentation width from the first non-empty source line."""
+    for line in source_text.splitlines():
+        if line.strip() == "":
+            continue
+        return _indent_width(line)
+    return 0

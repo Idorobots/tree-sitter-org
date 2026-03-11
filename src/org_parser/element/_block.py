@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from org_parser.element._element import Element
+from org_parser.element._element import Element, build_semantic_repr
 from org_parser.element._indent_block import IndentBlock
 
 if TYPE_CHECKING:
@@ -77,6 +77,14 @@ class _ContainerBlock(Element):
             return self.source_text
         return f"{self._begin_line}\n{self._render_contents()}{self._end_line}\n"
 
+    def __repr__(self) -> str:
+        """Return a tree-oriented representation for debugging."""
+        return build_semantic_repr(
+            self.__class__.__name__,
+            begin_line=self._begin_line,
+            contents=self._contents,
+        )
+
 
 class _TextBlock(Element):
     """Base class for blocks whose contents are plain mutable text."""
@@ -113,6 +121,14 @@ class _TextBlock(Element):
             return self.source_text
         content = _ensure_single_trailing_newline(self._contents)
         return f"{self._begin_line}\n{content}{self._end_line}\n"
+
+    def __repr__(self) -> str:
+        """Return a tree-oriented representation for debugging."""
+        return build_semantic_repr(
+            self.__class__.__name__,
+            begin_line=self._begin_line,
+            contents=self._contents,
+        )
 
 
 class CenterBlock(_ContainerBlock):
@@ -691,6 +707,10 @@ class FixedWidthBlock(Element):
         rendered = [":\n" if line == "" else f": {line}\n" for line in lines]
         return "".join(rendered)
 
+    def __repr__(self) -> str:
+        """Return a tree-oriented representation for debugging."""
+        return build_semantic_repr("FixedWidthBlock", contents=self._contents)
+
 
 def _extract_container_contents(node: tree_sitter.Node, source: bytes) -> list[Element]:
     """Extract nested body elements for container-style blocks."""
@@ -743,12 +763,7 @@ def _extract_nested_element(node: tree_sitter.Node, source: bytes) -> Element:
 
 def _extract_indent_block(node: tree_sitter.Node, source: bytes) -> IndentBlock:
     """Build one nested :class:`IndentBlock` from a ``block`` node."""
-    indent_node = node.child_by_field_name("indent")
-    indent = None
-    if indent_node is not None:
-        indent = source[indent_node.start_byte : indent_node.end_byte].decode() or None
     return IndentBlock(
-        indent=indent,
         body=[
             _extract_nested_element(child, source)
             for child in node.children_by_field_name("body")

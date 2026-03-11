@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from org_parser.element._element import Element
+from org_parser.element._element import Element, build_semantic_repr
 from org_parser.text._rich_text import RichText
 
 if TYPE_CHECKING:
@@ -53,6 +53,10 @@ class TableCell:
     def __str__(self) -> str:
         """Render cell value as text."""
         return str(self._value)
+
+    def __repr__(self) -> str:
+        """Return a tree-oriented representation for debugging."""
+        return build_semantic_repr("TableCell", value=self._value)
 
 
 class TableRow:
@@ -102,6 +106,10 @@ class TableRow:
         """Assign table ownership to all cells."""
         for cell in self._cells:
             cell.set_table(self._table)
+
+    def __repr__(self) -> str:
+        """Return a tree-oriented representation for debugging."""
+        return build_semantic_repr("TableRow", is_rule=self._is_rule, cells=self._cells)
 
 
 class Table(Element):
@@ -218,6 +226,15 @@ class Table(Element):
         if not self.dirty and self._node is not None:
             return self.source_text
         return _render_org_table(self._rows, self._formulas)
+
+    def __repr__(self) -> str:
+        """Return a tree-oriented representation for debugging."""
+        return build_semantic_repr(
+            "Table",
+            rows=self._rows,
+            formulas=self._formulas,
+            is_tableel=self._is_tableel,
+        )
 
 
 def _parse_org_table_row(

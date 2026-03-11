@@ -6,7 +6,7 @@ from dataclasses import dataclass
 import re
 from typing import TYPE_CHECKING
 
-from org_parser.element._element import Element
+from org_parser.element._element import Element, build_semantic_repr
 from org_parser.text._rich_text import RichText
 from org_parser.time import Timestamp
 
@@ -35,8 +35,8 @@ class ListItemContinuation(Element):
     def __init__(
         self,
         *,
-        indent: str,
         content: RichText,
+        line_prefix: str = "",
         parent: Document | Heading | Element | None = None,
         source_text: str = "",
     ) -> None:
@@ -45,7 +45,7 @@ class ListItemContinuation(Element):
             source_text=source_text,
             parent=parent,
         )
-        self._indent = indent
+        self._line_prefix = line_prefix
         self._content = content
         self._content.set_parent(self, mark_dirty=False)
 
@@ -62,24 +62,13 @@ class ListItemContinuation(Element):
         content_nodes = node.children_by_field_name("content")
         parsed = RichText.from_nodes(content_nodes, source)
         continuation = cls(
-            indent=_extract_leading_indent(source_text),
             content=RichText("") if parsed is None else parsed,
+            line_prefix=_extract_leading_indent(source_text),
             parent=parent,
             source_text=source_text,
         )
         continuation._node = node
         return continuation
-
-    @property
-    def indent(self) -> str:
-        """Leading indentation for the continuation line."""
-        return self._indent
-
-    @indent.setter
-    def indent(self, value: str) -> None:
-        """Set leading indentation and mark continuation as dirty."""
-        self._indent = value
-        self._mark_dirty()
 
     @property
     def content(self) -> RichText:
@@ -97,7 +86,14 @@ class ListItemContinuation(Element):
         """Render continuation line text."""
         if not self.dirty and self._node is not None:
             return self.source_text
-        return f"{self._indent}{self._content}\n"
+        return f"{self._line_prefix}{self._content}\n"
+
+    def __repr__(self) -> str:
+        """Return a tree-oriented representation for debugging."""
+        return build_semantic_repr(
+            "ListItemContinuation",
+            content=self._content,
+        )
 
 
 class ListItem(Element):
@@ -106,7 +102,6 @@ class ListItem(Element):
     def __init__(
         self,
         *,
-        indent: str | None = None,
         bullet: str,
         ordered_counter: str | None = None,
         counter_set: str | None = None,
@@ -118,7 +113,7 @@ class ListItem(Element):
         source_text: str = "",
     ) -> None:
         super().__init__(node_type="list_item", source_text=source_text, parent=parent)
-        self._indent = indent
+        self._line_prefix = _extract_leading_indent(source_text)
         self._bullet = bullet
         self._ordered_counter = ordered_counter
         self._counter_set = counter_set
@@ -144,7 +139,6 @@ class ListItem(Element):
         """Create one :class:`ListItem` from a ``list_item`` parse node."""
         source_text = source[node.start_byte : node.end_byte].decode()
         item = cls(
-            indent=_extract_optional_field_text(node, source, "indent"),
             bullet=_extract_bullet(node, source),
             ordered_counter=_extract_optional_field_text(node, source, "counter"),
             counter_set=_extract_counter_set(node, source),
@@ -160,17 +154,6 @@ class ListItem(Element):
         )
         item._node = node
         return item
-
-    @property
-    def indent(self) -> str | None:
-        """Leading indentation for this flat-list item, if present."""
-        return self._indent
-
-    @indent.setter
-    def indent(self, value: str | None) -> None:
-        """Set indentation and mark item dirty."""
-        self._indent = value
-        self._mark_dirty()
 
     @property
     def bullet(self) -> str:
@@ -271,7 +254,8 @@ class ListItem(Element):
         if not self.dirty and self._node is not None and not self._body:
             return self.source_text
 
-        return self.render_with_indent(self._indent)
+        default_indent = self._line_prefix if self._line_prefix != "" else None
+        return self.render_with_indent(default_indent)
 
     def render_with_indent(self, indent: str | None) -> str:
         """Render list-item text with one explicit indentation prefix."""
@@ -299,6 +283,18 @@ class ListItem(Element):
         parts.extend(_ensure_trailing_newline(str(element)) for element in self._body)
         return "".join(parts)
 
+    def __repr__(self) -> str:
+        """Return a tree-oriented representation for debugging."""
+        return build_semantic_repr(
+            "ListItem",
+            bullet=self._bullet,
+            counter_set=self._counter_set,
+            checkbox=self._checkbox,
+            item_tag=self._item_tag,
+            first_line=self._first_line,
+            body=self._body,
+        )
+
 
 class Repeat(ListItem):
     """Repeated-task logbook entry represented as a specialized list item."""
@@ -311,7 +307,6 @@ class Repeat(ListItem):
         timestamp: Timestamp,
         note: str | None = None,
         note_indent: str | None = None,
-        indent: str | None = None,
         bullet: str = "-",
         ordered_counter: str | None = None,
         counter_set: str | None = None,
@@ -320,7 +315,6 @@ class Repeat(ListItem):
         source_text: str = "",
     ) -> None:
         super().__init__(
-            indent=indent,
             bullet=bullet,
             ordered_counter=ordered_counter,
             counter_set=counter_set,
@@ -336,8 +330,12 @@ class Repeat(ListItem):
         self._before = before
         self._timestamp = timestamp
         self._note = _normalize_optional_text(note)
+        indent = _extract_leading_indent(source_text)
+        normalized_indent = indent if indent != "" else None
         self._note_indent = (
-            note_indent if note_indent is not None else _default_note_indent(indent)
+            note_indent
+            if note_indent is not None
+            else _default_note_indent(normalized_indent)
         )
 
     @classmethod
@@ -352,7 +350,6 @@ class Repeat(ListItem):
             timestamp=matched.timestamp,
             note=matched.note,
             note_indent=matched.note_indent,
-            indent=item.indent,
             bullet=item.bullet,
             ordered_counter=item.ordered_counter,
             counter_set=item.counter_set,
@@ -412,7 +409,8 @@ class Repeat(ListItem):
         if not self.dirty and self._node is not None:
             return self.source_text
 
-        return self.render_with_indent(self._indent)
+        default_indent = self._line_prefix if self._line_prefix != "" else None
+        return self.render_with_indent(default_indent)
 
     def render_with_indent(self, indent: str | None) -> str:
         """Render repeat entry text with one explicit indentation prefix."""
@@ -434,6 +432,17 @@ class Repeat(ListItem):
         parts.append(" \\\\\n")
         parts.append(f"{self._note_indent}{self._note}\n")
         return "".join(parts)
+
+    def __repr__(self) -> str:
+        """Return a tree-oriented representation for debugging."""
+        return build_semantic_repr(
+            "Repeat",
+            after=self._after,
+            before=self._before,
+            timestamp=self._timestamp,
+            note=self._note,
+            body=self._body,
+        )
 
 
 class List(Element):
@@ -523,6 +532,10 @@ class List(Element):
         if value < 0:
             raise ValueError("List indentation step must be non-negative")
         cls.default_indent_step = value
+
+    def __repr__(self) -> str:
+        """Return a tree-oriented representation for debugging."""
+        return build_semantic_repr("List", items=self._items)
 
 
 def _extract_list_item_body_element(node: tree_sitter.Node, source: bytes) -> Element:

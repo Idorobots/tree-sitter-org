@@ -469,10 +469,29 @@ class Document:
         return _render_document_dirty(self)
 
     def __repr__(self) -> str:
-        """Return a developer-friendly representation."""
-        return (
-            f"Document(filename={self._filename!r}, " f"headings={len(self._children)})"
-        )
+        """Return a tree-oriented representation for debugging."""
+        parts = [f"filename={self._filename!r}"]
+        if self._title is not None:
+            parts.append(f"title={self._title!r}")
+        if self._author is not None:
+            parts.append(f"author={self._author!r}")
+        if self._category is not None:
+            parts.append(f"category={self._category!r}")
+        if self._description is not None:
+            parts.append(f"description={self._description!r}")
+        if self._todo is not None:
+            parts.append(f"todo={self._todo!r}")
+        if self._keywords:
+            parts.append(f"keywords={self._keywords!r}")
+        if self._properties is not None:
+            parts.append(f"properties={self._properties!r}")
+        if self._logbook is not None:
+            parts.append(f"logbook={self._logbook!r}")
+        if self._body:
+            parts.append(f"body={self._body!r}")
+        if self._children:
+            parts.append(f"children={self._children!r}")
+        return f"Document({', '.join(parts)})"
 
 
 # ---------------------------------------------------------------------------
@@ -627,12 +646,7 @@ def _extract_indent_block(
     parent: Document,
 ) -> IndentBlock:
     """Build one :class:`IndentBlock` with recursively parsed body nodes."""
-    indent_node = node.child_by_field_name("indent")
-    indent = None
-    if indent_node is not None:
-        indent = source[indent_node.start_byte : indent_node.end_byte].decode() or None
     return IndentBlock(
-        indent=indent,
         body=[
             _extract_body_element(child, source, parent=parent)
             for child in node.children_by_field_name("body")

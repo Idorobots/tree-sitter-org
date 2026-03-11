@@ -17,7 +17,7 @@ from org_parser.element._block import (
     SpecialBlock,
     VerseBlock,
 )
-from org_parser.element._element import Element
+from org_parser.element._element import Element, build_semantic_repr
 from org_parser.element._indent_block import IndentBlock
 from org_parser.element._list import List, ListItem, Repeat
 from org_parser.element._list_recovery import recover_lists
@@ -145,6 +145,10 @@ class Drawer(Element):
         )
         return f":{self._name}:\n{body_text}:END:\n"
 
+    def __repr__(self) -> str:
+        """Return a tree-oriented representation for debugging."""
+        return build_semantic_repr("Drawer", name=self._name, body=self._body)
+
 
 class Logbook(Drawer):
     """Specialized drawer for ``:LOGBOOK:`` entries."""
@@ -228,6 +232,15 @@ class Logbook(Drawer):
         self._repeats = value
         _sync_logbook_repeat_list(self, self._repeats)
         self._mark_dirty()
+
+    def __repr__(self) -> str:
+        """Return a tree-oriented representation for debugging."""
+        return build_semantic_repr(
+            "Logbook",
+            body=self._body,
+            clock_entries=self._clock_entries,
+            repeats=self._repeats,
+        )
 
 
 class Properties(Element, MutableMapping[str, RichText]):
@@ -348,6 +361,10 @@ class Properties(Element, MutableMapping[str, RichText]):
         lines.append(":END:\n")
         return "".join(lines)
 
+    def __repr__(self) -> str:
+        """Return a tree-oriented representation for debugging."""
+        return build_semantic_repr("Properties", properties=self._properties)
+
 
 def _extract_drawer_body_element(node: tree_sitter.Node, source: bytes) -> Element:
     """Build one semantic element object for a drawer body child node."""
@@ -385,12 +402,7 @@ def _extract_drawer_body_element(node: tree_sitter.Node, source: bytes) -> Eleme
 
 def _extract_indent_block(node: tree_sitter.Node, source: bytes) -> IndentBlock:
     """Build one :class:`IndentBlock` for a drawer body ``block`` node."""
-    indent_node = node.child_by_field_name("indent")
-    indent = None
-    if indent_node is not None:
-        indent = source[indent_node.start_byte : indent_node.end_byte].decode() or None
     return IndentBlock(
-        indent=indent,
         body=[
             _extract_drawer_body_element(child, source)
             for child in node.children_by_field_name("body")
