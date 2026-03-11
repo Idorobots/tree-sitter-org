@@ -257,7 +257,7 @@ class ListItem(Element):
         default_indent = self._line_prefix if self._line_prefix != "" else None
         return self.render_with_indent(default_indent)
 
-    def render_with_indent(self, indent: str | None) -> str:
+    def render_with_indent(self, indent: str | None, *, indent_step: int = 2) -> str:
         """Render list-item text with one explicit indentation prefix."""
         parts: list[str] = []
         if indent is not None:
@@ -280,7 +280,13 @@ class ListItem(Element):
             parts.append(str(self._first_line))
 
         parts.append("\n")
-        parts.extend(_ensure_trailing_newline(str(element)) for element in self._body)
+        body_prefix = (indent if indent is not None else "") + (" " * indent_step)
+        for element in self._body:
+            rendered = _ensure_trailing_newline(str(element))
+            if element.node_type == "plain_list":
+                parts.append(rendered)
+                continue
+            parts.append(_indent_non_empty_lines(rendered, body_prefix))
         return "".join(parts)
 
     def __repr__(self) -> str:
@@ -412,7 +418,7 @@ class Repeat(ListItem):
         default_indent = self._line_prefix if self._line_prefix != "" else None
         return self.render_with_indent(default_indent)
 
-    def render_with_indent(self, indent: str | None) -> str:
+    def render_with_indent(self, indent: str | None, *, indent_step: int = 2) -> str:
         """Render repeat entry text with one explicit indentation prefix."""
         parts: list[str] = []
         if indent is not None:
@@ -518,13 +524,29 @@ class List(Element):
         for item in items:
             item.set_parent(self, mark_dirty=False)
 
+    def _mark_dirty(self) -> None:
+        """Mark this list and all direct items as dirty."""
+        if self._dirty:
+            return
+        self._dirty = True
+        for item in self._items:
+            item._dirty = True
+        parent = self._parent
+        if parent is None:
+            return
+        if not parent.dirty:
+            parent.mark_dirty()
+
     def __str__(self) -> str:
         """Render list text preserving source while clean and parse-backed."""
         if not self.dirty and self._node is not None:
             return self.source_text
         depth = _list_depth(self)
         indent = " " * (depth * self.default_indent_step)
-        return "".join(item.render_with_indent(indent) for item in self._items)
+        return "".join(
+            item.render_with_indent(indent, indent_step=self.default_indent_step)
+            for item in self._items
+        )
 
     @classmethod
     def set_default_indent_step(cls, value: int) -> None:
@@ -647,6 +669,14 @@ def _ensure_trailing_newline(value: str) -> str:
     if value == "" or value.endswith("\n"):
         return value
     return f"{value}\n"
+
+
+def _indent_non_empty_lines(value: str, prefix: str) -> str:
+    """Prefix each non-empty line in *value* with *prefix*."""
+    if prefix == "":
+        return value
+    lines = value.splitlines(keepends=True)
+    return "".join(f"{prefix}{line}" if line.strip() != "" else line for line in lines)
 
 
 def _list_depth(list_node: List) -> int:

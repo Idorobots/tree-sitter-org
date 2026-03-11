@@ -79,7 +79,7 @@ def test_indented_paragraph_mutation_dirties_owner_list_item() -> None:
     assert item.dirty is True
     assert parsed.dirty is True
     assert document.dirty is True
-    assert str(parsed) == "- one\nchanged\n"
+    assert str(parsed) == "- one\n  changed\n"
 
 
 def test_list_append_item_supports_mutation_and_adoption() -> None:
@@ -185,3 +185,30 @@ def test_dirty_list_rendering_uses_configurable_class_indent_step() -> None:
         assert str(parsed) == "- updated\n    - child\n"
     finally:
         List.set_default_indent_step(old_step)
+
+
+def test_marking_list_dirty_marks_all_items_dirty() -> None:
+    """Directly marking a list dirty marks each contained item dirty."""
+    document = loads("- one\n- two\n")
+    assert isinstance(document.body[0], List)
+    parsed = document.body[0]
+
+    assert parsed.items[0].dirty is False
+    assert parsed.items[1].dirty is False
+
+    parsed.mark_dirty()
+
+    assert parsed.dirty is True
+    assert parsed.items[0].dirty is True
+    assert parsed.items[1].dirty is True
+
+
+def test_dirty_list_indents_non_list_body_elements() -> None:
+    """Dirty list rendering indents all non-list body elements by level."""
+    document = loads("- one\n  #+begin_quote\n  q\n  #+end_quote\n")
+    assert isinstance(document.body[0], List)
+    parsed = document.body[0]
+
+    parsed.items[0].first_line = RichText("ONE")
+
+    assert str(parsed) == "- ONE\n  #+begin_quote\n    q\n    #+end_quote\n"
