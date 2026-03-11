@@ -66,25 +66,25 @@ Table with indented TBLFM formula line
 
 (document
   (zeroth_section
-    (org_table
-      (table_row
-        (table_cell
-          (plain_text)
-          (bold
-            body: (plain_text))
-          (plain_text))
-        (table_cell
-          (plain_text))
-        (table_cell
-          (plain_text))
-        (table_cell
-          (plain_text))
-        (table_cell
-          (plain_text))
-        (table_cell
-          (plain_text)))
-      (tblfm_line
-        indent: (indent)))))
+    (block
+      indent: (indent)
+      body: (org_table
+        (table_row
+          (table_cell
+            (bold
+              body: (plain_text))
+            (plain_text))
+          (table_cell
+            (plain_text))
+          (table_cell
+            (plain_text))
+          (table_cell
+            (plain_text))
+          (table_cell
+            (plain_text))
+          (table_cell
+            (plain_text)))
+        (tblfm_line)))))
 
 ================
 Table with rule row
@@ -126,24 +126,26 @@ Indented table with caption
   (zeroth_section
     (caption_keyword
       (plain_text))
-    (org_table
-      (table_row
-        (table_cell
-          (plain_text))
-        (table_cell
-          (plain_text)))
-      (table_row
-        (table_rule))
-      (table_row
-        (table_cell
-          (plain_text))
-        (table_cell
-          (plain_text)))
-      (table_row
-        (table_cell
-          (plain_text))
-        (table_cell
-          (plain_text))))))
+    (block
+      (indent)
+      (org_table
+        (table_row
+          (table_cell
+            (plain_text))
+          (table_cell
+            (plain_text)))
+        (table_row
+          (table_rule))
+        (table_row
+          (table_cell
+            (plain_text))
+          (table_cell
+            (plain_text)))
+        (table_row
+          (table_cell
+            (plain_text))
+          (table_cell
+            (plain_text)))))))
 
 ================
 Indented single-column table with rule row
@@ -158,21 +160,23 @@ Indented single-column table with rule row
 
 (document
   (zeroth_section
-    (org_table
-      (table_row
-        (table_cell
-          (plain_text)))
-      (table_row
-        (table_rule))
-      (table_row
-        (table_cell
-          (plain_text)))
-      (table_row
-        (table_cell
-          (plain_text)))
-      (table_row
-        (table_cell
-          (plain_text))))))
+    (block
+      (indent)
+      (org_table
+        (table_row
+          (table_cell
+            (plain_text)))
+        (table_row
+          (table_rule))
+        (table_row
+          (table_cell
+            (plain_text)))
+        (table_row
+          (table_cell
+            (plain_text)))
+        (table_row
+          (table_cell
+            (plain_text)))))))
 
 ================
 Markup ending directly before table separator

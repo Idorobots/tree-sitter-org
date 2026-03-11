@@ -83,17 +83,19 @@ Indented paragraphs under heading and list item
     stars: (stars)
     title: (plain_text)
     body: (section
-      (paragraph
+      (block
         indent: (indent)
-        (plain_text)
-        (newline))
+        body: (paragraph
+          (plain_text)
+          (newline)))
       (blank_line)
       (list_item
         first_line: (plain_text))
-      (paragraph
+      (block
         indent: (indent)
-        (plain_text)
-        (newline)))))
+        body: (paragraph
+          (plain_text)
+          (newline))))))
 
 ================
 Indented hash comment inside heading body
@@ -113,8 +115,9 @@ Indented hash comment inside heading body
       (paragraph
         (plain_text)
         (newline))
-      (comment
-        indent: (indent))
+      (block
+        indent: (indent)
+        body: (comment))
       (paragraph
         (plain_text)
         (newline)))))
@@ -297,19 +300,21 @@ Indented timestamp and link lines in heading section
     stars: (stars)
     title: (plain_text)
     body: (section
-      indent: (indent)
-      (timestamp
-        year: (ts_year)
-        month: (ts_month)
-        day: (ts_day)
-        dayname: (ts_dayname)
-        time: (ts_time))
-      (newline)
-      indent: (indent)
-      (regular_link
-        path: (link_path)
-        description: (plain_text))
-      (newline))))
+      (block
+        indent: (indent)
+        body: (paragraph
+          (timestamp
+            year: (ts_year)
+            month: (ts_month)
+            day: (ts_day)
+            dayname: (ts_dayname)
+            time: (ts_time))
+          (newline))
+        body: (paragraph
+          (regular_link
+            path: (link_path)
+            description: (plain_text))
+          (newline))))))
 
 ================
 Backslash text in paragraph body

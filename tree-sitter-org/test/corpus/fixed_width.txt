@@ -44,7 +44,9 @@ Indented fixed-width line
 
 (document
   (zeroth_section
-    (fixed_width)))
+    (block
+      (indent)
+      (fixed_width))))
 
 ================
 Indented empty fixed-width line
@@ -55,7 +57,9 @@ Indented empty fixed-width line
 
 (document
   (zeroth_section
-    (fixed_width)))
+    (block
+      (indent)
+      (fixed_width))))
 
 ================
 Fixed-width followed by paragraph

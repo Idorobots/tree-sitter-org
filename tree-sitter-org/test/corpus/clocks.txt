@@ -62,15 +62,18 @@ Clock inside drawer with indentation
     (plain_text)
     (section
       (logbook_drawer
-        (clock
-          (indent)
-          (ts_year)
-          (ts_month)
-          (ts_day)
-          (ts_dayname)
-          (ts_time)
-          (ts_year)
-          (ts_month)
-          (ts_day)
-          (ts_dayname)
-          (ts_time))))))
+        (paragraph
+          (plain_text)
+          (timestamp
+            (ts_year)
+            (ts_month)
+            (ts_day)
+            (ts_dayname)
+            (ts_time)
+            (ts_year)
+            (ts_month)
+            (ts_day)
+            (ts_dayname)
+            (ts_time))
+          (plain_text)
+          (newline))))))

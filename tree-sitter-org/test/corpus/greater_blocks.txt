@@ -123,34 +123,34 @@ Indented greater and dynamic blocks
 
 (document
   (zeroth_section
-    (center_block
+    (block
       (indent)
-      (paragraph
-        (plain_text)
-        (newline))
-      (indent))
+      (center_block
+        (paragraph
+          (plain_text)
+          (newline))))
     (blank_line)
-    (quote_block
+    (block
       (indent)
-      (paragraph
-        (plain_text)
-        (newline))
-      (indent))
+      (quote_block
+        (paragraph
+          (plain_text)
+          (newline))))
     (blank_line)
-    (special_block
+    (block
       (indent)
-      (paragraph
-        (plain_text)
-        (newline))
-      (indent))
+      (special_block
+        (paragraph
+          (plain_text)
+          (newline))))
     (blank_line)
-    (dynamic_block
+    (block
       (indent)
-      (dynamic_block_name)
-      (org_table
-        (table_row
-          (table_cell
-            (plain_text))
-          (table_cell
-            (plain_text))))
-      (indent))))
+      (dynamic_block
+        (dynamic_block_name)
+        (org_table
+          (table_row
+            (table_cell
+              (plain_text))
+            (table_cell
+              (plain_text))))))))

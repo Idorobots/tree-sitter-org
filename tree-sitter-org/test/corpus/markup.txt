@@ -172,11 +172,13 @@ Indented code span with bracketed type
 
 (document
   (zeroth_section
-    (paragraph
-      (plain_text)
-      (code
-        (code_content))
-      (newline))))
+    (block
+      (indent)
+      (paragraph
+        (plain_text)
+        (code
+          (code_content))
+        (newline)))))
 
 ================
 Code span with method call
