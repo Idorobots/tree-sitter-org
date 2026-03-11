@@ -18,6 +18,7 @@ from org_parser.element._block import (
     VerseBlock,
 )
 from org_parser.element._element import Element
+from org_parser.element._indent_block import IndentBlock
 from org_parser.element._list import List, ListItem, Repeat
 from org_parser.element._list_recovery import recover_lists
 from org_parser.text._rich_text import RichText
@@ -50,6 +51,7 @@ _SRC_BLOCK = "src_block"
 _VERSE_BLOCK = "verse_block"
 _FIXED_WIDTH = "fixed_width"
 _LIST_ITEM = "list_item"
+_BLOCK = "block"
 
 
 class Drawer(Element):
@@ -352,6 +354,9 @@ def _extract_drawer_body_element(node: tree_sitter.Node, source: bytes) -> Eleme
     from org_parser.element._paragraph import Paragraph
     from org_parser.element._table import Table
 
+    if node.type == _BLOCK:
+        return _extract_indent_block(node, source)
+
     dispatch = {
         _PARAGRAPH: Paragraph.from_node,
         _ORG_TABLE: Table.from_node,
@@ -376,6 +381,23 @@ def _extract_drawer_body_element(node: tree_sitter.Node, source: bytes) -> Eleme
     if factory is None:
         return Element.from_node(node, source)
     return factory(node, source)
+
+
+def _extract_indent_block(node: tree_sitter.Node, source: bytes) -> IndentBlock:
+    """Build one :class:`IndentBlock` for a drawer body ``block`` node."""
+    indent_node = node.child_by_field_name("indent")
+    indent = None
+    if indent_node is not None:
+        indent = source[indent_node.start_byte : indent_node.end_byte].decode() or None
+    return IndentBlock(
+        indent=indent,
+        body=[
+            _extract_drawer_body_element(child, source)
+            for child in node.children_by_field_name("body")
+            if child.is_named
+        ],
+        source_text=source[node.start_byte : node.end_byte].decode(),
+    )
 
 
 def _coalesce_list_items(

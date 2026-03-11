@@ -271,9 +271,13 @@ class ListItem(Element):
         if not self.dirty and self._node is not None and not self._body:
             return self.source_text
 
+        return self.render_with_indent(self._indent)
+
+    def render_with_indent(self, indent: str | None) -> str:
+        """Render list-item text with one explicit indentation prefix."""
         parts: list[str] = []
-        if self._indent is not None:
-            parts.append(self._indent)
+        if indent is not None:
+            parts.append(indent)
 
         if self._ordered_counter is not None and self._bullet in {".", ")"}:
             parts.append(f"{self._ordered_counter}{self._bullet} ")
@@ -408,9 +412,13 @@ class Repeat(ListItem):
         if not self.dirty and self._node is not None:
             return self.source_text
 
+        return self.render_with_indent(self._indent)
+
+    def render_with_indent(self, indent: str | None) -> str:
+        """Render repeat entry text with one explicit indentation prefix."""
         parts: list[str] = []
-        if self._indent is not None:
-            parts.append(self._indent)
+        if indent is not None:
+            parts.append(indent)
         if self._ordered_counter is not None and self._bullet in {".", ")"}:
             parts.append(f"{self._ordered_counter}{self._bullet} ")
         else:
@@ -430,6 +438,8 @@ class Repeat(ListItem):
 
 class List(Element):
     """Plain list element containing mutable :class:`ListItem` instances."""
+
+    default_indent_step = 2
 
     def __init__(
         self,
@@ -503,7 +513,16 @@ class List(Element):
         """Render list text preserving source while clean and parse-backed."""
         if not self.dirty and self._node is not None:
             return self.source_text
-        return "".join(str(item) for item in self._items)
+        depth = _list_depth(self)
+        indent = " " * (depth * self.default_indent_step)
+        return "".join(item.render_with_indent(indent) for item in self._items)
+
+    @classmethod
+    def set_default_indent_step(cls, value: int) -> None:
+        """Set class-wide indentation width for dirty list rendering."""
+        if value < 0:
+            raise ValueError("List indentation step must be non-negative")
+        cls.default_indent_step = value
 
 
 def _extract_list_item_body_element(node: tree_sitter.Node, source: bytes) -> Element:
@@ -615,6 +634,21 @@ def _ensure_trailing_newline(value: str) -> str:
     if value == "" or value.endswith("\n"):
         return value
     return f"{value}\n"
+
+
+def _list_depth(list_node: List) -> int:
+    """Return nesting depth by walking list ancestors."""
+    depth = 0
+    parent = list_node.parent
+    while parent is not None:
+        if isinstance(parent, ListItem):
+            grandparent = parent.parent
+            if isinstance(grandparent, List):
+                depth += 1
+                parent = grandparent.parent
+                continue
+        parent = parent.parent if isinstance(parent, Element) else None
+    return depth
 
 
 @dataclass(slots=True)

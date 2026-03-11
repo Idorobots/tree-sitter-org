@@ -119,16 +119,18 @@ def test_nested_list_items_are_recovered_by_indent() -> None:
     assert str(nested_list.items[1].first_line) == "child two"
 
 
-def test_mixed_indent_paragraph_stays_at_section_level() -> None:
-    """Mixed-indentation paragraph text is not attached to list item body."""
+def test_mixed_indent_paragraph_attaches_block_line_and_keeps_tail() -> None:
+    """Block line after list item attaches while later tail stays section-level."""
     document = loads("- one\n  continuation\nplain tail\n")
 
     assert isinstance(document.body[0], List)
     parsed = document.body[0]
     item = parsed.items[0]
-    assert item.body == []
+    assert len(item.body) == 1
+    assert isinstance(item.body[0], Paragraph)
+    assert str(item.body[0]) == "  continuation\n"
     assert isinstance(document.body[1], Paragraph)
-    assert str(document.body[1]) == "  continuation\nplain tail\n"
+    assert str(document.body[1]) == "plain tail\n"
 
 
 def test_single_blank_line_keeps_continuation_ownership() -> None:
@@ -141,3 +143,45 @@ def test_single_blank_line_keeps_continuation_ownership() -> None:
     assert len(parsed.items[0].body) == 1
     assert isinstance(parsed.items[0].body[0], Paragraph)
     assert str(parsed.items[0].body[0]) == "  continued\n"
+
+
+def test_block_body_breaks_recovered_lists_on_non_list_nodes() -> None:
+    """Paragraphs inside one block split recovered list runs."""
+    document = loads("- parent\n  - child a\n  break\n  - child b\n")
+
+    assert isinstance(document.body[0], List)
+    parent_item = document.body[0].items[0]
+    assert len(parent_item.body) == 3
+    assert isinstance(parent_item.body[0], List)
+    assert isinstance(parent_item.body[1], Paragraph)
+    assert isinstance(parent_item.body[2], List)
+
+
+def test_consecutive_blocks_of_same_indent_stay_separate() -> None:
+    """Recovery does not merge paragraph runs across sibling blocks."""
+    document = loads("- one\n  first\n\n  second\n")
+
+    assert isinstance(document.body[0], List)
+    item = document.body[0].items[0]
+    assert len(item.body) == 2
+    assert isinstance(item.body[0], Paragraph)
+    assert isinstance(item.body[1], Paragraph)
+    assert str(item.body[0]) == "  first\n"
+    assert str(item.body[1]) == "  second\n"
+
+
+def test_dirty_list_rendering_uses_configurable_class_indent_step() -> None:
+    """Dirty nested list rendering follows the class-level indent step."""
+    document = loads("- parent\n  - child\n")
+    assert isinstance(document.body[0], List)
+    parsed = document.body[0]
+
+    old_step = List.default_indent_step
+    try:
+        parsed.items[0].first_line = RichText("updated")
+        assert str(parsed) == "- updated\n  - child\n"
+
+        List.set_default_indent_step(4)
+        assert str(parsed) == "- updated\n    - child\n"
+    finally:
+        List.set_default_indent_step(old_step)

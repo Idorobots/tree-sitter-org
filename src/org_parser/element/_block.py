@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from org_parser.element._element import Element
+from org_parser.element._indent_block import IndentBlock
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -710,6 +711,9 @@ def _extract_nested_element(node: tree_sitter.Node, source: bytes) -> Element:
     from org_parser.element._table import Table
     from org_parser.time import Clock
 
+    if node.type == "block":
+        return _extract_indent_block(node, source)
+
     dispatch = {
         "paragraph": Paragraph.from_node,
         "org_table": Table.from_node,
@@ -735,6 +739,23 @@ def _extract_nested_element(node: tree_sitter.Node, source: bytes) -> Element:
     if factory is None:
         return Element.from_node(node, source)
     return factory(node, source)
+
+
+def _extract_indent_block(node: tree_sitter.Node, source: bytes) -> IndentBlock:
+    """Build one nested :class:`IndentBlock` from a ``block`` node."""
+    indent_node = node.child_by_field_name("indent")
+    indent = None
+    if indent_node is not None:
+        indent = source[indent_node.start_byte : indent_node.end_byte].decode() or None
+    return IndentBlock(
+        indent=indent,
+        body=[
+            _extract_nested_element(child, source)
+            for child in node.children_by_field_name("body")
+            if child.is_named
+        ],
+        source_text=_node_text(node, source),
+    )
 
 
 def _coalesce_list_items(elements: list[Element]) -> list[Element]:

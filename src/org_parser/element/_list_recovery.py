@@ -1,12 +1,13 @@
-"""Semantic recovery helpers for flat list-item streams."""
+"""Semantic recovery helpers for list and block structure."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from org_parser.element._indent_block import IndentBlock
 from org_parser.element._list import List, ListItem
 from org_parser.element._paragraph import Paragraph
+from org_parser.text._rich_text import RichText
 
 if TYPE_CHECKING:
     from org_parser.document._document import Document
@@ -16,153 +17,171 @@ if TYPE_CHECKING:
 __all__ = ["recover_lists"]
 
 
-@dataclass(slots=True)
-class _ListLevel:
-    """One active recovered list level."""
-
-    indent: int
-    list_node: List
-    last_item: ListItem
-
-
 def recover_lists(
     elements: list[Element],
     *,
     parent: Document | Heading | Element | None,
 ) -> list[Element]:
-    """Recover nested semantic lists from flat ``list_item`` elements."""
+    """Recover semantic lists and paragraph runs from section elements."""
+    return _recover_stream(elements, parent=parent, in_block=False, base_indent=0)
+
+
+def _recover_stream(
+    elements: list[Element],
+    *,
+    parent: Document | Heading | Element | None,
+    in_block: bool,
+    base_indent: int,
+) -> list[Element]:
+    """Recover one flat element stream, recursively handling indent blocks."""
     recovered: list[Element] = []
-    list_stack: list[_ListLevel] = []
-    pending_blank_lines = 0
+    paragraph_run: list[Paragraph] = []
+    list_run: list[ListItem] = []
+
+    def flush_paragraph_run() -> None:
+        if not paragraph_run:
+            return
+        if len(paragraph_run) == 1:
+            recovered.append(paragraph_run[0])
+        else:
+            recovered.append(_merge_paragraphs(paragraph_run, parent=parent))
+        paragraph_run.clear()
+
+    def flush_list_run() -> None:
+        if not list_run:
+            return
+        recovered.append(List(items=list(list_run), parent=parent))
+        list_run.clear()
 
     for element in elements:
-        if isinstance(element, ListItem):
-            pending_blank_lines = 0
-            _attach_list_item(element, recovered, list_stack, parent=parent)
-            continue
-
         if element.node_type == "blank_line":
-            pending_blank_lines += 1
+            flush_paragraph_run()
+            if in_block:
+                flush_list_run()
+                recovered.append(element)
+                continue
+
+            if list_run:
+                continue
+
             recovered.append(element)
             continue
 
-        if _attach_as_item_body(
-            element,
-            list_stack,
-            pending_blank_lines=pending_blank_lines,
-        ):
-            pending_blank_lines = 0
+        if isinstance(element, ListItem):
+            flush_paragraph_run()
+            list_run.append(element)
             continue
 
-        pending_blank_lines = 0
-        if list_stack:
-            element_indent = _element_indent(element)
-            while list_stack and element_indent <= list_stack[-1].indent:
-                list_stack.pop()
-            if not list_stack:
-                list_stack.clear()
+        if in_block and isinstance(element, Paragraph):
+            flush_list_run()
+            paragraph_run.append(
+                _reindent_paragraph(element, base_indent=base_indent, parent=parent)
+            )
+            continue
+
+        if isinstance(element, IndentBlock):
+            attached = _attach_block_to_pending_item(
+                element,
+                list_run,
+                parent=parent,
+                base_indent=base_indent,
+            )
+            if attached:
+                continue
+
+            flush_paragraph_run()
+            flush_list_run()
+            recovered.extend(
+                _recover_stream(
+                    element.body,
+                    parent=parent,
+                    in_block=True,
+                    base_indent=_indent_width(element.indent),
+                )
+            )
+            continue
+
+        flush_paragraph_run()
+        flush_list_run()
         recovered.append(element)
 
+    flush_paragraph_run()
+    flush_list_run()
     return recovered
 
 
-def _attach_list_item(
-    item: ListItem,
-    recovered: list[Element],
-    list_stack: list[_ListLevel],
+def _attach_block_to_pending_item(
+    block: IndentBlock,
+    list_run: list[ListItem],
     *,
     parent: Document | Heading | Element | None,
-) -> None:
-    """Attach one list item either as sibling or nested child."""
-    indent = _indent_width(item.indent)
-
-    while list_stack and indent < list_stack[-1].indent:
-        list_stack.pop()
-
-    if not list_stack:
-        top_list = List(items=[item], parent=parent)
-        recovered.append(top_list)
-        list_stack.append(_ListLevel(indent=indent, list_node=top_list, last_item=item))
-        return
-
-    current = list_stack[-1]
-    if indent == current.indent:
-        current.list_node.append_item(item, mark_dirty=False)
-        current.last_item = item
-        return
-
-    if indent > current.indent:
-        nested_list = List(items=[item], parent=current.last_item)
-        current.last_item.append_body(nested_list, mark_dirty=False)
-        list_stack.append(
-            _ListLevel(indent=indent, list_node=nested_list, last_item=item)
-        )
-        return
-
-    fallback_list = List(items=[item], parent=parent)
-    recovered.append(fallback_list)
-    list_stack.append(
-        _ListLevel(indent=indent, list_node=fallback_list, last_item=item)
-    )
-
-
-def _attach_as_item_body(
-    element: Element,
-    list_stack: list[_ListLevel],
-    *,
-    pending_blank_lines: int,
+    base_indent: int,
 ) -> bool:
-    """Return whether *element* is attached as body to current list item."""
-    if not list_stack:
+    """Attach one block's recovered body to the current list item when nested."""
+    if not list_run:
         return False
 
-    current = list_stack[-1]
-    item_indent = _indent_width(current.last_item.indent)
-    element_indent = _element_indent(element)
-    if element_indent <= item_indent:
+    item = list_run[-1]
+    item_indent = base_indent + _indent_width(item.indent)
+    block_indent = _indent_width(block.indent)
+    if block_indent <= item_indent:
         return False
 
-    if pending_blank_lines >= 2 and element_indent <= item_indent:
-        return False
-
-    if isinstance(element, Paragraph):
-        min_indent = compute_min_indent(element)
-        if min_indent is None or min_indent <= item_indent:
-            return False
-
-    current.last_item.append_body(element, mark_dirty=False)
+    recovered = _recover_stream(
+        block.body,
+        parent=parent,
+        in_block=True,
+        base_indent=block_indent,
+    )
+    for nested in recovered:
+        item.append_body(nested, mark_dirty=False)
     return True
 
 
-def compute_min_indent(paragraph: Paragraph) -> int | None:
-    """Compute minimum indent across non-empty paragraph lines."""
-    lines = paragraph.source_text.splitlines()
-    indents = [_leading_indent_width(line) for line in lines if line.strip() != ""]
-    if not indents:
-        return None
-    return min(indents)
+def _merge_paragraphs(
+    paragraphs: list[Paragraph],
+    *,
+    parent: Document | Heading | Element | None,
+) -> Paragraph:
+    """Merge consecutive paragraph elements into one source-preserving object."""
+    merged_text = "".join(paragraph.source_text for paragraph in paragraphs)
+    return Paragraph(
+        body=RichText(merged_text),
+        indent=paragraphs[0].indent,
+        parent=parent,
+        source_text=merged_text,
+    )
 
 
-def _element_indent(element: Element) -> int:
-    """Return the first non-empty line indentation width for one element."""
-    for line in element.source_text.splitlines():
-        if line.strip() == "":
-            continue
-        return _leading_indent_width(line)
-    return 0
+def _reindent_paragraph(
+    paragraph: Paragraph,
+    *,
+    base_indent: int,
+    parent: Document | Heading | Element | None,
+) -> Paragraph:
+    """Return one paragraph whose lines are prefixed with *base_indent* spaces."""
+    if base_indent <= 0:
+        return paragraph
+
+    prefix = " " * base_indent
+    lines = paragraph.source_text.splitlines(keepends=True)
+    reindented = "".join(
+        f"{prefix}{line}" if line.strip() != "" else line for line in lines
+    )
+    return Paragraph(
+        body=RichText(reindented),
+        indent=prefix,
+        parent=parent,
+        source_text=reindented,
+    )
 
 
 def _indent_width(indent: str | None) -> int:
     """Return indentation width for one optional indent string."""
     if indent is None:
         return 0
-    return _leading_indent_width(indent)
-
-
-def _leading_indent_width(value: str) -> int:
-    """Return display width for the leading whitespace of one line."""
     width = 0
-    for char in value:
+    for char in indent:
         if char == " ":
             width += 1
             continue

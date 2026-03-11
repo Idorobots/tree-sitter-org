@@ -22,6 +22,7 @@ from org_parser.element import (
     VerseBlock,
 )
 from org_parser.element._element import Element
+from org_parser.element._indent_block import IndentBlock
 from org_parser.element._list_recovery import recover_lists
 from org_parser.element._paragraph import Paragraph
 from org_parser.element._table import Table
@@ -61,6 +62,7 @@ _SRC_BLOCK = "src_block"
 _VERSE_BLOCK = "verse_block"
 _FIXED_WIDTH = "fixed_width"
 _LIST_ITEM = "list_item"
+_BLOCK = "block"
 
 
 class Heading:
@@ -684,11 +686,35 @@ def _extract_body_element(
         _VERSE_BLOCK: VerseBlock.from_node,
         _FIXED_WIDTH: FixedWidthBlock.from_node,
         _LIST_ITEM: ListItem.from_node,
+        _BLOCK: _extract_indent_block,
     }
     factory = dispatch.get(node.type)
     if factory is None:
         return Element.from_node(node, source, parent=parent)
     return factory(node, source, parent=parent)
+
+
+def _extract_indent_block(
+    node: tree_sitter.Node,
+    source: bytes,
+    *,
+    parent: Heading | Document,
+) -> IndentBlock:
+    """Build one :class:`IndentBlock` with recursively parsed body nodes."""
+    indent_node = node.child_by_field_name("indent")
+    indent = None
+    if indent_node is not None:
+        indent = source[indent_node.start_byte : indent_node.end_byte].decode() or None
+    return IndentBlock(
+        indent=indent,
+        body=[
+            _extract_body_element(child, source, parent=parent)
+            for child in node.children_by_field_name("body")
+            if child.is_named
+        ],
+        parent=parent,
+        source_text=source[node.start_byte : node.end_byte].decode(),
+    )
 
 
 def _coalesce_list_items(
