@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from org_parser.document._body import (
-    coalesce_list_items,
     extract_body_element,
     merge_logbook_drawers,
     merge_properties_drawers,
@@ -21,6 +20,7 @@ from org_parser.element._element import (
     element_from_error_or_unknown,
     reformat_value,
 )
+from org_parser.element._list_recovery import recover_lists
 from org_parser.text._inline import CompletionCounter
 from org_parser.text._rich_text import RichText
 from org_parser.time import Timestamp
@@ -633,7 +633,7 @@ def _extract_body(
     return (
         merge_properties_drawers(properties_drawers, parent=parent),
         merge_logbook_drawers(logbook_drawers, parent=parent),
-        coalesce_list_items(body, parent=parent),
+        recover_lists(body, parent=parent),
     )
 
 

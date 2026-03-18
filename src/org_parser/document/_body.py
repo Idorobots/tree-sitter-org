@@ -27,7 +27,6 @@ from org_parser.element import (
 )
 from org_parser.element._element import Element, element_from_error_or_unknown
 from org_parser.element._indent_block import IndentBlock
-from org_parser.element._list_recovery import recover_lists
 from org_parser.element._paragraph import Paragraph
 from org_parser.element._table import Table
 from org_parser.time import Clock
@@ -44,7 +43,6 @@ if TYPE_CHECKING:
 # NOTE: Callable is kept in TYPE_CHECKING for the dispatch dict type annotations.
 
 __all__ = [
-    "coalesce_list_items",
     "extract_body_element",
     "extract_indent_block",
     "merge_logbook_drawers",
@@ -202,21 +200,3 @@ def extract_indent_block(
     )
     block.attach_backing(node, document)
     return block
-
-
-def coalesce_list_items(
-    elements: list[Element],
-    *,
-    parent: Heading | Document,
-) -> list[Element]:
-    """Recover semantic lists from flat body elements.
-
-    Args:
-        elements: Body elements that may include raw ``list_item`` stubs.
-        parent: Owner heading or document.
-
-    Returns:
-        A new list where adjacent list items are grouped into
-        :class:`~org_parser.element._list.List` objects.
-    """
-    return recover_lists(elements, parent=parent)

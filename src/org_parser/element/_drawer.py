@@ -101,7 +101,7 @@ class Drawer(Element):
         )
         drawer = cls(
             name=name,
-            body=_coalesce_list_items(
+            body=recover_lists(
                 [
                     _extract_drawer_body_element(child, document)
                     for child in node.children_by_field_name("body")
@@ -186,7 +186,7 @@ class Logbook(Drawer):
         parent: Document | Heading | Element | None = None,
     ) -> Logbook:
         """Create a :class:`Logbook` from ``logbook_drawer`` node."""
-        body = _coalesce_list_items(
+        body = recover_lists(
             [
                 _extract_drawer_body_element(child, document)
                 for child in node.children_by_field_name("body")
@@ -415,15 +415,6 @@ def _extract_indent_block(
     )
     block.attach_backing(node, document)
     return block
-
-
-def _coalesce_list_items(
-    elements: list[Element],
-    *,
-    parent: Document | Heading | Element | None,
-) -> list[Element]:
-    """Recover semantic lists from flat drawer body elements."""
-    return recover_lists(elements, parent=parent)
 
 
 def _extract_logbook_repeats(body: list[Element]) -> list[Repeat]:

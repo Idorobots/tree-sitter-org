@@ -544,11 +544,11 @@ def _parse_zeroth_section(
         non-keyword, non-dedicated-drawer elements.
     """
     from org_parser.document._body import (
-        coalesce_list_items,
         extract_body_element,
         merge_logbook_drawers,
         merge_properties_drawers,
     )
+    from org_parser.element._list_recovery import recover_lists
 
     keywords: dict[str, Keyword] = {}
     property_drawers: list[Properties] = []
@@ -586,7 +586,7 @@ def _parse_zeroth_section(
         keywords,
         merge_properties_drawers(property_drawers, parent=parent),
         merge_logbook_drawers(logbook_drawers, parent=parent),
-        coalesce_list_items(body, parent=parent),
+        recover_lists(body, parent=parent),
     )
 
 

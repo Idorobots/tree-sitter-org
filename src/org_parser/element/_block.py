@@ -702,7 +702,9 @@ def _extract_container_contents(
         for child in node.children_by_field_name("body")
         if child.is_named
     ]
-    return _coalesce_list_items(elements)
+    from org_parser.element._list_recovery import recover_lists
+
+    return recover_lists(elements, parent=None)
 
 
 def _extract_nested_element(
@@ -761,13 +763,6 @@ def _extract_indent_block(
     )
     block.attach_backing(node, document)
     return block
-
-
-def _coalesce_list_items(elements: list[Element]) -> list[Element]:
-    """Recover semantic lists from flat nested block body elements."""
-    from org_parser.element._list_recovery import recover_lists
-
-    return recover_lists(elements, parent=None)
 
 
 def _extract_optional_field_text(
