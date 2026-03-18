@@ -26,6 +26,8 @@ from org_parser.text._rich_text import RichText
 from org_parser.time import Timestamp
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     import tree_sitter
 
     from org_parser.document._document import Document
@@ -39,6 +41,9 @@ _TAG = "tag"
 _PLANNING = "planning"
 _PLANNING_KEYWORD = "planning_keyword"
 _TIMESTAMP = "timestamp"
+_SCHEDULED = "SCHEDULED"
+_DEADLINE = "DEADLINE"
+_CLOSED = "CLOSED"
 _DRAWER = "drawer"
 _LOGBOOK_DRAWER = "logbook_drawer"
 _PROPERTY_DRAWER = "property_drawer"
@@ -109,14 +114,13 @@ class Heading:
         self._node: tree_sitter.Node | None = None
         self._dirty = False
 
-        if self._title is not None:
-            self._title.parent = self
+        self._adopt_element(self._title)
 
-        self._adopt_properties(self._properties)
-        self._adopt_logbook(self._logbook)
+        self._adopt_element(self._properties)
+        self._adopt_element(self._logbook)
         self._sync_repeated_tasks_from_logbook()
-        self._adopt_body_elements(self._body)
-        self._adopt_children(self._children)
+        self._adopt_elements(self._body)
+        self._adopt_elements(self._children)
 
     # -- factory method ------------------------------------------------------
 
@@ -148,9 +152,6 @@ class Heading:
         counter = _extract_counter(title_nodes)
         tags = _extract_tags(node)
         scheduled, deadline, closed = _extract_planning(node, source)
-        properties, logbook, body = _extract_body(
-            node, parent=parent, document=document
-        )
 
         heading = cls(
             level=level,
@@ -164,16 +165,21 @@ class Heading:
             scheduled=scheduled,
             deadline=deadline,
             closed=closed,
-            properties=properties,
-            logbook=logbook,
-            body=body,
+            properties=None,
+            logbook=None,
+            body=[],
         )
         heading._node = node
 
-        # Re-home body elements to this heading instance (not its parent).
-        heading._adopt_properties(heading._properties)
-        heading._adopt_logbook(heading._logbook)
-        heading._adopt_body_elements(heading._body)
+        properties, logbook, body = _extract_body(
+            node,
+            parent=heading,
+            document=document,
+        )
+        heading._properties = properties
+        heading._logbook = logbook
+        heading._body = body
+        heading._sync_repeated_tasks_from_logbook()
 
         # Recursively build sub-headings.
         for child in node.children:
@@ -247,8 +253,7 @@ class Heading:
     def title(self, value: RichText | None) -> None:
         """Set the heading title and mark this heading as dirty."""
         self._title = value
-        if self._title is not None:
-            self._title.parent = self
+        self._adopt_element(self._title)
         self._mark_dirty()
 
     @property
@@ -281,8 +286,7 @@ class Heading:
     @scheduled.setter
     def scheduled(self, value: Timestamp | None) -> None:
         """Set the ``SCHEDULED`` planning timestamp and mark dirty."""
-        self._scheduled = value
-        self._mark_dirty()
+        self._set_planning_timestamp(_SCHEDULED, value)
 
     @property
     def closed(self) -> Timestamp | None:
@@ -292,8 +296,7 @@ class Heading:
     @closed.setter
     def closed(self, value: Timestamp | None) -> None:
         """Set the ``CLOSED`` planning timestamp and mark dirty."""
-        self._closed = value
-        self._mark_dirty()
+        self._set_planning_timestamp(_CLOSED, value)
 
     @property
     def deadline(self) -> Timestamp | None:
@@ -303,8 +306,7 @@ class Heading:
     @deadline.setter
     def deadline(self, value: Timestamp | None) -> None:
         """Set the ``DEADLINE`` planning timestamp and mark dirty."""
-        self._deadline = value
-        self._mark_dirty()
+        self._set_planning_timestamp(_DEADLINE, value)
 
     @property
     def body(self) -> list[Element]:
@@ -315,7 +317,7 @@ class Heading:
     def body(self, value: list[Element]) -> None:
         """Set body elements and mark this heading as dirty."""
         self._body = value
-        self._adopt_body_elements(self._body)
+        self._adopt_elements(self._body)
         self._mark_dirty()
 
     @property
@@ -327,7 +329,7 @@ class Heading:
     def properties(self, value: Properties | None) -> None:
         """Set merged heading ``PROPERTIES`` drawer and mark dirty."""
         self._properties = value
-        self._adopt_properties(self._properties)
+        self._adopt_element(self._properties)
         self._mark_dirty()
 
     @property
@@ -339,7 +341,7 @@ class Heading:
     def logbook(self, value: Logbook | None) -> None:
         """Set merged heading ``LOGBOOK`` drawer and mark dirty."""
         self._logbook = value
-        self._adopt_logbook(self._logbook)
+        self._adopt_element(self._logbook)
         self._sync_repeated_tasks_from_logbook()
         self._mark_dirty()
 
@@ -385,7 +387,7 @@ class Heading:
     def children(self, value: list[Heading]) -> None:
         """Set direct sub-headings and mark this heading as dirty."""
         self._children = value
-        self._adopt_children(self._children)
+        self._adopt_elements(self._children)
         self._mark_dirty()
 
     @property
@@ -418,22 +420,22 @@ class Heading:
         reformat_value(self._children)
         self.mark_dirty()
 
-    def _adopt_body_elements(self, body: list[Element]) -> None:
-        """Assign this heading as parent for all body elements."""
-        for element in body:
-            element.parent = self
-
-    def _adopt_properties(self, value: Properties | None) -> None:
-        """Assign this heading as parent for merged properties drawer."""
+    def _adopt_element(
+        self,
+        value: RichText | Properties | Logbook | Element | Heading | None,
+    ) -> None:
+        """Assign this heading as parent for one child semantic object."""
         if value is None:
             return
         value.parent = self
 
-    def _adopt_logbook(self, value: Logbook | None) -> None:
-        """Assign this heading as parent for merged logbook drawer."""
-        if value is None:
-            return
-        value.parent = self
+    def _adopt_elements(
+        self,
+        values: Sequence[RichText | Properties | Logbook | Element | Heading | None],
+    ) -> None:
+        """Assign this heading as parent for each provided child object."""
+        for value in values:
+            self._adopt_element(value)
 
     def _sync_repeated_tasks_from_logbook(self) -> None:
         """Synchronize local repeated-task cache from the current logbook."""
@@ -446,13 +448,24 @@ class Heading:
         """Return heading logbook, creating one when absent."""
         if self._logbook is None:
             self._logbook = Logbook(parent=self)
-            self._adopt_logbook(self._logbook)
+            self._adopt_element(self._logbook)
         return self._logbook
 
-    def _adopt_children(self, children: list[Heading]) -> None:
-        """Assign this heading as parent for direct sub-headings."""
-        for child in children:
-            child.parent = self
+    def _set_planning_timestamp(
+        self,
+        planning_keyword: str,
+        value: Timestamp | None,
+    ) -> None:
+        """Set one planning timestamp field and mark this heading as dirty."""
+        if planning_keyword == _SCHEDULED:
+            self._scheduled = value
+        elif planning_keyword == _DEADLINE:
+            self._deadline = value
+        elif planning_keyword == _CLOSED:
+            self._closed = value
+        else:
+            raise ValueError(f"Unknown planning keyword: {planning_keyword!r}")
+        self._mark_dirty()
 
     @property
     def siblings(self) -> list[Heading]:
@@ -645,11 +658,11 @@ def _extract_planning(
             continue
 
         timestamp = Timestamp.from_node(child, source)
-        if current_keyword == "SCHEDULED":
+        if current_keyword == _SCHEDULED:
             scheduled = timestamp
-        elif current_keyword == "DEADLINE":
+        elif current_keyword == _DEADLINE:
             deadline = timestamp
-        elif current_keyword == "CLOSED":
+        elif current_keyword == _CLOSED:
             closed = timestamp
 
     return scheduled, deadline, closed

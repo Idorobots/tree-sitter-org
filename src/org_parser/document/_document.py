@@ -18,6 +18,8 @@ from org_parser.element._element import (
 from org_parser.element._keyword import Keyword
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     import tree_sitter
 
     from org_parser.document._heading import Heading
@@ -111,16 +113,12 @@ class Document:
 
         self._sync_keywords_with_dedicated()
 
-        self._adopt_keyword(self._title)
-        self._adopt_keyword(self._author)
-        self._adopt_keyword(self._category)
-        self._adopt_keyword(self._description)
-        self._adopt_keyword(self._todo)
+        self._adopt_dedicated_keywords()
         self._adopt_keywords(self._keywords)
-        self._adopt_properties(self._properties)
-        self._adopt_logbook(self._logbook)
-        self._adopt_body_elements(self._body)
-        self._adopt_children(self._children)
+        self._adopt_element(self._properties)
+        self._adopt_element(self._logbook)
+        self._adopt_elements(self._body)
+        self._adopt_elements(self._children)
 
     # -- factory method ------------------------------------------------------
 
@@ -163,15 +161,11 @@ class Document:
         doc._properties = properties
         doc._logbook = logbook
         doc._body = body
-        doc._adopt_keyword(doc._title)
-        doc._adopt_keyword(doc._author)
-        doc._adopt_keyword(doc._category)
-        doc._adopt_keyword(doc._description)
-        doc._adopt_keyword(doc._todo)
+        doc._adopt_dedicated_keywords()
         doc._adopt_keywords(doc._keywords)
-        doc._adopt_properties(doc._properties)
-        doc._adopt_logbook(doc._logbook)
-        doc._adopt_body_elements(doc._body)
+        doc._adopt_element(doc._properties)
+        doc._adopt_element(doc._logbook)
+        doc._adopt_elements(doc._body)
 
         # --- build top-level headings ---------------------------------------
         for child in root.children:
@@ -210,12 +204,7 @@ class Document:
     def title(self, value: Keyword | None) -> None:
         """Set the ``#+TITLE:`` value and mark the document as dirty."""
         self._title = value
-        if value is None:
-            self._keywords.pop(_TITLE, None)
-        else:
-            self._keywords[_TITLE] = value
-        self._adopt_keyword(self._title)
-        self._mark_dirty()
+        self._update_dedicated_keyword_entry(_TITLE, value)
 
     @property
     def author(self) -> Keyword | None:
@@ -226,12 +215,7 @@ class Document:
     def author(self, value: Keyword | None) -> None:
         """Set the ``#+AUTHOR:`` value and mark the document as dirty."""
         self._author = value
-        if value is None:
-            self._keywords.pop(_AUTHOR, None)
-        else:
-            self._keywords[_AUTHOR] = value
-        self._adopt_keyword(self._author)
-        self._mark_dirty()
+        self._update_dedicated_keyword_entry(_AUTHOR, value)
 
     @property
     def category(self) -> Keyword | None:
@@ -242,12 +226,7 @@ class Document:
     def category(self, value: Keyword | None) -> None:
         """Set the ``#+CATEGORY:`` value and mark the document as dirty."""
         self._category = value
-        if value is None:
-            self._keywords.pop(_CATEGORY, None)
-        else:
-            self._keywords[_CATEGORY] = value
-        self._adopt_keyword(self._category)
-        self._mark_dirty()
+        self._update_dedicated_keyword_entry(_CATEGORY, value)
 
     @property
     def description(self) -> Keyword | None:
@@ -258,12 +237,7 @@ class Document:
     def description(self, value: Keyword | None) -> None:
         """Set the ``#+DESCRIPTION:`` value and mark the document as dirty."""
         self._description = value
-        if value is None:
-            self._keywords.pop(_DESCRIPTION, None)
-        else:
-            self._keywords[_DESCRIPTION] = value
-        self._adopt_keyword(self._description)
-        self._mark_dirty()
+        self._update_dedicated_keyword_entry(_DESCRIPTION, value)
 
     @property
     def todo(self) -> Keyword | None:
@@ -274,12 +248,7 @@ class Document:
     def todo(self, value: Keyword | None) -> None:
         """Set the ``#+TODO:`` value and mark the document as dirty."""
         self._todo = value
-        if value is None:
-            self._keywords.pop(_TODO, None)
-        else:
-            self._keywords[_TODO] = value
-        self._adopt_keyword(self._todo)
-        self._mark_dirty()
+        self._update_dedicated_keyword_entry(_TODO, value)
 
     @property
     def keywords(self) -> dict[str, Keyword]:
@@ -295,11 +264,7 @@ class Document:
         self._category = self._keywords.get(_CATEGORY)
         self._description = self._keywords.get(_DESCRIPTION)
         self._todo = self._keywords.get(_TODO)
-        self._adopt_keyword(self._title)
-        self._adopt_keyword(self._author)
-        self._adopt_keyword(self._category)
-        self._adopt_keyword(self._description)
-        self._adopt_keyword(self._todo)
+        self._adopt_dedicated_keywords()
         self._adopt_keywords(self._keywords)
         self._mark_dirty()
 
@@ -312,7 +277,7 @@ class Document:
     def properties(self, value: Properties | None) -> None:
         """Set merged ``PROPERTIES`` drawer and mark the document dirty."""
         self._properties = value
-        self._adopt_properties(self._properties)
+        self._adopt_element(self._properties)
         self._mark_dirty()
 
     @property
@@ -324,7 +289,7 @@ class Document:
     def logbook(self, value: Logbook | None) -> None:
         """Set merged ``LOGBOOK`` drawer and mark the document dirty."""
         self._logbook = value
-        self._adopt_logbook(self._logbook)
+        self._adopt_element(self._logbook)
         self._mark_dirty()
 
     @property
@@ -336,7 +301,7 @@ class Document:
     def body(self, value: list[Element]) -> None:
         """Set zeroth-section body elements and mark the document as dirty."""
         self._body = value
-        self._adopt_body_elements(self._body)
+        self._adopt_elements(self._body)
         self._mark_dirty()
 
     @property
@@ -348,7 +313,7 @@ class Document:
     def children(self, value: list[Heading]) -> None:
         """Set top-level headings and mark the document as dirty."""
         self._children = value
-        self._adopt_children(self._children)
+        self._adopt_elements(self._children)
         self._mark_dirty()
 
     @property
@@ -423,28 +388,43 @@ class Document:
         reformat_value(self._children)
         self.mark_dirty()
 
-    def _adopt_keyword(self, value: Keyword | None) -> None:
-        """Assign this document as parent for one keyword."""
+    def _adopt_element(
+        self,
+        value: Keyword | Properties | Logbook | Element | Heading | None,
+    ) -> None:
+        """Assign this document as parent for one child semantic object."""
         if value is None:
             return
         value.parent = self
+
+    def _adopt_dedicated_keywords(self) -> None:
+        """Assign this document as parent for dedicated keyword objects."""
+        self._adopt_elements(
+            [
+                self._title,
+                self._author,
+                self._category,
+                self._description,
+                self._todo,
+            ]
+        )
 
     def _adopt_keywords(self, keywords: dict[str, Keyword]) -> None:
         """Assign this document as parent for all keyword entries."""
-        for value in keywords.values():
-            value.parent = self
+        self._adopt_elements(list(keywords.values()))
 
-    def _adopt_properties(self, value: Properties | None) -> None:
-        """Assign this document as parent for merged properties drawer."""
+    def _update_dedicated_keyword_entry(
+        self,
+        key: str,
+        value: Keyword | None,
+    ) -> None:
+        """Update one dedicated keyword map entry and adoption state."""
         if value is None:
-            return
-        value.parent = self
-
-    def _adopt_logbook(self, value: Logbook | None) -> None:
-        """Assign this document as parent for merged logbook drawer."""
-        if value is None:
-            return
-        value.parent = self
+            self._keywords.pop(key, None)
+        else:
+            self._keywords[key] = value
+        self._adopt_element(value)
+        self._mark_dirty()
 
     def _sync_keywords_with_dedicated(self) -> None:
         """Ensure dedicated keyword properties and map stay aligned."""
@@ -473,15 +453,13 @@ class Document:
         else:
             self._keywords[_TODO] = self._todo
 
-    def _adopt_body_elements(self, body: list[Element]) -> None:
-        """Assign this document as parent for all body elements."""
-        for element in body:
-            element.parent = self
-
-    def _adopt_children(self, children: list[Heading]) -> None:
-        """Assign this document as parent for all top-level headings."""
-        for child in children:
-            child.parent = self
+    def _adopt_elements(
+        self,
+        values: Sequence[Keyword | Properties | Logbook | Element | Heading | None],
+    ) -> None:
+        """Assign this document as parent for each provided child object."""
+        for value in values:
+            self._adopt_element(value)
 
     # -- dunder protocols ----------------------------------------------------
 
