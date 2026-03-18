@@ -348,9 +348,6 @@ class Heading:
     @property
     def repeated_tasks(self) -> list[Repeat]:
         """Repeated task entries extracted from this heading's logbook."""
-        if self._logbook is None:
-            self._ensure_logbook_for_repeats()
-            self._sync_repeated_tasks_from_logbook()
         return self._repeated_tasks
 
     @repeated_tasks.setter
