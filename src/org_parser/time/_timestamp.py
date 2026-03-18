@@ -26,22 +26,27 @@ if TYPE_CHECKING:
 __all__ = ["Timestamp"]
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(slots=True)
 class Timestamp:
     """Parsed Org timestamp with component-level fields.
 
+    All fields are mutable.  Mutating any field marks the instance dirty;
+    a dirty :class:`Timestamp` rebuilds its string representation from the
+    component fields rather than returning the original ``raw`` source text.
+
     Args:
-        raw: Original timestamp text from source.
+        raw: Original timestamp text from source.  Used verbatim by
+            :meth:`__str__` until the instance is marked dirty.
         is_active: Whether the timestamp uses active delimiters (``<...>``).
         start_year: Start year.
-        start_month: Start month.
-        start_day: Start day.
-        start_dayname: Optional start day name token.
-        start_hour: Optional start hour.
-        start_minute: Optional start minute.
-        end_year: Optional end year for ranges / durations.
-        end_month: Optional end month for ranges / durations.
-        end_day: Optional end day for ranges / durations.
+        start_month: Start month (1-12).
+        start_day: Start day (1-31).
+        start_dayname: Optional start day name token (e.g. ``"Mon"``).
+        start_hour: Optional start hour (0-23).
+        start_minute: Optional start minute (0-59).
+        end_year: Optional end year for ranges.
+        end_month: Optional end month for ranges.
+        end_day: Optional end day for ranges.
         end_dayname: Optional end day name token.
         end_hour: Optional end hour.
         end_minute: Optional end minute.
@@ -153,23 +158,130 @@ class Timestamp:
         return self.start
 
     def __str__(self) -> str:
-        """Render timestamp as original source text."""
-        return self.raw
+        """Render the timestamp as an Org source string.
+
+        Returns the original ``raw`` text when clean.  Once dirty, rebuilds
+        the string from component fields.
+        """
+        if not self._dirty:
+            return self.raw
+        return _render_timestamp(self)
 
     @property
     def dirty(self) -> bool:
-        """Whether this timestamp has been marked for reformatting."""
+        """Whether this timestamp has been mutated since creation."""
         return self._dirty
 
     def mark_dirty(self) -> None:
         """Mark this timestamp as dirty."""
-        if self._dirty:
-            return
-        object.__setattr__(self, "_dirty", True)
+        self._dirty = True
 
     def reformat(self) -> None:
         """Mark this timestamp as dirty for scratch-built rendering."""
         self.mark_dirty()
+
+
+def _render_timestamp(ts: Timestamp) -> str:
+    """Build an Org timestamp string from *ts* component fields.
+
+    Handles all four forms:
+    - Date only: ``<YYYY-MM-DD>`` or ``<YYYY-MM-DD Day>``
+    - Date + time: ``<YYYY-MM-DD Day HH:MM>``
+    - Same-day time range: ``<YYYY-MM-DD Day HH:MM-HH:MM>``
+    - Explicit date range: ``<YYYY-MM-DD Day>--<YYYY-MM-DD Day>``
+
+    Active timestamps use ``<...>``; inactive timestamps use ``[...]``.
+    """
+    open_delim = "<" if ts.is_active else "["
+    close_delim = ">" if ts.is_active else "]"
+
+    is_explicit_range = (
+        ts.end_year is not None
+        and ts.end_day is not None
+        and ts.end_day != ts.start_day
+    )
+    is_same_day_time_range = (
+        ts.end_year is not None
+        and ts.end_day == ts.start_day
+        and ts.end_hour is not None
+        and ts.end_minute is not None
+    )
+
+    if is_explicit_range:
+        end_year = ts.end_year
+        end_month = ts.end_month
+        end_day = ts.end_day
+        assert end_year is not None and end_month is not None and end_day is not None
+        start = _render_date_part(
+            ts.start_year,
+            ts.start_month,
+            ts.start_day,
+            ts.start_dayname,
+            ts.start_hour,
+            ts.start_minute,
+        )
+        end = _render_date_part(
+            end_year,
+            end_month,
+            end_day,
+            ts.end_dayname,
+            ts.end_hour,
+            ts.end_minute,
+        )
+        return f"{open_delim}{start}{close_delim}--{open_delim}{end}{close_delim}"
+
+    if is_same_day_time_range:
+        assert ts.end_hour is not None and ts.end_minute is not None
+        date_part = _render_date_part(
+            ts.start_year,
+            ts.start_month,
+            ts.start_day,
+            ts.start_dayname,
+            ts.start_hour,
+            ts.start_minute,
+        )
+        end_time = f"{ts.end_hour:02d}:{ts.end_minute:02d}"
+        return f"{open_delim}{date_part}-{end_time}{close_delim}"
+
+    date_part = _render_date_part(
+        ts.start_year,
+        ts.start_month,
+        ts.start_day,
+        ts.start_dayname,
+        ts.start_hour,
+        ts.start_minute,
+    )
+    return f"{open_delim}{date_part}{close_delim}"
+
+
+def _render_date_part(
+    year: int,
+    month: int,
+    day: int,
+    dayname: str | None,
+    hour: int | None,
+    minute: int | None,
+) -> str:
+    """Render the inner content of one timestamp bracket.
+
+    Args:
+        year: Four-digit year.
+        month: Month (1-12).
+        day: Day of month (1-31).
+        dayname: Optional abbreviated day name (e.g. ``"Mon"``).
+        hour: Optional hour (0-23).
+        minute: Optional minute (0-59).
+
+    Returns:
+        A string like ``"2024-01-15 Mon 14:30"`` (time parts omitted when
+        *hour* / *minute* are ``None``).
+    """
+    parts = [f"{year:04d}-{month:02d}-{day:02d}"]
+    if dayname is not None:
+        parts.append(dayname)
+    if hour is not None and minute is not None:
+        parts.append(f"{hour:02d}:{minute:02d}")
+    return " ".join(parts)
 
 
 def _extract_raw_timestamp_text(node: tree_sitter.Node, source: bytes) -> str:
