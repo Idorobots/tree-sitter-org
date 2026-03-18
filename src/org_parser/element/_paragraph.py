@@ -23,7 +23,6 @@ class Paragraph(Element):
         body: Parsed paragraph body rich text.
         indent: Leading indentation of the first paragraph line, if present.
         parent: Optional parent owner object.
-        source_text: Optional verbatim source text.
     """
 
     def __init__(
@@ -32,9 +31,8 @@ class Paragraph(Element):
         body: RichText,
         indent: str | None = None,
         parent: Document | Heading | Element | None = None,
-        source_text: str = "",
     ) -> None:
-        super().__init__(node_type="paragraph", source_text=source_text, parent=parent)
+        super().__init__(parent=parent)
         self._body = body
         self._indent = indent
         self._body.set_parent(self, mark_dirty=False)
@@ -60,9 +58,9 @@ class Paragraph(Element):
             body=RichText.from_node(node, source, document=document),
             indent=_extract_indent(node, source),
             parent=parent,
-            source_text=source[node.start_byte : node.end_byte].decode(),
         )
         paragraph._node = node
+        paragraph._document = document
         return paragraph
 
     @property
@@ -94,8 +92,10 @@ class Paragraph(Element):
         Clean parse-backed instances preserve their verbatim source text.
         Dirty instances are rendered from semantic body text.
         """
-        if not self.dirty and self._node is not None:
-            return self.source_text
+        if not self.dirty and self._node is not None and self._document is not None:
+            return self._document.source[
+                self._node.start_byte : self._node.end_byte
+            ].decode()
         return str(self._body)
 
     def __repr__(self) -> str:

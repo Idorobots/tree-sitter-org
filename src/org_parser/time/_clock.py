@@ -23,7 +23,6 @@ class Clock(Element):
         timestamp: Parsed clock timestamp, if present.
         duration: Optional ``H:MM`` duration value.
         parent: Optional parent owner object.
-        source_text: Optional verbatim source text.
     """
 
     def __init__(
@@ -32,9 +31,8 @@ class Clock(Element):
         timestamp: Timestamp | None = None,
         duration: str | None = None,
         parent: Document | Heading | Element | None = None,
-        source_text: str = "",
     ) -> None:
-        super().__init__(node_type="clock", source_text=source_text, parent=parent)
+        super().__init__(parent=parent)
         self._timestamp = timestamp
         self._duration = _normalize_duration(duration)
 
@@ -48,14 +46,13 @@ class Clock(Element):
     ) -> Clock:
         """Create a :class:`Clock` from a tree-sitter ``clock`` node."""
         source = document.source if document is not None else b""
-        source_text = source[node.start_byte : node.end_byte].decode()
         clock = cls(
             timestamp=_extract_clock_timestamp(node, source),
             duration=_extract_clock_duration(node, source),
             parent=parent,
-            source_text=source_text,
         )
         clock._node = node
+        clock._document = document
         return clock
 
     @property
@@ -88,8 +85,10 @@ class Clock(Element):
         Clean parse-backed instances preserve their verbatim source text.
         Dirty instances are rendered from semantic fields.
         """
-        if not self.dirty and self._node is not None:
-            return self.source_text
+        if not self.dirty and self._node is not None and self._document is not None:
+            return self._document.source[
+                self._node.start_byte : self._node.end_byte
+            ].decode()
 
         if self._timestamp is not None and self._duration is not None:
             return f"CLOCK: {self._timestamp} =>  {self._duration}\n"

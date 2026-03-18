@@ -4,7 +4,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from org_parser.element._element import Element, build_semantic_repr
+from org_parser.element._element import (
+    Element,
+    build_semantic_repr,
+    ensure_trailing_newline,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -26,9 +30,8 @@ class IndentBlock(Element):
         *,
         body: list[Element] | None = None,
         parent: Document | Heading | Element | None = None,
-        source_text: str = "",
     ) -> None:
-        super().__init__(node_type="block", source_text=source_text, parent=parent)
+        super().__init__(parent=parent)
         self._body = body if body is not None else []
         self._adopt_body(self._body)
 
@@ -48,6 +51,18 @@ class IndentBlock(Element):
         """Assign this block as parent for all nested elements."""
         for element in body:
             element.set_parent(self, mark_dirty=False)
+
+    def __str__(self) -> str:
+        """Render indentation block text.
+
+        Clean parse-backed instances preserve their verbatim source text.
+        Dirty instances join their body elements.
+        """
+        if not self.dirty and self._node is not None and self._document is not None:
+            return self._document.source[
+                self._node.start_byte : self._node.end_byte
+            ].decode()
+        return "".join(ensure_trailing_newline(str(element)) for element in self._body)
 
     def __repr__(self) -> str:
         """Return a tree-oriented representation for debugging."""

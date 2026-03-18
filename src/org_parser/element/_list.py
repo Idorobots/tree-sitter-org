@@ -43,13 +43,8 @@ class ListItemContinuation(Element):
         content: RichText,
         line_prefix: str = "",
         parent: Document | Heading | Element | None = None,
-        source_text: str = "",
     ) -> None:
-        super().__init__(
-            node_type="item_continuation_line",
-            source_text=source_text,
-            parent=parent,
-        )
+        super().__init__(parent=parent)
         self._line_prefix = line_prefix
         self._content = content
         self._content.set_parent(self, mark_dirty=False)
@@ -71,9 +66,9 @@ class ListItemContinuation(Element):
             content=RichText("") if parsed is None else parsed,
             line_prefix=_extract_leading_indent(source_text),
             parent=parent,
-            source_text=source_text,
         )
         continuation._node = node
+        continuation._document = document
         return continuation
 
     @property
@@ -90,8 +85,10 @@ class ListItemContinuation(Element):
 
     def __str__(self) -> str:
         """Render continuation line text."""
-        if not self.dirty and self._node is not None:
-            return self.source_text
+        if not self.dirty and self._node is not None and self._document is not None:
+            return self._document.source[
+                self._node.start_byte : self._node.end_byte
+            ].decode()
         return f"{self._line_prefix}{self._content}\n"
 
     def __repr__(self) -> str:
@@ -115,11 +112,11 @@ class ListItem(Element):
         item_tag: RichText | None = None,
         first_line: RichText | None = None,
         body: list[Element] | None = None,
+        line_prefix: str = "",
         parent: Document | Heading | Element | None = None,
-        source_text: str = "",
     ) -> None:
-        super().__init__(node_type="list_item", source_text=source_text, parent=parent)
-        self._line_prefix = _extract_leading_indent(source_text)
+        super().__init__(parent=parent)
+        self._line_prefix = line_prefix
         self._bullet = bullet
         self._ordered_counter = ordered_counter
         self._counter_set = counter_set
@@ -156,10 +153,11 @@ class ListItem(Element):
                 _extract_list_item_body_element(child, document)
                 for child in node.children_by_field_name("body")
             ],
+            line_prefix=_extract_leading_indent(source_text),
             parent=parent,
-            source_text=source_text,
         )
         item._node = node
+        item._document = document
         return item
 
     @property
@@ -258,8 +256,15 @@ class ListItem(Element):
 
     def __str__(self) -> str:
         """Render list-item text from semantic fields when dirty."""
-        if not self.dirty and self._node is not None and not self._body:
-            return self.source_text
+        if (
+            not self.dirty
+            and self._node is not None
+            and self._document is not None
+            and not self._body
+        ):
+            return self._document.source[
+                self._node.start_byte : self._node.end_byte
+            ].decode()
 
         default_indent = self._line_prefix if self._line_prefix != "" else None
         return self.render_with_indent(default_indent)
@@ -290,7 +295,7 @@ class ListItem(Element):
         body_prefix = (indent if indent is not None else "") + (" " * indent_step)
         for element in self._body:
             rendered = ensure_trailing_newline(str(element))
-            if element.node_type == "plain_list":
+            if isinstance(element, List):
                 parts.append(rendered)
                 continue
             parts.append(_indent_non_empty_lines(rendered, body_prefix))
@@ -320,12 +325,12 @@ class Repeat(ListItem):
         timestamp: Timestamp,
         note: str | None = None,
         note_indent: str | None = None,
+        line_prefix: str = "",
         bullet: str = "-",
         ordered_counter: str | None = None,
         counter_set: str | None = None,
         checkbox: str | None = None,
         parent: Document | Heading | Element | None = None,
-        source_text: str = "",
     ) -> None:
         super().__init__(
             bullet=bullet,
@@ -335,16 +340,14 @@ class Repeat(ListItem):
             item_tag=None,
             first_line=None,
             body=[],
+            line_prefix=line_prefix,
             parent=parent,
-            source_text=source_text,
         )
-        self._node_type = "repeat"
         self._after = after
         self._before = before
         self._timestamp = timestamp
         self._note = _normalize_optional_text(note)
-        indent = _extract_leading_indent(source_text)
-        normalized_indent = indent if indent != "" else None
+        normalized_indent = line_prefix if line_prefix != "" else None
         self._note_indent = (
             note_indent
             if note_indent is not None
@@ -354,7 +357,14 @@ class Repeat(ListItem):
     @classmethod
     def from_list_item(cls, item: ListItem) -> Repeat | None:
         """Build a :class:`Repeat` from one list item when pattern-matched."""
-        matched = _parse_repeat_source(item.source_text)
+        node = item._node
+        doc = item._document
+        item_source = (
+            doc.source[node.start_byte : node.end_byte].decode()
+            if node is not None and doc is not None
+            else ""
+        )
+        matched = _parse_repeat_source(item_source)
         if matched is None:
             return None
         repeat = cls(
@@ -367,10 +377,11 @@ class Repeat(ListItem):
             ordered_counter=item.ordered_counter,
             counter_set=item.counter_set,
             checkbox=item.checkbox,
+            line_prefix=item._line_prefix,
             parent=item.parent,
-            source_text=item.source_text,
         )
         repeat._node = item._node
+        repeat._document = item._document
         return repeat
 
     @property
@@ -419,8 +430,10 @@ class Repeat(ListItem):
 
     def __str__(self) -> str:
         """Render repeat entry preserving source text while clean."""
-        if not self.dirty and self._node is not None:
-            return self.source_text
+        if not self.dirty and self._node is not None and self._document is not None:
+            return self._document.source[
+                self._node.start_byte : self._node.end_byte
+            ].decode()
 
         default_indent = self._line_prefix if self._line_prefix != "" else None
         return self.render_with_indent(default_indent)
@@ -468,9 +481,8 @@ class List(Element):
         *,
         items: list[ListItem] | None = None,
         parent: Document | Heading | Element | None = None,
-        source_text: str = "",
     ) -> None:
-        super().__init__(node_type="plain_list", source_text=source_text, parent=parent)
+        super().__init__(parent=parent)
         self._items = items if items is not None else []
         self._adopt_items(self._items)
 
@@ -483,18 +495,14 @@ class List(Element):
         parent: Document | Heading | Element | None = None,
     ) -> List:
         """Create a :class:`List` from a ``plain_list`` node."""
-        source = document.source if document is not None else b""
         items = [
             ListItem.from_node(child, document)
             for child in node.named_children
             if child.type == "list_item"
         ]
-        parsed = cls(
-            items=items,
-            parent=parent,
-            source_text=source[node.start_byte : node.end_byte].decode(),
-        )
+        parsed = cls(items=items, parent=parent)
         parsed._node = node
+        parsed._document = document
         return parsed
 
     @property
@@ -547,8 +555,10 @@ class List(Element):
 
     def __str__(self) -> str:
         """Render list text preserving source while clean and parse-backed."""
-        if not self.dirty and self._node is not None:
-            return self.source_text
+        if not self.dirty and self._node is not None and self._document is not None:
+            return self._document.source[
+                self._node.start_byte : self._node.end_byte
+            ].decode()
         depth = _list_depth(self)
         indent = " " * (depth * self.default_indent_step)
         return "".join(

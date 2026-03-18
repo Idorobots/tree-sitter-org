@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from org_parser.element._element import Element
 from org_parser.element._indent_block import IndentBlock
 from org_parser.element._list import List, ListItem
 from org_parser.element._paragraph import Paragraph
@@ -12,7 +13,6 @@ from org_parser.text._rich_text import RichText
 if TYPE_CHECKING:
     from org_parser.document._document import Document
     from org_parser.document._heading import Heading
-    from org_parser.element._element import Element
 
 __all__ = ["recover_lists"]
 
@@ -54,7 +54,7 @@ def _recover_stream(
         list_run.clear()
 
     for element in elements:
-        if element.node_type == "blank_line":
+        if type(element) is Element:
             flush_paragraph_run()
             if in_block:
                 flush_list_run()
@@ -94,7 +94,7 @@ def _recover_stream(
                     element.body,
                     parent=parent,
                     in_block=True,
-                    base_indent=_source_indent_width(element.source_text),
+                    base_indent=_source_indent_width(_elem_source_text(element)),
                 )
             )
             continue
@@ -120,8 +120,8 @@ def _attach_block_to_pending_item(
         return False
 
     item = list_run[-1]
-    item_indent = base_indent + _source_indent_width(item.source_text)
-    block_indent = _source_indent_width(block.source_text)
+    item_indent = base_indent + _source_indent_width(_elem_source_text(item))
+    block_indent = _source_indent_width(_elem_source_text(block))
     if block_indent <= item_indent:
         return False
 
@@ -142,13 +142,25 @@ def _merge_paragraphs(
     parent: Document | Heading | Element | None,
 ) -> Paragraph:
     """Merge consecutive paragraph elements into one source-preserving object."""
-    merged_text = "".join(paragraph.source_text for paragraph in paragraphs)
+    merged_text = "".join(_elem_source_text(p) for p in paragraphs)
     return Paragraph(
         body=RichText(merged_text),
         indent=paragraphs[0].indent,
         parent=parent,
-        source_text=merged_text,
     )
+
+
+def _elem_source_text(element: Element) -> str:
+    """Return the verbatim source text for one parse-backed element.
+
+    Returns an empty string for programmatically constructed elements that
+    have no backing node or document.
+    """
+    node = element._node
+    doc = element._document
+    if node is None or doc is None:
+        return ""
+    return doc.source[node.start_byte : node.end_byte].decode()
 
 
 def _indent_width(indent: str | None) -> int:

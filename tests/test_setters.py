@@ -42,20 +42,18 @@ def test_rich_text_mutation_bubbles_to_heading_and_document() -> None:
     assert document.dirty is True
 
 
-def test_element_setters_mark_dirty() -> None:
-    """Element setters update values and dirty state."""
+def test_element_parent_setter_marks_dirty() -> None:
+    """Element parent setter marks the element dirty and bubbles to the new parent."""
     document = Document(filename="doc.org")
     heading = Heading(level=1, document=document, parent=document)
-    element = Element(node_type="paragraph", source_text="old", parent=heading)
+    element = Element(parent=heading)
     assert element.dirty is False
     assert heading.dirty is False
     assert document.dirty is False
 
-    element.node_type = "quote_block"
-    element.source_text = "new"
+    # Changing parent marks element dirty; bubble propagates via heading -> document.
+    element.parent = heading
 
-    assert element.node_type == "quote_block"
-    assert element.source_text == "new"
     assert element.dirty is True
     assert heading.dirty is True
     assert document.dirty is True
@@ -231,7 +229,7 @@ def test_mark_dirty_methods_mark_objects_programmatically() -> None:
     """Public mark_dirty() APIs mark objects as dirty."""
     document = Document(filename="doc.org")
     heading = Heading(level=1, document=document, parent=document)
-    element = Element(node_type="paragraph", source_text="text")
+    element = Element()
     rich_text = RichText("text")
 
     assert document.dirty is False

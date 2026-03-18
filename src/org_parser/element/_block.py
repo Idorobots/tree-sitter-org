@@ -40,14 +40,12 @@ class _ContainerBlock(Element):
     def __init__(
         self,
         *,
-        node_type: str,
         begin_line: str,
         end_line: str,
         contents: list[Element] | None = None,
         parent: Document | Heading | Element | None = None,
-        source_text: str = "",
     ) -> None:
-        super().__init__(node_type=node_type, source_text=source_text, parent=parent)
+        super().__init__(parent=parent)
         self._begin_line = begin_line
         self._end_line = end_line
         self._contents = contents if contents is not None else []
@@ -78,8 +76,10 @@ class _ContainerBlock(Element):
 
     def __str__(self) -> str:
         """Render block text preserving source while parse-backed and clean."""
-        if not self.dirty and self._node is not None:
-            return self.source_text
+        if not self.dirty and self._node is not None and self._document is not None:
+            return self._document.source[
+                self._node.start_byte : self._node.end_byte
+            ].decode()
         return f"{self._begin_line}\n{self._render_contents()}{self._end_line}\n"
 
     def __repr__(self) -> str:
@@ -97,14 +97,12 @@ class _TextBlock(Element):
     def __init__(
         self,
         *,
-        node_type: str,
         begin_line: str,
         end_line: str,
         contents: str,
         parent: Document | Heading | Element | None = None,
-        source_text: str = "",
     ) -> None:
-        super().__init__(node_type=node_type, source_text=source_text, parent=parent)
+        super().__init__(parent=parent)
         self._begin_line = begin_line
         self._end_line = end_line
         self._contents = contents
@@ -122,8 +120,10 @@ class _TextBlock(Element):
 
     def __str__(self) -> str:
         """Render block text preserving source while parse-backed and clean."""
-        if not self.dirty and self._node is not None:
-            return self.source_text
+        if not self.dirty and self._node is not None and self._document is not None:
+            return self._document.source[
+                self._node.start_byte : self._node.end_byte
+            ].decode()
         content = _ensure_single_trailing_newline(self._contents)
         return f"{self._begin_line}\n{content}{self._end_line}\n"
 
@@ -145,16 +145,13 @@ class CenterBlock(_ContainerBlock):
         parameters: str | None = None,
         contents: list[Element] | None = None,
         parent: Document | Heading | Element | None = None,
-        source_text: str = "",
     ) -> None:
         self._parameters = _normalize_optional_text(parameters)
         super().__init__(
-            node_type="center_block",
             begin_line=_render_begin_line("center", self._parameters),
             end_line="#+end_center",
             contents=contents,
             parent=parent,
-            source_text=source_text,
         )
 
     @classmethod
@@ -173,9 +170,9 @@ class CenterBlock(_ContainerBlock):
             or _extract_begin_parameters(source_text, "#+begin_center"),
             contents=_extract_container_contents(node, document),
             parent=parent,
-            source_text=source_text,
         )
         block._node = node
+        block._document = document
         return block
 
     @property
@@ -200,16 +197,13 @@ class QuoteBlock(_ContainerBlock):
         parameters: str | None = None,
         contents: list[Element] | None = None,
         parent: Document | Heading | Element | None = None,
-        source_text: str = "",
     ) -> None:
         self._parameters = _normalize_optional_text(parameters)
         super().__init__(
-            node_type="quote_block",
             begin_line=_render_begin_line("quote", self._parameters),
             end_line="#+end_quote",
             contents=contents,
             parent=parent,
-            source_text=source_text,
         )
 
     @classmethod
@@ -228,9 +222,9 @@ class QuoteBlock(_ContainerBlock):
             or _extract_begin_parameters(source_text, "#+begin_quote"),
             contents=_extract_container_contents(node, document),
             parent=parent,
-            source_text=source_text,
         )
         block._node = node
+        block._document = document
         return block
 
     @property
@@ -256,17 +250,14 @@ class SpecialBlock(_ContainerBlock):
         parameters: str | None = None,
         contents: list[Element] | None = None,
         parent: Document | Heading | Element | None = None,
-        source_text: str = "",
     ) -> None:
         self._name = name
         self._parameters = _normalize_optional_text(parameters)
         super().__init__(
-            node_type="special_block",
             begin_line=_render_begin_line(name, self._parameters),
             end_line=f"#+end_{name}",
             contents=contents,
             parent=parent,
-            source_text=source_text,
         )
 
     @classmethod
@@ -288,9 +279,9 @@ class SpecialBlock(_ContainerBlock):
             or parsed_parameters,
             contents=_extract_container_contents(node, document),
             parent=parent,
-            source_text=source_text,
         )
         block._node = node
+        block._document = document
         return block
 
     @property
@@ -329,17 +320,14 @@ class DynamicBlock(_ContainerBlock):
         parameters: str | None = None,
         contents: list[Element] | None = None,
         parent: Document | Heading | Element | None = None,
-        source_text: str = "",
     ) -> None:
         self._name = name
         self._parameters = _normalize_optional_text(parameters)
         super().__init__(
-            node_type="dynamic_block",
             begin_line=_render_dynamic_begin_line(name, self._parameters),
             end_line="#+end:",
             contents=contents,
             parent=parent,
-            source_text=source_text,
         )
 
     @classmethod
@@ -361,9 +349,9 @@ class DynamicBlock(_ContainerBlock):
             or parsed_parameters,
             contents=_extract_container_contents(node, document),
             parent=parent,
-            source_text=source_text,
         )
         block._node = node
+        block._document = document
         return block
 
     @property
@@ -399,15 +387,12 @@ class VerseBlock(_ContainerBlock):
         *,
         contents: list[Element] | None = None,
         parent: Document | Heading | Element | None = None,
-        source_text: str = "",
     ) -> None:
         super().__init__(
-            node_type="verse_block",
             begin_line="#+begin_verse",
             end_line="#+end_verse",
             contents=contents,
             parent=parent,
-            source_text=source_text,
         )
 
     @classmethod
@@ -419,13 +404,12 @@ class VerseBlock(_ContainerBlock):
         parent: Document | Heading | Element | None = None,
     ) -> VerseBlock:
         """Create a :class:`VerseBlock` from a ``verse_block`` node."""
-        source = document.source if document is not None else b""
         block = cls(
             contents=_extract_container_contents(node, document),
             parent=parent,
-            source_text=_node_text(node, source),
         )
         block._node = node
+        block._document = document
         return block
 
 
@@ -437,15 +421,12 @@ class CommentBlock(_TextBlock):
         *,
         contents: str,
         parent: Document | Heading | Element | None = None,
-        source_text: str = "",
     ) -> None:
         super().__init__(
-            node_type="comment_block",
             begin_line="#+begin_comment",
             end_line="#+end_comment",
             contents=contents,
             parent=parent,
-            source_text=source_text,
         )
 
     @classmethod
@@ -458,12 +439,13 @@ class CommentBlock(_TextBlock):
     ) -> CommentBlock:
         """Create a :class:`CommentBlock` from a ``comment_block`` node."""
         source = document.source if document is not None else b""
+        source_text = _node_text(node, source)
         block = cls(
-            contents=_extract_block_body_text(_node_text(node, source)),
+            contents=_extract_block_body_text(source_text),
             parent=parent,
-            source_text=_node_text(node, source),
         )
         block._node = node
+        block._document = document
         return block
 
 
@@ -476,16 +458,13 @@ class ExampleBlock(_TextBlock):
         parameters: str | None = None,
         contents: str,
         parent: Document | Heading | Element | None = None,
-        source_text: str = "",
     ) -> None:
         self._parameters = _normalize_optional_text(parameters)
         super().__init__(
-            node_type="example_block",
             begin_line=_render_begin_line("example", self._parameters),
             end_line="#+end_example",
             contents=contents,
             parent=parent,
-            source_text=source_text,
         )
 
     @classmethod
@@ -504,9 +483,9 @@ class ExampleBlock(_TextBlock):
             or _extract_begin_parameters(source_text, "#+begin_example"),
             contents=_extract_block_body_text(source_text),
             parent=parent,
-            source_text=source_text,
         )
         block._node = node
+        block._document = document
         return block
 
     @property
@@ -532,17 +511,14 @@ class ExportBlock(_TextBlock):
         parameters: str | None = None,
         contents: str,
         parent: Document | Heading | Element | None = None,
-        source_text: str = "",
     ) -> None:
         self._backend = backend
         self._parameters = _normalize_optional_text(parameters)
         super().__init__(
-            node_type="export_block",
             begin_line=_render_export_begin_line(self._backend, self._parameters),
             end_line="#+end_export",
             contents=contents,
             parent=parent,
-            source_text=source_text,
         )
 
     @classmethod
@@ -564,9 +540,9 @@ class ExportBlock(_TextBlock):
             or parsed_parameters,
             contents=_extract_block_body_text(source_text),
             parent=parent,
-            source_text=source_text,
         )
         block._node = node
+        block._document = document
         return block
 
     @property
@@ -604,17 +580,14 @@ class SourceBlock(_TextBlock):
         switches: str | None = None,
         contents: str,
         parent: Document | Heading | Element | None = None,
-        source_text: str = "",
     ) -> None:
         self._language = _normalize_optional_text(language)
         self._switches = _normalize_optional_text(switches)
         super().__init__(
-            node_type="src_block",
             begin_line=_render_source_begin_line(self._language, self._switches),
             end_line="#+end_src",
             contents=contents,
             parent=parent,
-            source_text=source_text,
         )
 
     @classmethod
@@ -636,9 +609,9 @@ class SourceBlock(_TextBlock):
             or parsed_switches,
             contents=_extract_block_body_text(source_text),
             parent=parent,
-            source_text=source_text,
         )
         block._node = node
+        block._document = document
         return block
 
     @property
@@ -674,11 +647,8 @@ class FixedWidthBlock(Element):
         *,
         contents: str,
         parent: Document | Heading | Element | None = None,
-        source_text: str = "",
     ) -> None:
-        super().__init__(
-            node_type="fixed_width", source_text=source_text, parent=parent
-        )
+        super().__init__(parent=parent)
         self._contents = contents
 
     @classmethod
@@ -695,9 +665,9 @@ class FixedWidthBlock(Element):
         block = cls(
             contents=_extract_fixed_width_contents(source_text),
             parent=parent,
-            source_text=source_text,
         )
         block._node = node
+        block._document = document
         return block
 
     @property
@@ -713,8 +683,10 @@ class FixedWidthBlock(Element):
 
     def __str__(self) -> str:
         """Render fixed-width line preserving source while parse-backed and clean."""
-        if not self.dirty and self._node is not None:
-            return self.source_text
+        if not self.dirty and self._node is not None and self._document is not None:
+            return self._document.source[
+                self._node.start_byte : self._node.end_byte
+            ].decode()
 
         lines = self._contents.splitlines()
         if not lines:
@@ -787,15 +759,15 @@ def _extract_indent_block(
     document: Document | None = None,
 ) -> IndentBlock:
     """Build one nested :class:`IndentBlock` from a ``block`` node."""
-    source = document.source if document is not None else b""
-    return IndentBlock(
+    block = IndentBlock(
         body=[
             _extract_nested_element(child, document)
             for child in node.children_by_field_name("body")
             if child.is_named
         ],
-        source_text=_node_text(node, source),
     )
+    block.attach_backing(node, document)
+    return block
 
 
 def _coalesce_list_items(elements: list[Element]) -> list[Element]:
@@ -961,4 +933,4 @@ def _ensure_single_trailing_newline(value: str) -> str:
     """Return text with exactly one trailing newline when non-empty."""
     if value == "":
         return ""
-    return f"{value.rstrip('\n')}\n"
+    return f"{value.rstrip(chr(10))}\n"

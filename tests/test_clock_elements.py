@@ -44,10 +44,10 @@ def test_heading_body_uses_clock_elements() -> None:
     document = loads("* Work\n\nCLOCK: [2025-01-07 Tue 14:00]\n")
 
     assert len(document.children) == 1
+    from org_parser.element._element import Element
+
     body = [
-        element
-        for element in document.children[0].body
-        if getattr(element, "node_type", "") != "blank_line"
+        element for element in document.children[0].body if type(element) is not Element
     ]
     assert isinstance(body[0], Clock)
 

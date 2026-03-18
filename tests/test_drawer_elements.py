@@ -15,7 +15,7 @@ def test_property_drawer_parses_to_properties_mapping() -> None:
     assert isinstance(document.properties, Properties)
     properties = document.properties
     assert properties is not None
-    assert properties.node_type == "property_drawer"
+    assert isinstance(properties, Properties)
     assert str(properties["ID"]) == "alpha"
     assert str(properties["CATEGORY"]) == "work"
 
@@ -163,12 +163,7 @@ def test_dirty_heading_drawer_order_is_properties_then_logbook() -> None:
     heading = document.children[0]
     heading.properties = Properties(properties={"ID": RichText("abc")})
     heading.logbook = Logbook(
-        body=[
-            Clock(
-                duration="0:30",
-                source_text="CLOCK: =>  0:30\n",
-            )
-        ]
+        clock_entries=[Clock(duration="0:30")],
     )
 
     rendered = str(heading)
@@ -180,12 +175,7 @@ def test_dirty_document_drawer_order_is_properties_then_logbook() -> None:
     document = loads("Text\n")
     document.properties = Properties(properties={"ID": RichText("abc")})
     document.logbook = Logbook(
-        body=[
-            Clock(
-                duration="0:30",
-                source_text="CLOCK: =>  0:30\n",
-            )
-        ]
+        clock_entries=[Clock(duration="0:30")],
     )
 
     rendered = str(document)

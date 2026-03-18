@@ -68,7 +68,6 @@ class Drawer(Element):
         name: Drawer name without surrounding colons.
         body: Parsed child elements contained in the drawer.
         parent: Optional parent owner object.
-        source_text: Optional verbatim source text.
     """
 
     def __init__(
@@ -77,9 +76,8 @@ class Drawer(Element):
         name: str,
         body: list[Element] | None = None,
         parent: Document | Heading | Element | None = None,
-        source_text: str = "",
     ) -> None:
-        super().__init__(node_type=_DRAWER, source_text=source_text, parent=parent)
+        super().__init__(parent=parent)
         self._name = name
         self._body = body if body is not None else []
         self._adopt_body(self._body)
@@ -110,9 +108,9 @@ class Drawer(Element):
                 parent=parent,
             ),
             parent=parent,
-            source_text=source[node.start_byte : node.end_byte].decode(),
         )
         drawer._node = node
+        drawer._document = document
         return drawer
 
     @property
@@ -145,8 +143,10 @@ class Drawer(Element):
 
     def __str__(self) -> str:
         """Render drawer text preserving source text while clean."""
-        if not self.dirty and self._node is not None:
-            return self.source_text
+        if not self.dirty and self._node is not None and self._document is not None:
+            return self._document.source[
+                self._node.start_byte : self._node.end_byte
+            ].decode()
 
         body_text = "".join(
             ensure_trailing_newline(str(element)) for element in self._body
@@ -168,15 +168,12 @@ class Logbook(Drawer):
         clock_entries: list[Clock] | None = None,
         repeats: list[Repeat] | None = None,
         parent: Document | Heading | Element | None = None,
-        source_text: str = "",
     ) -> None:
         super().__init__(
             name="LOGBOOK",
             body=body,
             parent=parent,
-            source_text=source_text,
         )
-        self._node_type = _LOGBOOK_DRAWER
         self._clock_entries = clock_entries if clock_entries is not None else []
         self._repeats: list[Repeat] = repeats if repeats is not None else []
         self._adopt_body(self._clock_entries)
@@ -190,7 +187,6 @@ class Logbook(Drawer):
         parent: Document | Heading | Element | None = None,
     ) -> Logbook:
         """Create a :class:`Logbook` from ``logbook_drawer`` node."""
-        source = document.source if document is not None else b""
         body = _coalesce_list_items(
             [
                 _extract_drawer_body_element(child, document)
@@ -205,9 +201,9 @@ class Logbook(Drawer):
             clock_entries=clock_entries,
             repeats=repeats,
             parent=parent,
-            source_text=source[node.start_byte : node.end_byte].decode(),
         )
         logbook._node = node
+        logbook._document = document
         return logbook
 
     @classmethod
@@ -260,13 +256,8 @@ class Properties(Element, MutableMapping[str, RichText]):
         *,
         properties: dict[str, RichText] | None = None,
         parent: Document | Heading | Element | None = None,
-        source_text: str = "",
     ) -> None:
-        super().__init__(
-            node_type=_PROPERTY_DRAWER,
-            source_text=source_text,
-            parent=parent,
-        )
+        super().__init__(parent=parent)
         self._properties: dict[str, RichText] = {}
         if properties is not None:
             for key, value in properties.items():
@@ -282,10 +273,7 @@ class Properties(Element, MutableMapping[str, RichText]):
     ) -> Properties:
         """Create a :class:`Properties` from ``property_drawer`` node."""
         source = document.source if document is not None else b""
-        properties = cls(
-            parent=parent,
-            source_text=source[node.start_byte : node.end_byte].decode(),
-        )
+        properties = cls(parent=parent)
         for child in node.named_children:
             if child.type != _NODE_PROPERTY:
                 continue
@@ -301,6 +289,7 @@ class Properties(Element, MutableMapping[str, RichText]):
             )
             properties._set_property(key, value, mark_dirty=False)
         properties._node = node
+        properties._document = document
         return properties
 
     @classmethod
@@ -308,7 +297,14 @@ class Properties(Element, MutableMapping[str, RichText]):
         """Create a :class:`Properties` value from a generic drawer body."""
         properties = cls()
         for element in drawer.body:
-            line = element.source_text.rstrip("\n")
+            node = element._node
+            doc = element._document
+            raw = (
+                doc.source[node.start_byte : node.end_byte].decode()
+                if node is not None and doc is not None
+                else ""
+            )
+            line = raw.rstrip("\n")
             if not line.startswith(":"):
                 continue
             rest = line[1:]
@@ -358,8 +354,10 @@ class Properties(Element, MutableMapping[str, RichText]):
 
     def __str__(self) -> str:
         """Render property drawer preserving source text while clean."""
-        if not self.dirty and self._node is not None:
-            return self.source_text
+        if not self.dirty and self._node is not None and self._document is not None:
+            return self._document.source[
+                self._node.start_byte : self._node.end_byte
+            ].decode()
 
         lines = [":PROPERTIES:\n"]
         for key, value in self._properties.items():
@@ -418,15 +416,15 @@ def _extract_indent_block(
     document: Document | None = None,
 ) -> IndentBlock:
     """Build one :class:`IndentBlock` for a drawer body ``block`` node."""
-    source = document.source if document is not None else b""
-    return IndentBlock(
+    block = IndentBlock(
         body=[
             _extract_drawer_body_element(child, document)
             for child in node.children_by_field_name("body")
             if child.is_named
         ],
-        source_text=source[node.start_byte : node.end_byte].decode(),
     )
+    block.attach_backing(node, document)
+    return block
 
 
 def _coalesce_list_items(

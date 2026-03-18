@@ -192,16 +192,16 @@ def extract_indent_block(
     Returns:
         An :class:`IndentBlock` whose body elements are recursively parsed.
     """
-    source = document.source if document is not None else b""
-    return IndentBlock(
+    block = IndentBlock(
         body=[
             extract_body_element(child, parent=parent, document=document)
             for child in node.children_by_field_name("body")
             if child.is_named
         ],
         parent=parent,
-        source_text=source[node.start_byte : node.end_byte].decode(),
     )
+    block.attach_backing(node, document)
+    return block
 
 
 def coalesce_list_items(

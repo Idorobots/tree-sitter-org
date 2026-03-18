@@ -1,9 +1,9 @@
-"""Stub implementation of :class:`Element` — a structural building block.
+"""Base class for Org Mode structural element nodes.
 
 An :class:`Element` wraps a tree-sitter node that represents an Org Mode
 *greater element* or *lesser element* (paragraph, plain list, source block,
-drawer, etc.).  This stub captures only the node type and verbatim source
-text; richer per-element semantics will be added in later iterations.
+drawer, etc.).  Concrete subclasses add per-element semantic fields;
+:class:`Element` itself should not be instantiated directly.
 """
 
 from __future__ import annotations
@@ -61,80 +61,26 @@ def reformat_value(value: object) -> None:
 
 
 class Element:
-    """Stub for an Org Mode element node.
+    """Base class for an Org Mode element node.
+
+    Concrete subclasses represent specific element types (paragraph, list,
+    drawer, block, etc.).  This class should not be instantiated directly.
 
     Args:
-        node_type: The tree-sitter node type name (e.g. ``"paragraph"``).
-        source_text: The verbatim source text of the element.
+        parent: Optional parent object that owns this element.
     """
 
     def __init__(
         self,
         *,
-        node_type: str = "",
-        source_text: str = "",
         parent: Document | Heading | Element | None = None,
     ) -> None:
-        self._node_type = node_type
-        self._source_text = source_text
         self._parent = parent
         self._node: tree_sitter.Node | None = None
+        self._document: Document | None = None
         self._dirty = False
 
-    # -- factory method ------------------------------------------------------
-
-    @classmethod
-    def from_node(
-        cls,
-        node: tree_sitter.Node,
-        document: Document | None = None,
-        *,
-        parent: Document | Heading | Element | None = None,
-    ) -> Element:
-        """Create an :class:`Element` from a tree-sitter node.
-
-        Args:
-            node: The tree-sitter node to wrap.
-            document: The owning :class:`Document`, or *None* for programmatic
-                construction (source defaults to ``b""``).
-            parent: Optional parent object that owns this element.
-
-        Returns:
-            A new :class:`Element` preserving the node type and verbatim
-            source text.
-        """
-        source = document.source if document is not None else b""
-        elem = cls(
-            node_type=node.type,
-            source_text=source[node.start_byte : node.end_byte].decode(),
-            parent=parent,
-        )
-        elem._node = node
-        return elem
-
     # -- public read-only properties -----------------------------------------
-
-    @property
-    def node_type(self) -> str:
-        """The tree-sitter node type name."""
-        return self._node_type
-
-    @node_type.setter
-    def node_type(self, value: str) -> None:
-        """Set the node type and mark the element as dirty."""
-        self._node_type = value
-        self._mark_dirty()
-
-    @property
-    def source_text(self) -> str:
-        """The verbatim source text of the element."""
-        return self._source_text
-
-    @source_text.setter
-    def source_text(self, value: str) -> None:
-        """Set source text and mark the element as dirty."""
-        self._source_text = value
-        self._mark_dirty()
 
     @property
     def parent(self) -> Document | Heading | Element | None:
@@ -178,6 +124,23 @@ class Element:
         """Mark this element as dirty."""
         self._mark_dirty()
 
+    def attach_backing(
+        self,
+        node: tree_sitter.Node,
+        document: Document | None,
+    ) -> None:
+        """Attach parse-tree backing to this element.
+
+        This method is for internal factory use — call it immediately after
+        construction to wire up the parse-tree node and owning document.
+
+        Args:
+            node: The tree-sitter node this element was built from.
+            document: The owning :class:`Document`, or *None*.
+        """
+        self._node = node
+        self._document = document
+
     def reformat(self) -> None:
         """Recursively mark descendants dirty, then mark this element dirty."""
         for key, value in vars(self).items():
@@ -185,8 +148,7 @@ class Element:
                 "_parent",
                 "_node",
                 "_dirty",
-                "_source_text",
-                "_node_type",
+                "_document",
             }:
                 continue
             reformat_value(value)
@@ -194,17 +156,9 @@ class Element:
 
     # -- dunder protocols ----------------------------------------------------
 
-    def __str__(self) -> str:
-        """Return the element text representation.
-
-        This is currently a simple passthrough of the stored source text while
-        element-specific reconstruction is still a stub.
-        """
-        return self._source_text
-
     def __repr__(self) -> str:
         """Return a developer-friendly representation."""
-        return f"Element(node_type={self._node_type!r})"
+        return "Element()"
 
 
 # ---------------------------------------------------------------------------
@@ -263,8 +217,13 @@ def element_from_error_or_unknown(
 
         source = document.source if document is not None else b""
         text = source[node.start_byte : node.end_byte].decode()
-        return Paragraph(body=RichText(text), source_text=text, parent=parent)
-    return Element.from_node(node, document, parent=parent)
+        paragraph = Paragraph(body=RichText(text), parent=parent)
+        paragraph.attach_backing(node, document)
+        return paragraph
+
+    elem = Element(parent=parent)
+    elem.attach_backing(node, document)
+    return elem
 
 
 def ensure_trailing_newline(value: str) -> str:

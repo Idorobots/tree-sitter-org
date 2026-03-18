@@ -19,6 +19,7 @@ from org_parser.element import (
     Table,
     VerseBlock,
 )
+from org_parser.element._element import Element
 from org_parser.text import RichText
 
 if TYPE_CHECKING:
@@ -26,12 +27,12 @@ if TYPE_CHECKING:
 
 
 def _non_blank(elements: Sequence[object]) -> list[object]:
-    """Return elements excluding grammar-level blank-line separators."""
-    return [
-        element
-        for element in elements
-        if getattr(element, "node_type", "") != "blank_line"
-    ]
+    """Return elements excluding grammar-level blank-line separators.
+
+    Blank-line nodes are wrapped as plain :class:`Element` instances (the base
+    class, not any concrete subclass), so an exact type check identifies them.
+    """
+    return [element for element in elements if type(element) is not Element]
 
 
 def test_document_body_uses_dedicated_block_element_types() -> None:
@@ -67,9 +68,7 @@ def test_document_body_uses_dedicated_block_element_types() -> None:
         ": fixed\n"
     )
 
-    assert any(
-        getattr(element, "node_type", "") == "blank_line" for element in document.body
-    )
+    assert any(type(element) is Element for element in document.body)
     body = _non_blank(document.body)
     assert isinstance(body[0], QuoteBlock)
     assert isinstance(body[1], ExampleBlock)
@@ -96,9 +95,7 @@ def test_heading_body_uses_dedicated_block_element_types() -> None:
     )
 
     heading = document.children[0]
-    assert any(
-        getattr(element, "node_type", "") == "blank_line" for element in heading.body
-    )
+    assert any(type(element) is Element for element in heading.body)
     body = _non_blank(heading.body)
     assert isinstance(body[0], QuoteBlock)
     assert isinstance(body[1], SourceBlock)

@@ -120,7 +120,6 @@ class Table(Element):
         formulas: Table formulas without ``#+TBLFM:`` prefix.
         is_tableel: Whether source was parsed as a Table.el table.
         parent: Optional parent owner object.
-        source_text: Optional verbatim source text.
     """
 
     def __init__(
@@ -130,10 +129,8 @@ class Table(Element):
         formulas: list[str] | None = None,
         is_tableel: bool = False,
         parent: Document | Heading | Element | None = None,
-        source_text: str = "",
     ) -> None:
-        node_type = "tableel_table" if is_tableel else "org_table"
-        super().__init__(node_type=node_type, source_text=source_text, parent=parent)
+        super().__init__(parent=parent)
         self._rows = rows
         self._formulas = formulas if formulas is not None else []
         self._is_tableel = is_tableel
@@ -157,9 +154,9 @@ class Table(Element):
                 formulas=[],
                 is_tableel=True,
                 parent=parent,
-                source_text=source_text,
             )
             table._node = node
+            table._document = document
             table._adopt_rows()
             return table
 
@@ -168,9 +165,9 @@ class Table(Element):
             formulas=[],
             is_tableel=False,
             parent=parent,
-            source_text=source_text,
         )
         table._node = node
+        table._document = document
 
         rows: list[TableRow] = []
         formulas: list[str] = []
@@ -224,8 +221,10 @@ class Table(Element):
         Clean parse-backed tables preserve original source text. Dirty tables
         are always rendered as aligned Org tables.
         """
-        if not self.dirty and self._node is not None:
-            return self.source_text
+        if not self.dirty and self._node is not None and self._document is not None:
+            return self._document.source[
+                self._node.start_byte : self._node.end_byte
+            ].decode()
         return _render_org_table(self._rows, self._formulas)
 
     def __repr__(self) -> str:

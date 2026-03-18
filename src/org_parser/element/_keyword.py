@@ -23,7 +23,6 @@ class Keyword(Element):
         key: Upper-cased keyword key.
         value: Keyword value rich text.
         parent: Optional parent owner object.
-        source_text: Optional verbatim source text.
     """
 
     def __init__(
@@ -32,13 +31,8 @@ class Keyword(Element):
         key: str,
         value: RichText,
         parent: Document | Heading | Element | None = None,
-        source_text: str = "",
     ) -> None:
-        super().__init__(
-            node_type="special_keyword",
-            source_text=source_text,
-            parent=parent,
-        )
+        super().__init__(parent=parent)
         self._key = key.upper()
         self._value = value
         self._value.set_parent(self, mark_dirty=False)
@@ -74,13 +68,9 @@ class Keyword(Element):
             else RichText("")
         )
 
-        kw = cls(
-            key=key,
-            value=value,
-            parent=parent,
-            source_text=source[node.start_byte : node.end_byte].decode(),
-        )
+        kw = cls(key=key, value=value, parent=parent)
         kw._node = node
+        kw._document = document
         return kw
 
     @property
@@ -112,8 +102,10 @@ class Keyword(Element):
         Clean parse-backed instances preserve their verbatim source text.
         Dirty instances are rendered from semantic fields.
         """
-        if not self.dirty and self._node is not None:
-            return self.source_text
+        if not self.dirty and self._node is not None and self._document is not None:
+            return self._document.source[
+                self._node.start_byte : self._node.end_byte
+            ].decode()
         rendered_value = str(self._value)
         if rendered_value == "":
             return f"#+{self._key}:\n"

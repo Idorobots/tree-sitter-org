@@ -61,23 +61,17 @@ class TestRichText:
 
 
 class TestElement:
-    """Tests for the :class:`Element` stub."""
+    """Tests for the :class:`Element` base class."""
 
     def test_default_construction(self) -> None:
         e = Element()
-        assert e.node_type == ""
-        assert e.source_text == ""
-
-    def test_construction_with_values(self) -> None:
-        e = Element(node_type="paragraph", source_text="Hello world.")
-        assert e.node_type == "paragraph"
-        assert e.source_text == "Hello world."
+        assert isinstance(e, Element)
+        assert e.dirty is False
+        assert e.parent is None
 
     def test_repr(self) -> None:
-        e = Element(node_type="paragraph", source_text="short")
-        r = repr(e)
-        assert "paragraph" in r
-        assert "short" not in r
+        e = Element()
+        assert repr(e) == "Element()"
 
 
 class TestParagraph:
@@ -85,7 +79,7 @@ class TestParagraph:
 
     def test_construction_with_body(self) -> None:
         paragraph = Paragraph(body=RichText("Hello world.\n"))
-        assert paragraph.node_type == "paragraph"
+        assert isinstance(paragraph, Paragraph)
         assert str(paragraph.body) == "Hello world.\n"
         assert paragraph.indent is None
 
@@ -306,12 +300,8 @@ class TestDocumentFromTreeKeywords:
         doc = _load_document(example_file("zeroth-section.org"))
         # zeroth-section.org has comments, a property drawer, and a paragraph
         assert len(doc.body) > 0
-        node_types = [e.node_type for e in doc.body]
-        assert "paragraph" in node_types
+        assert any(isinstance(e, Paragraph) for e in doc.body)
         assert all(e.parent is doc for e in doc.body)
-        assert any(
-            isinstance(e, Paragraph) for e in doc.body if e.node_type == "paragraph"
-        )
 
 
 # ===================================================================
@@ -426,19 +416,18 @@ class TestHeadingFields:
         doc = _load_document(example_file("nested-headings-basic.org"))
         first = doc.children[0]
         assert len(first.body) > 0
-        assert any(e.node_type == "paragraph" for e in first.body)
+        assert any(isinstance(e, Paragraph) for e in first.body)
         assert all(e.parent is first for e in first.body)
-        assert any(
-            isinstance(e, Paragraph) for e in first.body if e.node_type == "paragraph"
-        )
 
     def test_heading_body_excludes_subheadings(
         self, example_file: Callable[[str], Path]
     ) -> None:
         """Body elements do not include sub-headings."""
+        from org_parser.document import Heading as HeadingType
+
         doc = _load_document(example_file("nested-headings-basic.org"))
         first = doc.children[0]
-        assert all(e.node_type != "heading" for e in first.body)
+        assert not any(isinstance(e, HeadingType) for e in first.body)
 
     def test_completion_counter(self, tmp_path: Path) -> None:
         """Completion counter inner value is extracted from the title."""
