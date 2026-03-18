@@ -61,9 +61,9 @@ class ListItem(Element):
         self._body = body if body is not None else []
 
         if self._item_tag is not None:
-            self._item_tag.set_parent(self, mark_dirty=False)
+            self._item_tag.parent = self
         if self._first_line is not None:
-            self._first_line.set_parent(self, mark_dirty=False)
+            self._first_line.parent = self
         self._adopt_body(self._body)
 
     @classmethod
@@ -146,7 +146,7 @@ class ListItem(Element):
         """Set item tag and mark item dirty."""
         self._item_tag = value
         if self._item_tag is not None:
-            self._item_tag.set_parent(self, mark_dirty=False)
+            self._item_tag.parent = self
         self._mark_dirty()
 
     @property
@@ -159,7 +159,7 @@ class ListItem(Element):
         """Set first-line rich text and mark item dirty."""
         self._first_line = value
         if self._first_line is not None:
-            self._first_line.set_parent(self, mark_dirty=False)
+            self._first_line.parent = self
         self._mark_dirty()
 
     @property
@@ -176,7 +176,7 @@ class ListItem(Element):
 
     def append_body(self, element: Element, *, mark_dirty: bool = True) -> None:
         """Append one body element with optional dirty propagation."""
-        element.set_parent(self, mark_dirty=False)
+        element.parent = self
         self._body.append(element)
         if mark_dirty:
             self._mark_dirty()
@@ -184,7 +184,7 @@ class ListItem(Element):
     def _adopt_body(self, body: Sequence[Element]) -> None:
         """Assign this item as parent for all body elements."""
         for element in body:
-            element.set_parent(self, mark_dirty=False)
+            element.parent = self
 
     def __str__(self) -> str:
         """Render list-item text from semantic fields when dirty."""
@@ -446,21 +446,21 @@ class List(Element):
 
     def append_item(self, item: ListItem, *, mark_dirty: bool = True) -> None:
         """Append one list item with optional dirty propagation."""
-        item.set_parent(self, mark_dirty=False)
+        item.parent = self
         self._items.append(item)
         if mark_dirty:
             self._mark_dirty()
 
     def insert_item(self, index: int, item: ListItem) -> None:
         """Insert one list item at *index* and mark list dirty."""
-        item.set_parent(self, mark_dirty=False)
+        item.parent = self
         self._items.insert(index, item)
         self._mark_dirty()
 
     def _adopt_items(self, items: Sequence[ListItem]) -> None:
         """Assign this list as parent for all items."""
         for item in items:
-            item.set_parent(self, mark_dirty=False)
+            item.parent = self
 
     def _mark_dirty(self) -> None:
         """Mark this list and all direct items as dirty."""

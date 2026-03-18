@@ -67,7 +67,7 @@ class _ContainerBlock(Element):
     def _adopt_contents(self, contents: Sequence[Element]) -> None:
         """Assign this block as parent for each nested element."""
         for element in contents:
-            element.set_parent(self, mark_dirty=False)
+            element.parent = self
 
     def _render_contents(self) -> str:
         """Render nested contents ensuring one trailing newline per child."""

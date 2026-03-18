@@ -51,7 +51,7 @@ class IndentBlock(Element):
     def _adopt_body(self, body: Sequence[Element]) -> None:
         """Assign this block as parent for all nested elements."""
         for element in body:
-            element.set_parent(self, mark_dirty=False)
+            element.parent = self
 
     def __str__(self) -> str:
         """Render indentation block text.

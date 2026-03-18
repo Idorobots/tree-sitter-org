@@ -123,19 +123,8 @@ class RichText:
 
     @parent.setter
     def parent(self, value: Document | Heading | Element | None) -> None:
-        """Set the parent object and mark rich text as dirty."""
-        self.set_parent(value)
-
-    def set_parent(
-        self,
-        value: Document | Heading | Element | None,
-        *,
-        mark_dirty: bool = True,
-    ) -> None:
-        """Set parent object with optional dirty propagation."""
+        """Set the parent object without changing dirty state."""
         self._parent = value
-        if mark_dirty:
-            self._mark_dirty()
 
     def _mark_dirty(self) -> None:
         """Mark this rich text dirty and bubble to parent objects."""

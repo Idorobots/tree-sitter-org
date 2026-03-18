@@ -32,7 +32,7 @@ class TableCell:
     def __init__(self, *, value: RichText, table: Table) -> None:
         self._value = value
         self._table = table
-        self._value.set_parent(table, mark_dirty=False)
+        self._value.parent = table
 
     @property
     def value(self) -> RichText:
@@ -43,13 +43,13 @@ class TableCell:
     def value(self, value: RichText) -> None:
         """Set cell value and mark the owning table as dirty."""
         self._value = value
-        self._value.set_parent(self._table, mark_dirty=False)
+        self._value.parent = self._table
         self._table.mark_dirty()
 
     def set_table(self, table: Table) -> None:
         """Assign a new owning table without marking dirty."""
         self._table = table
-        self._value.set_parent(table, mark_dirty=False)
+        self._value.parent = table
 
     def __str__(self) -> str:
         """Render cell value as text."""

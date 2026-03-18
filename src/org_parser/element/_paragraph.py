@@ -35,7 +35,7 @@ class Paragraph(Element):
         super().__init__(parent=parent)
         self._body = body
         self._indent = indent
-        self._body.set_parent(self, mark_dirty=False)
+        self._body.parent = self
 
     @classmethod
     def from_node(
@@ -83,7 +83,7 @@ class Paragraph(Element):
     def body(self, value: RichText) -> None:
         """Set body rich text and mark this paragraph as dirty."""
         self._body = value
-        self._body.set_parent(self, mark_dirty=False)
+        self._body.parent = self
         self._mark_dirty()
 
     def __str__(self) -> str:

@@ -35,7 +35,7 @@ class Keyword(Element):
         super().__init__(parent=parent)
         self._key = key.upper()
         self._value = value
-        self._value.set_parent(self, mark_dirty=False)
+        self._value.parent = self
 
     @classmethod
     def from_node(
@@ -93,7 +93,7 @@ class Keyword(Element):
     def value(self, value: RichText) -> None:
         """Set keyword value and mark as dirty."""
         self._value = value
-        self._value.set_parent(self, mark_dirty=False)
+        self._value.parent = self
         self._mark_dirty()
 
     def __str__(self) -> str:

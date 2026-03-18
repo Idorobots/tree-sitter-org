@@ -42,8 +42,8 @@ def test_rich_text_mutation_bubbles_to_heading_and_document() -> None:
     assert document.dirty is True
 
 
-def test_element_parent_setter_marks_dirty() -> None:
-    """Element parent setter marks the element dirty and bubbles to the new parent."""
+def test_element_parent_setter_does_not_mark_dirty() -> None:
+    """Element parent setter updates parent without affecting dirty state."""
     document = Document(filename="doc.org")
     heading = Heading(level=1, document=document, parent=document)
     element = Element(parent=heading)
@@ -51,12 +51,11 @@ def test_element_parent_setter_marks_dirty() -> None:
     assert heading.dirty is False
     assert document.dirty is False
 
-    # Changing parent marks element dirty; bubble propagates via heading -> document.
     element.parent = heading
 
-    assert element.dirty is True
-    assert heading.dirty is True
-    assert document.dirty is True
+    assert element.dirty is False
+    assert heading.dirty is False
+    assert document.dirty is False
 
 
 def test_document_setters_mark_dirty() -> None:

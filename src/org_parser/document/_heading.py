@@ -110,7 +110,7 @@ class Heading:
         self._dirty = False
 
         if self._title is not None:
-            self._title.set_parent(self, mark_dirty=False)
+            self._title.parent = self
 
         self._adopt_properties(self._properties)
         self._adopt_logbook(self._logbook)
@@ -250,7 +250,7 @@ class Heading:
         """Set the heading title and mark this heading as dirty."""
         self._title = value
         if self._title is not None:
-            self._title.set_parent(self, mark_dirty=False)
+            self._title.parent = self
         self._mark_dirty()
 
     @property
@@ -375,19 +375,8 @@ class Heading:
 
     @parent.setter
     def parent(self, value: Heading | Document) -> None:
-        """Set the parent reference and mark this heading as dirty."""
-        self.set_parent(value)
-
-    def set_parent(
-        self,
-        value: Heading | Document,
-        *,
-        mark_dirty: bool = True,
-    ) -> None:
-        """Set parent object with optional dirty propagation."""
+        """Set the parent reference without changing dirty state."""
         self._parent = value
-        if mark_dirty:
-            self._mark_dirty()
 
     @property
     def children(self) -> list[Heading]:
@@ -435,19 +424,19 @@ class Heading:
     def _adopt_body_elements(self, body: list[Element]) -> None:
         """Assign this heading as parent for all body elements."""
         for element in body:
-            element.set_parent(self, mark_dirty=False)
+            element.parent = self
 
     def _adopt_properties(self, value: Properties | None) -> None:
         """Assign this heading as parent for merged properties drawer."""
         if value is None:
             return
-        value.set_parent(self, mark_dirty=False)
+        value.parent = self
 
     def _adopt_logbook(self, value: Logbook | None) -> None:
         """Assign this heading as parent for merged logbook drawer."""
         if value is None:
             return
-        value.set_parent(self, mark_dirty=False)
+        value.parent = self
 
     def _sync_repeated_tasks_from_logbook(self) -> None:
         """Synchronize local repeated-task cache from the current logbook."""
@@ -466,7 +455,7 @@ class Heading:
     def _adopt_children(self, children: list[Heading]) -> None:
         """Assign this heading as parent for direct sub-headings."""
         for child in children:
-            child.set_parent(self, mark_dirty=False)
+            child.parent = self
 
     @property
     def siblings(self) -> list[Heading]:

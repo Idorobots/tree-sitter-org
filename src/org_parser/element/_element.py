@@ -91,19 +91,8 @@ class Element:
 
     @parent.setter
     def parent(self, value: Document | Heading | Element | None) -> None:
-        """Set the parent object and mark this element as dirty."""
-        self.set_parent(value)
-
-    def set_parent(
-        self,
-        value: Document | Heading | Element | None,
-        *,
-        mark_dirty: bool = True,
-    ) -> None:
-        """Set parent object with optional dirty propagation."""
+        """Set the parent object without changing dirty state."""
         self._parent = value
-        if mark_dirty:
-            self._mark_dirty()
 
     @property
     def dirty(self) -> bool:

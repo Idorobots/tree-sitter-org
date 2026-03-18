@@ -425,24 +425,24 @@ class Document:
         """Assign this document as parent for one keyword."""
         if value is None:
             return
-        value.set_parent(self, mark_dirty=False)
+        value.parent = self
 
     def _adopt_keywords(self, keywords: dict[str, Keyword]) -> None:
         """Assign this document as parent for all keyword entries."""
         for value in keywords.values():
-            value.set_parent(self, mark_dirty=False)
+            value.parent = self
 
     def _adopt_properties(self, value: Properties | None) -> None:
         """Assign this document as parent for merged properties drawer."""
         if value is None:
             return
-        value.set_parent(self, mark_dirty=False)
+        value.parent = self
 
     def _adopt_logbook(self, value: Logbook | None) -> None:
         """Assign this document as parent for merged logbook drawer."""
         if value is None:
             return
-        value.set_parent(self, mark_dirty=False)
+        value.parent = self
 
     def _sync_keywords_with_dedicated(self) -> None:
         """Ensure dedicated keyword properties and map stay aligned."""
@@ -474,12 +474,12 @@ class Document:
     def _adopt_body_elements(self, body: list[Element]) -> None:
         """Assign this document as parent for all body elements."""
         for element in body:
-            element.set_parent(self, mark_dirty=False)
+            element.parent = self
 
     def _adopt_children(self, children: list[Heading]) -> None:
         """Assign this document as parent for all top-level headings."""
         for child in children:
-            child.set_parent(self, mark_dirty=False)
+            child.parent = self
 
     # -- dunder protocols ----------------------------------------------------
 

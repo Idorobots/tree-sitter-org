@@ -140,7 +140,7 @@ class Drawer(Element):
     def _adopt_body(self, body: Sequence[Element]) -> None:
         """Assign this drawer as parent for all body elements."""
         for element in body:
-            element.set_parent(self, mark_dirty=False)
+            element.parent = self
 
     def __str__(self) -> str:
         """Render drawer text preserving source text while clean."""
@@ -319,7 +319,7 @@ class Properties(Element, MutableMapping[str, RichText]):
         if key in self._properties:
             del self._properties[key]
         self._properties[key] = value
-        value.set_parent(self, mark_dirty=False)
+        value.parent = self
         if mark_dirty:
             self._mark_dirty()
 
