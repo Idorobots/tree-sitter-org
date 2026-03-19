@@ -391,7 +391,11 @@ def _extract_indent_block(
 
 
 def _extract_logbook_repeats(body: list[Element]) -> list[Repeat]:
-    """Convert repeat-form list items in logbook lists into :class:`Repeat`."""
+    """Convert repeat-form list items in logbook lists into :class:`Repeat`.
+
+    This runs after list recovery so each candidate item already owns its
+    continuation body, which the repeat parser uses as the note payload.
+    """
     repeats: list[Repeat] = []
     for element in body:
         if not isinstance(element, List):

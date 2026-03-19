@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import re
+import textwrap
 from typing import TYPE_CHECKING
 
 from org_parser._node import node_source, node_text
@@ -30,11 +30,10 @@ if TYPE_CHECKING:
 __all__ = ["List", "ListItem", "Repeat"]
 
 
-_REPEAT_PATTERN = re.compile(
+_REPEAT_HEADER_PATTERN = re.compile(
     r'^State\s+"(?P<after>[^"]+)"\s+from\s+"(?P<before>[^"]+)"\s+'
     r"(?P<timestamp><[^>\n]+>|\[[^\]\n]+\](?:--\[[^\]\n]+\])?)"
-    r"(?:\s*(?P<line_break>\\\\)?(?:\n(?P<note_line>.*))?)?$",
-    re.DOTALL,
+    r"\s*$"
 )
 
 
@@ -267,8 +266,7 @@ class Repeat(ListItem):
         after: str,
         before: str,
         timestamp: Timestamp,
-        note: str | None = None,
-        note_indent: str | None = None,
+        body: list[Element] | None = None,
         line_prefix: str = "",
         bullet: str = "-",
         ordered_counter: str | None = None,
@@ -283,34 +281,46 @@ class Repeat(ListItem):
             checkbox=checkbox,
             item_tag=None,
             first_line=None,
-            body=[],
+            body=body,
             line_prefix=line_prefix,
             parent=parent,
         )
         self._after = after
         self._before = before
         self._timestamp = timestamp
-        self._note = _normalize_optional_text(note)
-        normalized_indent = line_prefix if line_prefix != "" else None
-        self._note_indent = (
-            note_indent
-            if note_indent is not None
-            else _default_note_indent(normalized_indent)
-        )
 
     @classmethod
     def from_list_item(cls, item: ListItem) -> Repeat | None:
         """Build a :class:`Repeat` from one list item when pattern-matched."""
-        item_source = node_source(item._node, item._document)
-        matched = _parse_repeat_source(item_source)
-        if matched is None:
+        if (
+            item.item_tag is not None
+            or item.counter_set is not None
+            or item.checkbox is not None
+            or item.ordered_counter is not None
+            or item.first_line is None
+        ):
             return None
+
+        parsed = _parse_repeat_first_line(str(item.first_line))
+        if parsed is None:
+            return None
+        after, before, timestamp, has_line_break, note_text = parsed
+
+        body = list(item.body)
+        if note_text is not None:
+            from org_parser.element._paragraph import Paragraph
+
+            body = [Paragraph(body=RichText(note_text)), *body]
+
+        has_body = bool(body)
+        if has_line_break != has_body:
+            return None
+
         repeat = cls(
-            after=matched.after,
-            before=matched.before,
-            timestamp=matched.timestamp,
-            note=matched.note,
-            note_indent=matched.note_indent,
+            after=after,
+            before=before,
+            timestamp=timestamp,
+            body=body,
             bullet=item.bullet,
             ordered_counter=item.ordered_counter,
             counter_set=item.counter_set,
@@ -355,17 +365,6 @@ class Repeat(ListItem):
         self._timestamp = value
         self._mark_dirty()
 
-    @property
-    def note(self) -> str | None:
-        """Optional short note from continuation line, if present."""
-        return self._note
-
-    @note.setter
-    def note(self, value: str | None) -> None:
-        """Set optional note text and mark repeat entry dirty."""
-        self._note = _normalize_optional_text(value)
-        self._mark_dirty()
-
     def reformat(self) -> None:
         """Mark timestamp, any child content, and this entry dirty."""
         self._timestamp.reformat()
@@ -399,11 +398,17 @@ class Repeat(ListItem):
         if self._checkbox is not None:
             parts.append(f"[{self._checkbox}] ")
         parts.append(f'State "{self._after}" from "{self._before}" {self._timestamp}')
-        if self._note is None:
+        if not self._body:
             parts.append("\n")
             return "".join(parts)
         parts.append(" \\\\\n")
-        parts.append(f"{self._note_indent}{self._note}\n")
+        body_prefix = (indent if indent is not None else "") + (" " * indent_step)
+        for element in self._body:
+            rendered = ensure_trailing_newline(str(element))
+            if isinstance(element, List):
+                parts.append(rendered)
+                continue
+            parts.append(_indent_non_empty_lines(rendered, body_prefix))
         return "".join(parts)
 
     def __repr__(self) -> str:
@@ -413,7 +418,6 @@ class Repeat(ListItem):
             after=self._after,
             before=self._before,
             timestamp=self._timestamp,
-            note=self._note,
             body=self._body,
         )
 
@@ -623,50 +627,40 @@ def _list_depth(list_node: List) -> int:
     return depth
 
 
-@dataclass(slots=True)
-class _RepeatMatch:
-    """Parsed repeated-task fields extracted from one list item text."""
+def _parse_repeat_first_line(
+    first_line: str,
+) -> tuple[str, str, Timestamp, bool, str | None] | None:
+    """Parse one repeat header from a list item's first-line text.
 
-    after: str
-    before: str
-    timestamp: Timestamp
-    note: str | None
-    note_indent: str
+    Returns:
+        A tuple of ``(after, before, timestamp, has_line_break, note_text)``
+        when the line matches repeat syntax, otherwise ``None``.
+    """
+    has_line_break = "\\\\n" in first_line
+    note_text: str | None = None
+    header_text = first_line
+    if has_line_break:
+        header_text, raw_note_text = first_line.split("\\\\n", maxsplit=1)
+        normalized_note = textwrap.dedent(raw_note_text)
+        note_text = _normalize_optional_text(normalized_note)
 
-
-def _parse_repeat_source(source_text: str) -> _RepeatMatch | None:
-    """Parse one repeated-task list item and return extracted fields."""
-    body = _strip_item_prefix(source_text.rstrip("\n"))
-    if body is None:
-        return None
-    body = body.replace("\\\\n", "\n")
-
-    matched = _REPEAT_PATTERN.match(body)
+    matched = _REPEAT_HEADER_PATTERN.match(header_text)
     if matched is None:
         return None
 
     timestamp_text = matched.group("timestamp")
-    note_line = matched.group("note_line")
-    note_indent = _extract_leading_indent(note_line) if note_line is not None else ""
-    note = None if note_line is None else note_line.strip()
-
-    return _RepeatMatch(
-        after=matched.group("after"),
-        before=matched.group("before"),
-        timestamp=_parse_timestamp_text(timestamp_text),
-        note=_normalize_optional_text(note),
-        note_indent=note_indent,
-    )
-
-
-def _strip_item_prefix(source_text: str) -> str | None:
-    """Strip leading list marker prefix from one list-item source text."""
-    line, separator, rest = source_text.partition("\n")
-    prefix_match = re.match(r"^[ \t]*(?:[-+*]|[0-9]+[.)]|[a-z][.)])[ \t]+", line)
-    if prefix_match is None:
+    try:
+        timestamp = _parse_timestamp_text(timestamp_text)
+    except ValueError:
         return None
-    remainder = line[prefix_match.end() :]
-    return remainder if separator == "" else f"{remainder}\n{rest}"
+
+    return (
+        matched.group("after"),
+        matched.group("before"),
+        timestamp,
+        has_line_break,
+        note_text,
+    )
 
 
 def _parse_timestamp_text(raw: str) -> Timestamp:
@@ -700,9 +694,3 @@ def _normalize_optional_text(value: str | None) -> str | None:
     if normalized == "":
         return None
     return normalized
-
-
-def _default_note_indent(indent: str | None) -> str:
-    """Return default continuation indentation for repeat note lines."""
-    base = "" if indent is None else indent
-    return f"{base}  "
