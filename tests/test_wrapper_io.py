@@ -70,3 +70,35 @@ def test_dump_raises_when_no_filename_available() -> None:
     document = loads("* Heading\n")
     with pytest.raises(ValueError, match="No output filename provided"):
         dump(document)
+
+
+def test_dumps_dirty_document_includes_mutated_heading(
+    example_file: Callable[[str], Path],
+) -> None:
+    """dumps() reflects heading mutations in a dirty document."""
+    document = load(str(example_file("nested-headings-basic.org")))
+    document.children[0].todo = "TODO"
+
+    result = dumps(document)
+
+    assert "* TODO First top-level heading" in result
+    assert "** First sub-heading" in result
+    assert "* Second top-level heading" in result
+
+
+def test_dumps_dirty_zeroth_section_still_includes_all_headings(
+    example_file: Callable[[str], Path],
+) -> None:
+    """dumps() includes all headings even when only the zeroth section is dirty."""
+    from org_parser.element import Keyword
+    from org_parser.text import RichText
+
+    document = load(str(example_file("nested-headings-basic.org")))
+    document.keywords = {"AUTHOR": Keyword(key="AUTHOR", value=RichText("Alice"))}
+
+    result = dumps(document)
+
+    assert "#+AUTHOR: Alice" in result
+    assert "* First top-level heading" in result
+    assert "** First sub-heading" in result
+    assert "* Second top-level heading" in result

@@ -10,6 +10,7 @@ from pathlib import Path
 
 from org_parser._lang import PARSER
 from org_parser.document import Document
+from org_parser.document._document import render_document
 
 __all__ = ["Document", "dump", "dumps", "load", "loads"]
 
@@ -48,13 +49,18 @@ def loads(input: str, filename: str | None = None) -> Document:
 def dumps(document: Document) -> str:
     """Return Org Mode text for a parsed document.
 
+    Produces the complete document text including all headings.  For clean
+    (unmodified) parse-backed documents the original source is returned
+    verbatim; for dirty documents every section is reconstructed from its
+    semantic fields.
+
     Args:
         document: Parsed document instance.
 
     Returns:
-        Verbatim Org Mode source text.
+        Full Org Mode source text.
     """
-    return document.source.decode()
+    return render_document(document)
 
 
 def dump(document: Document, filename: str | None = None) -> None:

@@ -37,7 +37,7 @@ if TYPE_CHECKING:
 
     from org_parser.document._heading import Heading
 
-__all__ = ["Document", "ParseError"]
+__all__ = ["Document", "ParseError", "render_document"]
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -592,6 +592,40 @@ def _find_first_child_by_type(
         if child.type == node_type:
             return child
     return None
+
+
+def render_document(document: Document) -> str:
+    """Return the complete Org Mode text for a document.
+
+    For clean (unmodified) parse-backed documents the original source bytes are
+    returned verbatim, preserving all whitespace and formatting.  For dirty
+    documents, or documents built without a backing source, the zeroth section
+    and every heading subtree are reconstructed from their semantic fields via
+    :func:`str`.
+
+    Args:
+        document: The document to serialize.
+
+    Returns:
+        Full Org Mode text including all headings.
+    """
+    if not document.dirty and document.source:
+        return document.source.decode()
+    parts: list[str] = [str(document)]
+    _append_heading_subtree(document.children, parts)
+    return "".join(parts)
+
+
+def _append_heading_subtree(headings: Sequence[Heading], parts: list[str]) -> None:
+    """Recursively append each heading and its sub-headings to *parts*.
+
+    Args:
+        headings: Sequence of sibling headings to serialize.
+        parts: Accumulator list that string fragments are appended to.
+    """
+    for heading in headings:
+        parts.append(str(heading))
+        _append_heading_subtree(heading.children, parts)
 
 
 def _render_document_dirty(document: Document) -> str:
