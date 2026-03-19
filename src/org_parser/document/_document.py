@@ -5,6 +5,7 @@ from __future__ import annotations
 import dataclasses
 from typing import TYPE_CHECKING
 
+from org_parser._node import is_error_node
 from org_parser._nodes import (
     AUTHOR,
     CATEGORY,
@@ -175,7 +176,7 @@ class Document:
                     parent=doc,
                 )
                 doc._children.append(heading)
-            elif child.type == "ERROR" or child.is_missing:
+            elif is_error_node(child):
                 elem = element_from_error_or_unknown(child, doc, parent=doc)
                 doc._body.append(elem)
 

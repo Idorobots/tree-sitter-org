@@ -9,15 +9,19 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from org_parser._nodes import (
+    BLANK_LINE,
     BLOCK,
+    CAPTION_KEYWORD,
     CENTER_BLOCK,
     CLOCK,
+    COMMENT,
     COMMENT_BLOCK,
     DRAWER,
     DYNAMIC_BLOCK,
     EXAMPLE_BLOCK,
     EXPORT_BLOCK,
     FIXED_WIDTH,
+    HORIZONTAL_RULE,
     LIST_ITEM,
     LOGBOOK_DRAWER,
     ORG_TABLE,
@@ -30,13 +34,17 @@ from org_parser._nodes import (
     VERSE_BLOCK,
 )
 from org_parser.element import (
+    BlankLine,
+    CaptionKeyword,
     CenterBlock,
+    Comment,
     CommentBlock,
     Drawer,
     DynamicBlock,
     ExampleBlock,
     ExportBlock,
     FixedWidthBlock,
+    HorizontalRule,
     ListItem,
     Logbook,
     Properties,
@@ -167,6 +175,10 @@ def extract_body_element(
         FIXED_WIDTH: FixedWidthBlock.from_node,
         LIST_ITEM: ListItem.from_node,
         BLOCK: extract_indent_block,
+        BLANK_LINE: BlankLine.from_node,
+        CAPTION_KEYWORD: CaptionKeyword.from_node,
+        COMMENT: Comment.from_node,
+        HORIZONTAL_RULE: HorizontalRule.from_node,
     }
     factory = dispatch.get(node.type)
     if factory is None:

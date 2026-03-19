@@ -5,15 +5,16 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from org_parser._node import node_source
-from org_parser.element._element import Element
 from org_parser.element._indent_block import IndentBlock
 from org_parser.element._list import List, ListItem
+from org_parser.element._misc import BlankLine
 from org_parser.element._paragraph import Paragraph
 from org_parser.text._rich_text import RichText
 
 if TYPE_CHECKING:
     from org_parser.document._document import Document
     from org_parser.document._heading import Heading
+    from org_parser.element._element import Element
 
 __all__ = ["recover_lists"]
 
@@ -55,7 +56,7 @@ def _recover_stream(
         list_run.clear()
 
     for element in elements:
-        if type(element) is Element:
+        if isinstance(element, BlankLine):
             flush_paragraph_run()
             if in_block:
                 flush_list_run()

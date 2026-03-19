@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from org_parser._node import is_error_node, node_source
+from org_parser._node import node_source
 
 if TYPE_CHECKING:
     import tree_sitter
@@ -125,15 +125,13 @@ def element_from_error_or_unknown(
 ) -> Element:
     """Return a semantic element for an unrecognised or error parse node.
 
-    Error and missing nodes are recovered as a
+    All unrecognised nodes — whether a parser ``ERROR``, a missing token, or
+    an unknown but syntactically valid node type — are recovered as a
     :class:`~org_parser.element._paragraph.Paragraph` whose ``body`` is a
     :class:`~org_parser.text._rich_text.RichText` of the verbatim source
     text.  The owning :class:`~org_parser.document._document.Document`'s
     :meth:`~org_parser.document._document.Document.report_error` method is
     invoked so the document can record the error.
-
-    Unknown but syntactically valid nodes fall back to the generic
-    :class:`Element` stub (preserving the existing behaviour).
 
     Args:
         node: The unrecognised tree-sitter node.
@@ -142,25 +140,20 @@ def element_from_error_or_unknown(
         parent: Optional owner object.
 
     Returns:
-        A :class:`~org_parser.element._paragraph.Paragraph` for error nodes,
-        or a plain :class:`Element` for unknown valid nodes.
+        A :class:`~org_parser.element._paragraph.Paragraph` wrapping the
+        verbatim source text of *node*.
     """
-    if is_error_node(node):
-        if document is not None:
-            document.report_error(node)
-        # Lazy imports avoid the circular dependency
-        # (_paragraph imports Element; _rich_text imports time/).
-        from org_parser.element._paragraph import Paragraph
-        from org_parser.text._rich_text import RichText
+    if document is not None:
+        document.report_error(node)
+    # Lazy imports avoid the circular dependency
+    # (_paragraph imports Element; _rich_text imports time/).
+    from org_parser.element._paragraph import Paragraph
+    from org_parser.text._rich_text import RichText
 
-        text = node_source(node, document)
-        paragraph = Paragraph(body=RichText(text), parent=parent)
-        paragraph.attach_backing(node, document)
-        return paragraph
-
-    elem = Element(parent=parent)
-    elem.attach_backing(node, document)
-    return elem
+    text = node_source(node, document)
+    paragraph = Paragraph(body=RichText(text), parent=parent)
+    paragraph.attach_backing(node, document)
+    return paragraph
 
 
 def ensure_trailing_newline(value: str) -> str:

@@ -6,8 +6,9 @@ These tests verify that:
 - :func:`element_from_error_or_unknown` recovers ERROR nodes as
   :class:`~org_parser.element._paragraph.Paragraph` objects and records
   the error via :meth:`Document.report_error`.
-- :func:`element_from_error_or_unknown` returns a plain :class:`Element` for
-  unrecognised but valid (non-error) nodes without recording an error.
+- :func:`element_from_error_or_unknown` recovers unrecognised but valid nodes
+  as :class:`~org_parser.element._paragraph.Paragraph` objects and records
+  the error via :meth:`Document.report_error`.
 - :class:`ParseError` fields are accessible and immutable (frozen dataclass).
 - The ``str()`` of a recovered error :class:`Paragraph` returns verbatim text.
 """
@@ -18,7 +19,7 @@ from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
 
 from org_parser.document import Document, ParseError, load_raw
-from org_parser.element._element import Element, element_from_error_or_unknown
+from org_parser.element._element import element_from_error_or_unknown
 from org_parser.element._paragraph import Paragraph
 
 if TYPE_CHECKING:
@@ -81,7 +82,8 @@ def _make_fake_valid_node(node_type: str = "unknown_node") -> MagicMock:
     text = b"some text"
     node.start_byte = 0
     node.end_byte = len(text)
-    # Element.from_node accesses node.text attribute indirectly; ensure needed attrs
+    node.start_point = (0, 0)
+    node.end_point = (0, len(text))
     node.children = []
     node.named_children = []
     return node
@@ -234,18 +236,19 @@ class TestElementFromErrorOrUnknown:
         assert doc.errors[0].text == "MISSING text"
         assert doc.errors[0].start_point == (0, 0)
 
-    def test_unknown_valid_node_returns_element(self) -> None:
-        """An unknown but syntactically valid node returns a plain Element."""
+    def test_unknown_valid_node_returns_paragraph(self) -> None:
+        """An unknown but syntactically valid node is recovered as a Paragraph."""
         node = _make_fake_valid_node("unknown_node")
         result = element_from_error_or_unknown(node)
-        assert type(result) is Element
+        assert isinstance(result, Paragraph)
 
-    def test_unknown_valid_node_does_not_record_error(self) -> None:
-        """Document.errors is NOT updated for unknown valid nodes."""
+    def test_unknown_valid_node_records_error(self) -> None:
+        """Document.errors IS updated for unknown valid nodes."""
         doc = _make_doc_with_source(b"some text")
         node = _make_fake_valid_node("unknown_node")
         element_from_error_or_unknown(node, doc)
-        assert doc.errors == []
+        assert len(doc.errors) == 1
+        assert doc.errors[0].text == "some text"
 
     def test_no_document_does_not_raise(self) -> None:
         """Calling without document does not raise."""

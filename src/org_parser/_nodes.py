@@ -14,14 +14,17 @@ from __future__ import annotations
 __all__ = [
     "ANGLE_LINK",
     "AUTHOR",
+    "BLANK_LINE",
     "BLOCK",
     "BOLD",
+    "CAPTION_KEYWORD",
     "CATEGORY",
     "CENTER_BLOCK",
     "CITATION",
     "CLOCK",
     "CLOSED",
     "CODE",
+    "COMMENT",
     "COMMENT_BLOCK",
     "COMPLETION_COUNTER",
     "DEADLINE",
@@ -34,6 +37,7 @@ __all__ = [
     "FIXED_WIDTH",
     "FOOTNOTE_REFERENCE",
     "HEADING",
+    "HORIZONTAL_RULE",
     "INLINE_HEADERS",
     "INLINE_SOURCE_BLOCK",
     "ITALIC",
@@ -142,10 +146,14 @@ PROPERTY_DRAWER = "property_drawer"
 # Element types
 # ---------------------------------------------------------------------------
 
+BLANK_LINE = "blank_line"
 BLOCK = "block"
+CAPTION_KEYWORD = "caption_keyword"
 CENTER_BLOCK = "center_block"
 CLOCK = "clock"
+COMMENT = "comment"
 COMMENT_BLOCK = "comment_block"
+HORIZONTAL_RULE = "horizontal_rule"
 DYNAMIC_BLOCK = "dynamic_block"
 EXAMPLE_BLOCK = "example_block"
 EXPORT_BLOCK = "export_block"

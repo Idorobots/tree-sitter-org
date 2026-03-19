@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from org_parser._node import is_error_node
 from org_parser._nodes import (
     CLOSED,
     COMPLETION_COUNTER,
@@ -189,7 +190,7 @@ class Heading:
                     parent=heading,
                 )
                 heading._children.append(sub)
-            elif child.type == "ERROR" or child.is_missing:
+            elif is_error_node(child):
                 elem = element_from_error_or_unknown(child, document, parent=heading)
                 heading._body.append(elem)
 

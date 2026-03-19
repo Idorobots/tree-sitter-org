@@ -6,15 +6,19 @@ from collections.abc import Iterator, MutableMapping, Sequence
 from typing import TYPE_CHECKING
 
 from org_parser._nodes import (
+    BLANK_LINE,
     BLOCK,
+    CAPTION_KEYWORD,
     CENTER_BLOCK,
     CLOCK,
+    COMMENT,
     COMMENT_BLOCK,
     DRAWER,
     DYNAMIC_BLOCK,
     EXAMPLE_BLOCK,
     EXPORT_BLOCK,
     FIXED_WIDTH,
+    HORIZONTAL_RULE,
     LIST_ITEM,
     LOGBOOK_DRAWER,
     NODE_PROPERTY,
@@ -398,6 +402,13 @@ def _extract_drawer_body_element(
     if node.type == BLOCK:
         return _extract_indent_block(node, document)
 
+    from org_parser.element._misc import (
+        BlankLine,
+        CaptionKeyword,
+        Comment,
+        HorizontalRule,
+    )
+
     dispatch: dict[str, Callable[..., Element]] = {
         PARAGRAPH: Paragraph.from_node,
         ORG_TABLE: Table.from_node,
@@ -417,6 +428,10 @@ def _extract_drawer_body_element(
         VERSE_BLOCK: VerseBlock.from_node,
         FIXED_WIDTH: FixedWidthBlock.from_node,
         LIST_ITEM: ListItem.from_node,
+        BLANK_LINE: BlankLine.from_node,
+        CAPTION_KEYWORD: CaptionKeyword.from_node,
+        COMMENT: Comment.from_node,
+        HORIZONTAL_RULE: HorizontalRule.from_node,
     }
     factory = dispatch.get(node.type)
     if factory is None:
