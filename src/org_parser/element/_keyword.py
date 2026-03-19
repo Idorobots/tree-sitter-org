@@ -262,7 +262,7 @@ class CaptionKeyword(_AffiliatedKeyword):
             short=short,
             parent=parent,
         )
-        elem.attach_backing(node, document)
+        elem.attach_source(node, document)
         return elem
 
     @property
@@ -315,7 +315,7 @@ class TblnameKeyword(_AffiliatedKeyword):
     ) -> TblnameKeyword:
         """Create a :class:`TblnameKeyword` from a ``tblname_keyword`` node."""
         elem = cls(value=cls._value_from_node(node, document), parent=parent)
-        elem.attach_backing(node, document)
+        elem.attach_source(node, document)
         return elem
 
 
@@ -348,7 +348,7 @@ class ResultsKeyword(_AffiliatedKeyword):
     ) -> ResultsKeyword:
         """Create a :class:`ResultsKeyword` from a ``results_keyword`` node."""
         elem = cls(value=cls._value_from_node(node, document), parent=parent)
-        elem.attach_backing(node, document)
+        elem.attach_source(node, document)
         return elem
 
 
@@ -373,5 +373,5 @@ class PlotKeyword(_AffiliatedKeyword):
     ) -> PlotKeyword:
         """Create a :class:`PlotKeyword` from a ``plot_keyword`` node."""
         elem = cls(value=cls._value_from_node(node, document), parent=parent)
-        elem.attach_backing(node, document)
+        elem.attach_source(node, document)
         return elem

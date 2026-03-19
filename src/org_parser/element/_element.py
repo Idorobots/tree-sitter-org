@@ -84,12 +84,12 @@ class Element:
         """Mark this element as dirty."""
         self._mark_dirty()
 
-    def attach_backing(
+    def attach_source(
         self,
         node: tree_sitter.Node,
         document: Document | None,
     ) -> None:
-        """Attach parse-tree backing to this element.
+        """Attach parse-tree source backing to this element.
 
         This method is for internal factory use — call it immediately after
         construction to wire up the parse-tree node and owning document.
@@ -152,7 +152,7 @@ def element_from_error_or_unknown(
 
     text = node_source(node, document)
     paragraph = Paragraph(body=RichText(text), parent=parent)
-    paragraph.attach_backing(node, document)
+    paragraph.attach_source(node, document)
     return paragraph
 
 

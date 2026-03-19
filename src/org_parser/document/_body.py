@@ -144,5 +144,5 @@ def extract_indent_block(
         ],
         parent=parent,
     )
-    block.attach_backing(node, document)
+    block.attach_source(node, document)
     return block

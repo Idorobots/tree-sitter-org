@@ -386,7 +386,7 @@ def _extract_indent_block(
             if child.is_named
         ],
     )
-    block.attach_backing(node, document)
+    block.attach_source(node, document)
     return block
 
 

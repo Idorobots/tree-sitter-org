@@ -53,7 +53,7 @@ class BlankLine(Element):
     ) -> BlankLine:
         """Create a :class:`BlankLine` from a ``blank_line`` node."""
         elem = cls(parent=parent)
-        elem.attach_backing(node, document)
+        elem.attach_source(node, document)
         return elem
 
     def __str__(self) -> str:
@@ -101,7 +101,7 @@ class Comment(Element):
         else:
             text = raw
         elem = cls(text=text, parent=parent)
-        elem.attach_backing(node, document)
+        elem.attach_source(node, document)
         return elem
 
     @property
@@ -155,7 +155,7 @@ class HorizontalRule(Element):
         """Create a :class:`HorizontalRule` from a ``horizontal_rule`` node."""
         raw = node_source(node, document).rstrip("\n")
         elem = cls(rule=raw, parent=parent)
-        elem.attach_backing(node, document)
+        elem.attach_source(node, document)
         return elem
 
     @property
