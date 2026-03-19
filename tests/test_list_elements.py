@@ -170,21 +170,15 @@ def test_consecutive_blocks_of_same_indent_stay_separate() -> None:
     assert str(item.body[1]) == "second\n"
 
 
-def test_dirty_list_rendering_uses_configurable_class_indent_step() -> None:
-    """Dirty nested list rendering follows the class-level indent step."""
+def test_dirty_nested_list_rendering_uses_item_driven_indentation() -> None:
+    """Dirty nested list rendering is driven by item stringification."""
     document = loads("- parent\n  - child\n")
     assert isinstance(document.body[0], List)
     parsed = document.body[0]
 
-    old_step = List.default_indent_step
-    try:
-        parsed.items[0].first_line = RichText("updated")
-        assert str(parsed) == "- updated\n  - child\n"
+    parsed.items[0].first_line = RichText("updated")
 
-        List.set_default_indent_step(4)
-        assert str(parsed) == "- updated\n    - child\n"
-    finally:
-        List.set_default_indent_step(old_step)
+    assert str(parsed) == "- updated\n  - child\n"
 
 
 def test_marking_list_dirty_marks_all_items_dirty() -> None:

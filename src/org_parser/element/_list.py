@@ -205,13 +205,11 @@ class ListItem(Element):
         ):
             return node_source(self._node, self._document)
 
-        return self.render_with_indent(None)
+        return self._render_dirty()
 
-    def render_with_indent(self, indent: str | None, *, indent_step: int = 2) -> str:
-        """Render list-item text with one explicit indentation prefix."""
+    def _render_dirty(self, *, indent_step: int = 2) -> str:
+        """Render list-item text from semantic fields for dirty output."""
         parts: list[str] = []
-        if indent is not None:
-            parts.append(indent)
 
         if self._ordered_counter is not None and self._bullet in {".", ")"}:
             parts.append(f"{self._ordered_counter}{self._bullet} ")
@@ -230,12 +228,9 @@ class ListItem(Element):
             parts.append(str(self._first_line))
 
         parts.append("\n")
-        body_prefix = (indent if indent is not None else "") + (" " * indent_step)
+        body_prefix = " " * indent_step
         for element in self._body:
             rendered = ensure_trailing_newline(str(element))
-            if isinstance(element, List):
-                parts.append(rendered)
-                continue
             parts.append(_indent_non_empty_lines(rendered, body_prefix))
         return "".join(parts)
 
@@ -373,13 +368,11 @@ class Repeat(ListItem):
         if not self.dirty and self._node is not None and self._document is not None:
             return node_source(self._node, self._document)
 
-        return self.render_with_indent(None)
+        return self._render_dirty()
 
-    def render_with_indent(self, indent: str | None, *, indent_step: int = 2) -> str:
-        """Render repeat entry text with one explicit indentation prefix."""
+    def _render_dirty(self, *, indent_step: int = 2) -> str:
+        """Render repeat entry text from semantic fields for dirty output."""
         parts: list[str] = []
-        if indent is not None:
-            parts.append(indent)
         if self._ordered_counter is not None and self._bullet in {".", ")"}:
             parts.append(f"{self._ordered_counter}{self._bullet} ")
         else:
@@ -393,12 +386,9 @@ class Repeat(ListItem):
             parts.append("\n")
             return "".join(parts)
         parts.append(" \\\\\n")
-        body_prefix = (indent if indent is not None else "") + (" " * indent_step)
+        body_prefix = " " * indent_step
         for element in self._body:
             rendered = ensure_trailing_newline(str(element))
-            if isinstance(element, List):
-                parts.append(rendered)
-                continue
             parts.append(_indent_non_empty_lines(rendered, body_prefix))
         return "".join(parts)
 
@@ -415,8 +405,6 @@ class Repeat(ListItem):
 
 class List(Element):
     """Plain list element containing mutable :class:`ListItem` instances."""
-
-    default_indent_step = 2
 
     def __init__(
         self,
@@ -504,19 +492,7 @@ class List(Element):
         """Render list text preserving source while clean and parse-backed."""
         if not self.dirty and self._node is not None and self._document is not None:
             return node_source(self._node, self._document)
-        depth = _list_depth(self)
-        indent = " " * (depth * self.default_indent_step)
-        return "".join(
-            item.render_with_indent(indent, indent_step=self.default_indent_step)
-            for item in self._items
-        )
-
-    @classmethod
-    def set_default_indent_step(cls, value: int) -> None:
-        """Set class-wide indentation width for dirty list rendering."""
-        if value < 0:
-            raise ValueError("List indentation step must be non-negative")
-        cls.default_indent_step = value
+        return "".join(str(item) for item in self._items)
 
     def __repr__(self) -> str:
         """Return a tree-oriented representation for debugging."""
@@ -593,21 +569,6 @@ def _indent_non_empty_lines(value: str, prefix: str) -> str:
         return value
     lines = value.splitlines(keepends=True)
     return "".join(f"{prefix}{line}" if line.strip() != "" else line for line in lines)
-
-
-def _list_depth(list_node: List) -> int:
-    """Return nesting depth by walking list ancestors."""
-    depth = 0
-    parent = list_node.parent
-    while parent is not None:
-        if isinstance(parent, ListItem):
-            grandparent = parent.parent
-            if isinstance(grandparent, List):
-                depth += 1
-                parent = grandparent.parent
-                continue
-        parent = parent.parent if isinstance(parent, Element) else None
-    return depth
 
 
 def _parse_repeat_first_line(
