@@ -51,10 +51,12 @@ __all__ = [
     "PLAIN_TEXT",
     "PLANNING",
     "PLANNING_KEYWORD",
+    "PLOT_KEYWORD",
     "PROPERTY_DRAWER",
     "QUOTE_BLOCK",
     "RADIO_TARGET",
     "REGULAR_LINK",
+    "RESULTS_KEYWORD",
     "SCHEDULED",
     "SPECIAL_BLOCK",
     "SPECIAL_KEYWORD",
@@ -67,6 +69,7 @@ __all__ = [
     "TAG",
     "TARGET",
     "TBLFM_LINE",
+    "TBLNAME_KEYWORD",
     "TIMESTAMP",
     "TITLE",
     "TODO",
@@ -153,18 +156,21 @@ CENTER_BLOCK = "center_block"
 CLOCK = "clock"
 COMMENT = "comment"
 COMMENT_BLOCK = "comment_block"
-HORIZONTAL_RULE = "horizontal_rule"
 DYNAMIC_BLOCK = "dynamic_block"
 EXAMPLE_BLOCK = "example_block"
 EXPORT_BLOCK = "export_block"
 FIXED_WIDTH = "fixed_width"
+HORIZONTAL_RULE = "horizontal_rule"
 LIST_ITEM = "list_item"
 ORG_TABLE = "org_table"
 PARAGRAPH = "paragraph"
+PLOT_KEYWORD = "plot_keyword"
 QUOTE_BLOCK = "quote_block"
+RESULTS_KEYWORD = "results_keyword"
 SPECIAL_BLOCK = "special_block"
 SRC_BLOCK = "src_block"
 TABLEEL_TABLE = "tableel_table"
+TBLNAME_KEYWORD = "tblname_keyword"
 VERSE_BLOCK = "verse_block"
 
 # ---------------------------------------------------------------------------

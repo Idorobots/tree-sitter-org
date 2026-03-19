@@ -24,11 +24,14 @@ from org_parser._nodes import (
     NODE_PROPERTY,
     ORG_TABLE,
     PARAGRAPH,
+    PLOT_KEYWORD,
     PROPERTY_DRAWER,
     QUOTE_BLOCK,
+    RESULTS_KEYWORD,
     SPECIAL_BLOCK,
     SRC_BLOCK,
     TABLEEL_TABLE,
+    TBLNAME_KEYWORD,
     VERSE_BLOCK,
 )
 from org_parser.element._block import (
@@ -50,9 +53,9 @@ from org_parser.element._element import (
     ensure_trailing_newline,
     node_source,
 )
-from org_parser.element._indent_block import IndentBlock
 from org_parser.element._list import List, ListItem, Repeat
 from org_parser.element._list_recovery import recover_lists
+from org_parser.element._structure import IndentBlock
 from org_parser.text._rich_text import RichText
 from org_parser.time import Clock
 
@@ -402,12 +405,13 @@ def _extract_drawer_body_element(
     if node.type == BLOCK:
         return _extract_indent_block(node, document)
 
-    from org_parser.element._misc import (
-        BlankLine,
+    from org_parser.element._keyword import (
         CaptionKeyword,
-        Comment,
-        HorizontalRule,
+        PlotKeyword,
+        ResultsKeyword,
+        TblnameKeyword,
     )
+    from org_parser.element._structure import BlankLine, Comment, HorizontalRule
 
     dispatch: dict[str, Callable[..., Element]] = {
         PARAGRAPH: Paragraph.from_node,
@@ -432,6 +436,9 @@ def _extract_drawer_body_element(
         CAPTION_KEYWORD: CaptionKeyword.from_node,
         COMMENT: Comment.from_node,
         HORIZONTAL_RULE: HorizontalRule.from_node,
+        PLOT_KEYWORD: PlotKeyword.from_node,
+        RESULTS_KEYWORD: ResultsKeyword.from_node,
+        TBLNAME_KEYWORD: TblnameKeyword.from_node,
     }
     factory = dispatch.get(node.type)
     if factory is None:

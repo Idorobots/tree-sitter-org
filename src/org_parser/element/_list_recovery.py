@@ -5,10 +5,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from org_parser._node import node_source
-from org_parser.element._indent_block import IndentBlock
 from org_parser.element._list import List, ListItem
-from org_parser.element._misc import BlankLine
 from org_parser.element._paragraph import Paragraph
+from org_parser.element._structure import BlankLine, IndentBlock
 from org_parser.text._rich_text import RichText
 
 if TYPE_CHECKING:

@@ -26,11 +26,14 @@ from org_parser._nodes import (
     LOGBOOK_DRAWER,
     ORG_TABLE,
     PARAGRAPH,
+    PLOT_KEYWORD,
     PROPERTY_DRAWER,
     QUOTE_BLOCK,
+    RESULTS_KEYWORD,
     SPECIAL_BLOCK,
     SRC_BLOCK,
     TABLEEL_TABLE,
+    TBLNAME_KEYWORD,
     VERSE_BLOCK,
 )
 from org_parser.element import (
@@ -47,16 +50,19 @@ from org_parser.element import (
     HorizontalRule,
     ListItem,
     Logbook,
+    PlotKeyword,
     Properties,
     QuoteBlock,
     Repeat,
+    ResultsKeyword,
     SourceBlock,
     SpecialBlock,
+    TblnameKeyword,
     VerseBlock,
 )
 from org_parser.element._element import Element, element_from_error_or_unknown
-from org_parser.element._indent_block import IndentBlock
 from org_parser.element._paragraph import Paragraph
+from org_parser.element._structure import IndentBlock
 from org_parser.element._table import Table
 from org_parser.time import Clock
 
@@ -179,6 +185,9 @@ def extract_body_element(
         CAPTION_KEYWORD: CaptionKeyword.from_node,
         COMMENT: Comment.from_node,
         HORIZONTAL_RULE: HorizontalRule.from_node,
+        PLOT_KEYWORD: PlotKeyword.from_node,
+        RESULTS_KEYWORD: ResultsKeyword.from_node,
+        TBLNAME_KEYWORD: TblnameKeyword.from_node,
     }
     factory = dispatch.get(node.type)
     if factory is None:

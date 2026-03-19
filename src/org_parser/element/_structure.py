@@ -1,22 +1,28 @@
-"""Semantic element classes for miscellaneous structural Org nodes.
+"""Structural body element classes for Org section nodes.
 
-This module covers the smaller structural node types that appear as direct
-children of section bodies but do not belong to any other element module:
+This module covers elements that govern the physical structure of a section
+body but carry no textual content of their own:
 
 * :class:`BlankLine` — an empty separator line (``blank_line`` node).
-* :class:`CaptionKeyword` — a ``#+CAPTION:`` affiliated keyword line.
 * :class:`Comment` — a single-line ``#`` comment.
 * :class:`HorizontalRule` — a ``-----`` horizontal rule line.
+* :class:`IndentBlock` — a contiguous indented chunk (``block`` node).
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from org_parser._node import node_source, node_text
-from org_parser.element._element import Element, build_semantic_repr
+from org_parser._node import node_source
+from org_parser.element._element import (
+    Element,
+    build_semantic_repr,
+    ensure_trailing_newline,
+)
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     import tree_sitter
 
     from org_parser.document._document import Document
@@ -24,9 +30,9 @@ if TYPE_CHECKING:
 
 __all__ = [
     "BlankLine",
-    "CaptionKeyword",
     "Comment",
     "HorizontalRule",
+    "IndentBlock",
 ]
 
 
@@ -174,58 +180,55 @@ class HorizontalRule(Element):
         return build_semantic_repr("HorizontalRule", rule=self._rule)
 
 
-class CaptionKeyword(Element):
-    """A ``#+CAPTION:`` affiliated keyword line.
+class IndentBlock(Element):
+    """Indentation wrapper node with nested body elements.
 
-    Caption keywords annotate the element immediately following them
-    (typically a table or image).
-
-    Args:
-        value: The caption text following ``#+CAPTION:``.
+    Grammar ``block`` nodes represent one contiguous indented chunk.
     """
 
     def __init__(
         self,
         *,
-        value: str,
+        body: list[Element] | None = None,
         parent: Document | Heading | Element | None = None,
     ) -> None:
         super().__init__(parent=parent)
-        self._value = value
-
-    @classmethod
-    def from_node(
-        cls,
-        node: tree_sitter.Node,
-        document: Document | None = None,
-        *,
-        parent: Document | Heading | Element | None = None,
-    ) -> CaptionKeyword:
-        """Create a :class:`CaptionKeyword` from a ``caption_keyword`` node."""
-        source = document.source if document is not None else b""
-        value_node = next((c for c in node.children if c.is_named), None)
-        value = node_text(value_node, source) if value_node is not None else ""
-        elem = cls(value=value, parent=parent)
-        elem.attach_backing(node, document)
-        return elem
+        self._body = body if body is not None else []
+        self._adopt_body(self._body)
 
     @property
-    def value(self) -> str:
-        """Mutable caption text following ``#+CAPTION:``."""
-        return self._value
+    def body(self) -> list[Element]:
+        """Nested elements contained by this indentation block."""
+        return self._body
 
-    @value.setter
-    def value(self, value: str) -> None:
-        """Set the caption text and mark this element as dirty."""
-        self._value = value
+    @body.setter
+    def body(self, value: list[Element]) -> None:
+        """Set nested elements and mark this block dirty."""
+        self._body = value
+        self._adopt_body(self._body)
         self._mark_dirty()
 
+    def _adopt_body(self, body: Sequence[Element]) -> None:
+        """Assign this block as parent for all nested elements."""
+        for element in body:
+            element.parent = self
+
+    def reformat(self) -> None:
+        """Mark body and this block dirty for scratch-built rendering."""
+        for element in self._body:
+            element.reformat()
+        self.mark_dirty()
+
     def __str__(self) -> str:
-        """Render the caption line, preserving source while parse-backed and clean."""
+        """Render indentation block text.
+
+        Clean parse-backed instances preserve their verbatim source text.
+        Dirty instances join their body elements.
+        """
         if not self.dirty and self._node is not None and self._document is not None:
             return node_source(self._node, self._document)
-        return f"#+CAPTION: {self._value}\n"
+        return "".join(ensure_trailing_newline(str(element)) for element in self._body)
 
     def __repr__(self) -> str:
         """Return a tree-oriented representation for debugging."""
-        return build_semantic_repr("CaptionKeyword", value=self._value)
+        return build_semantic_repr("IndentBlock", body=self._body)

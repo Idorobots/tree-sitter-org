@@ -1,10 +1,32 @@
-"""Implementation of :class:`Keyword` for Org special keyword lines."""
+"""Keyword element classes for Org special and affiliated keyword lines.
+
+This module covers all ``#+KEY:`` lines that appear in document and section
+bodies:
+
+* :class:`Keyword` — generic ``#+KEY: value`` special keyword
+  (``special_keyword`` node, e.g. ``#+TITLE:``, ``#+AUTHOR:``).
+* :class:`CaptionKeyword` — ``#+CAPTION:`` affiliated keyword.
+* :class:`TblnameKeyword` — ``#+TBLNAME:`` affiliated keyword.
+* :class:`ResultsKeyword` — ``#+RESULTS:`` affiliated keyword.
+* :class:`PlotKeyword` — ``#+PLOT:`` affiliated keyword.
+
+The four affiliated keyword classes share a common base,
+:class:`_AffiliatedKeyword`, which handles the ``value`` field that all four
+expose.
+
+.. note::
+   The ``#+RESULTS[hash]:`` hash annotation is not yet implemented in the
+   underlying tree-sitter grammar; ``#+RESULTS[hash]:`` currently parses as
+   an ``ERROR`` node.  :class:`ResultsKeyword` therefore exposes only the
+   ``value`` field.
+"""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from org_parser.element._element import Element, node_source
+from org_parser._node import node_source, node_text
+from org_parser.element._element import Element
 from org_parser.text._rich_text import RichText
 
 if TYPE_CHECKING:
@@ -13,7 +35,18 @@ if TYPE_CHECKING:
     from org_parser.document._document import Document
     from org_parser.document._heading import Heading
 
-__all__ = ["Keyword"]
+__all__ = [
+    "CaptionKeyword",
+    "Keyword",
+    "PlotKeyword",
+    "ResultsKeyword",
+    "TblnameKeyword",
+]
+
+
+# ---------------------------------------------------------------------------
+# Special keyword (zeroth-section)
+# ---------------------------------------------------------------------------
 
 
 class Keyword(Element):
@@ -117,3 +150,228 @@ class Keyword(Element):
     def __repr__(self) -> str:
         """Return a developer-friendly representation."""
         return f"Keyword(key={self._key!r}, value={self._value!r})"
+
+
+# ---------------------------------------------------------------------------
+# Affiliated keywords — shared base
+# ---------------------------------------------------------------------------
+
+
+class _AffiliatedKeyword(Element):
+    """Base class for affiliated keyword lines (``#+KEY: value``).
+
+    Subclasses set :attr:`_keyword` to the canonical upper-cased keyword
+    string used for rendering (e.g. ``"CAPTION"``, ``"TBLNAME"``).
+
+    Args:
+        value: Optional plain-text value following the keyword.
+    """
+
+    _keyword: str = ""  # overridden by each concrete subclass as a class variable
+
+    def __init__(
+        self,
+        *,
+        value: str | None,
+        parent: Document | Heading | Element | None = None,
+    ) -> None:
+        super().__init__(parent=parent)
+        self._value = value
+
+    @classmethod
+    def _value_from_node(
+        cls,
+        node: tree_sitter.Node,
+        document: Document | None,
+    ) -> str | None:
+        """Extract the optional ``value`` field text from an affiliated keyword node."""
+        source = document.source if document is not None else b""
+        value_node = node.child_by_field_name("value")
+        if value_node is None:
+            return None
+        text = node_text(value_node, source)
+        return text if text != "" else None
+
+    @property
+    def value(self) -> str | None:
+        """Optional plain-text value following the keyword, or ``None``."""
+        return self._value
+
+    @value.setter
+    def value(self, v: str | None) -> None:
+        """Set the keyword value and mark this element as dirty."""
+        self._value = v
+        self._mark_dirty()
+
+    def __str__(self) -> str:
+        """Render the keyword line, preserving source while parse-backed and clean."""
+        if not self.dirty and self._node is not None and self._document is not None:
+            return node_source(self._node, self._document)
+        if self._value:
+            return f"#+{self._keyword}: {self._value}\n"
+        return f"#+{self._keyword}:\n"
+
+    def __repr__(self) -> str:
+        """Return a tree-oriented representation for debugging."""
+        return f"{self.__class__.__name__}(value={self._value!r})"
+
+
+# ---------------------------------------------------------------------------
+# Concrete affiliated keyword classes
+# ---------------------------------------------------------------------------
+
+
+class CaptionKeyword(_AffiliatedKeyword):
+    """A ``#+CAPTION:`` affiliated keyword line.
+
+    Captions annotate the element immediately following them (typically a
+    table or image).  The optional *short* form (``#+CAPTION[short]:`` in
+    Org syntax) is stored separately.
+
+    Args:
+        value: The caption text following ``#+CAPTION:``.
+        short: Optional short caption text inside ``[…]``, or ``None``.
+    """
+
+    _keyword = "CAPTION"
+
+    def __init__(
+        self,
+        *,
+        value: str | None,
+        short: str | None = None,
+        parent: Document | Heading | Element | None = None,
+    ) -> None:
+        super().__init__(value=value, parent=parent)
+        self._short = short
+
+    @classmethod
+    def from_node(
+        cls,
+        node: tree_sitter.Node,
+        document: Document | None = None,
+        *,
+        parent: Document | Heading | Element | None = None,
+    ) -> CaptionKeyword:
+        """Create a :class:`CaptionKeyword` from a ``caption_keyword`` node."""
+        source = document.source if document is not None else b""
+        optval_node = node.child_by_field_name("optval")
+        short = node_text(optval_node, source) if optval_node is not None else None
+        elem = cls(
+            value=cls._value_from_node(node, document),
+            short=short,
+            parent=parent,
+        )
+        elem.attach_backing(node, document)
+        return elem
+
+    @property
+    def short(self) -> str | None:
+        """Optional short caption text (the ``[…]`` portion), or ``None``."""
+        return self._short
+
+    @short.setter
+    def short(self, value: str | None) -> None:
+        """Set the short caption and mark this element as dirty."""
+        self._short = value
+        self._mark_dirty()
+
+    def __str__(self) -> str:
+        """Render the caption line, preserving source while parse-backed and clean."""
+        if not self.dirty and self._node is not None and self._document is not None:
+            return node_source(self._node, self._document)
+        short_part = f"[{self._short}]" if self._short is not None else ""
+        if self._value:
+            return f"#+CAPTION{short_part}: {self._value}\n"
+        return f"#+CAPTION{short_part}:\n"
+
+    def __repr__(self) -> str:
+        """Return a tree-oriented representation for debugging."""
+        cls_name = self.__class__.__name__
+        if self._short is not None:
+            return f"{cls_name}(value={self._value!r}, short={self._short!r})"
+        return f"{cls_name}(value={self._value!r})"
+
+
+class TblnameKeyword(_AffiliatedKeyword):
+    """A ``#+TBLNAME:`` affiliated keyword line.
+
+    Assigns a name to the table immediately following it, allowing other
+    parts of the document to refer to it by name.
+
+    Args:
+        value: The table name, or ``None`` when the keyword has no value.
+    """
+
+    _keyword = "TBLNAME"
+
+    @classmethod
+    def from_node(
+        cls,
+        node: tree_sitter.Node,
+        document: Document | None = None,
+        *,
+        parent: Document | Heading | Element | None = None,
+    ) -> TblnameKeyword:
+        """Create a :class:`TblnameKeyword` from a ``tblname_keyword`` node."""
+        elem = cls(value=cls._value_from_node(node, document), parent=parent)
+        elem.attach_backing(node, document)
+        return elem
+
+
+class ResultsKeyword(_AffiliatedKeyword):
+    """A ``#+RESULTS:`` affiliated keyword line.
+
+    Marks the block immediately following it as the results of a source
+    block evaluation.
+
+    Args:
+        value: Optional trailing text on the results line, or ``None``.
+
+    .. note::
+       The ``#+RESULTS[hash]:`` hash annotation defined in the Org Mode
+       specification is not yet implemented in the underlying tree-sitter
+       grammar.  Inputs containing ``[hash]`` currently produce an
+       ``ERROR`` parse node; the hash therefore cannot be exposed here
+       until grammar support is added.
+    """
+
+    _keyword = "RESULTS"
+
+    @classmethod
+    def from_node(
+        cls,
+        node: tree_sitter.Node,
+        document: Document | None = None,
+        *,
+        parent: Document | Heading | Element | None = None,
+    ) -> ResultsKeyword:
+        """Create a :class:`ResultsKeyword` from a ``results_keyword`` node."""
+        elem = cls(value=cls._value_from_node(node, document), parent=parent)
+        elem.attach_backing(node, document)
+        return elem
+
+
+class PlotKeyword(_AffiliatedKeyword):
+    """A ``#+PLOT:`` affiliated keyword line.
+
+    Carries gnuplot configuration for the table immediately following it.
+
+    Args:
+        value: The plot configuration string, or ``None``.
+    """
+
+    _keyword = "PLOT"
+
+    @classmethod
+    def from_node(
+        cls,
+        node: tree_sitter.Node,
+        document: Document | None = None,
+        *,
+        parent: Document | Heading | Element | None = None,
+    ) -> PlotKeyword:
+        """Create a :class:`PlotKeyword` from a ``plot_keyword`` node."""
+        elem = cls(value=cls._value_from_node(node, document), parent=parent)
+        elem.attach_backing(node, document)
+        return elem
