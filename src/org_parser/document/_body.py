@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from org_parser._node import node_source
 from org_parser._nodes import BLOCK
 from org_parser.element import Logbook, Properties, Repeat
 from org_parser.element._dispatch import body_element_factories
@@ -136,12 +137,16 @@ def extract_indent_block(
     Returns:
         An :class:`IndentBlock` whose body elements are recursively parsed.
     """
+    indent_node = node.child_by_field_name("indent")
+    indent_text = node_source(indent_node, document)
+    indent = indent_text if indent_text != "" else None
     block = IndentBlock(
         body=[
             extract_body_element(child, parent=parent, document=document)
             for child in node.children_by_field_name("body")
             if child.is_named
         ],
+        indent=indent,
         parent=parent,
     )
     block.attach_source(node, document)

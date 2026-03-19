@@ -747,12 +747,16 @@ def _extract_indent_block(
     parent: Document | Heading | Element | None = None,
 ) -> IndentBlock:
     """Build one nested :class:`IndentBlock` from a ``block`` node."""
+    indent_node = node.child_by_field_name("indent")
+    indent_text = node_source(indent_node, document)
+    indent = indent_text if indent_text != "" else None
     block = IndentBlock(
         body=[
             _extract_nested_element(child, document, parent=parent)
             for child in node.children_by_field_name("body")
             if child.is_named
         ],
+        indent=indent,
     )
     block.attach_source(node, document)
     return block

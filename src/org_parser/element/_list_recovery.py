@@ -27,7 +27,7 @@ def recover_lists(
     return _recover_stream(elements, parent=parent, in_block=False, base_indent=0)
 
 
-def _recover_stream(
+def _recover_stream(  # noqa: PLR0915
     elements: list[Element],
     *,
     parent: Document | Heading | Element | None,
@@ -54,59 +54,83 @@ def _recover_stream(
         recovered.append(List(items=list(list_run), parent=parent))
         list_run.clear()
 
-    for element in elements:
+    def consume(element: Element) -> None:  # noqa: PLR0912
         if isinstance(element, BlankLine):
             flush_paragraph_run()
             if in_block:
                 flush_list_run()
                 recovered.append(element)
-                continue
-
-            if list_run:
-                continue
-
-            recovered.append(element)
-            continue
-
-        if isinstance(element, ListItem):
+            elif not list_run:
+                recovered.append(element)
+        elif isinstance(element, ListItem):
             flush_paragraph_run()
             list_run.append(element)
-            continue
-
-        if in_block and isinstance(element, Paragraph):
-            flush_list_run()
-            paragraph_run.append(element)
-            continue
-
-        if isinstance(element, IndentBlock):
+        elif isinstance(element, Paragraph):
+            attached = _attach_paragraph_to_pending_item(
+                element,
+                list_run,
+                base_indent=base_indent,
+            )
+            if not attached:
+                flush_list_run()
+                paragraph_run.append(element)
+        elif isinstance(element, IndentBlock):
             attached = _attach_block_to_pending_item(
                 element,
                 list_run,
                 parent=parent,
                 base_indent=base_indent,
             )
-            if attached:
-                continue
+            if not attached:
+                block_indent = _indent_width(element.indent)
+                if element.indent is None:
+                    block_indent = base_indent
 
-            flush_paragraph_run()
-            flush_list_run()
-            recovered.extend(
-                _recover_stream(
+                nested = _recover_stream(
                     element.body,
                     parent=parent,
                     in_block=True,
-                    base_indent=_source_indent_width(_elem_source_text(element)),
+                    base_indent=block_indent,
                 )
-            )
-            continue
 
-        flush_paragraph_run()
-        flush_list_run()
-        recovered.append(element)
+                if block_indent == base_indent:
+                    for nested_element in nested:
+                        consume(nested_element)
+                else:
+                    flush_paragraph_run()
+                    flush_list_run()
+                    recovered.extend(nested)
+        else:
+            flush_paragraph_run()
+            flush_list_run()
+            recovered.append(element)
+
+    for element in elements:
+        consume(element)
 
     flush_paragraph_run()
     flush_list_run()
     return recovered
+
+
+def _attach_paragraph_to_pending_item(
+    paragraph: Paragraph,
+    list_run: list[ListItem],
+    *,
+    base_indent: int,
+) -> bool:
+    """Attach one paragraph to the current list item when nested by indent."""
+    if not list_run:
+        return False
+
+    paragraph_indent = _indent_width(paragraph.indent)
+    if paragraph.indent is None:
+        paragraph_indent = base_indent
+    if paragraph_indent <= base_indent:
+        return False
+
+    list_run[-1].append_body(paragraph, mark_dirty=False)
+    return True
 
 
 def _attach_block_to_pending_item(
@@ -120,10 +144,10 @@ def _attach_block_to_pending_item(
     if not list_run:
         return False
 
-    item = list_run[-1]
-    item_indent = base_indent + _source_indent_width(_elem_source_text(item))
-    block_indent = _source_indent_width(_elem_source_text(block))
-    if block_indent <= item_indent:
+    block_indent = _indent_width(block.indent)
+    if block.indent is None:
+        block_indent = base_indent
+    if block_indent <= base_indent:
         return False
 
     recovered = _recover_stream(
@@ -133,7 +157,7 @@ def _attach_block_to_pending_item(
         base_indent=block_indent,
     )
     for nested in recovered:
-        item.append_body(nested, mark_dirty=False)
+        list_run[-1].append_body(nested, mark_dirty=False)
     return True
 
 
@@ -174,12 +198,3 @@ def _indent_width(indent: str | None) -> int:
             continue
         break
     return width
-
-
-def _source_indent_width(source_text: str) -> int:
-    """Return indentation width from the first non-empty source line."""
-    for line in source_text.splitlines():
-        if line.strip() == "":
-            continue
-        return _indent_width(line)
-    return 0

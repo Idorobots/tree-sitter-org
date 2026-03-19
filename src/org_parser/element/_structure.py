@@ -190,11 +190,24 @@ class IndentBlock(Element):
         self,
         *,
         body: list[Element] | None = None,
+        indent: str | None = None,
         parent: Document | Heading | Element | None = None,
     ) -> None:
         super().__init__(parent=parent)
         self._body = body if body is not None else []
+        self._indent = indent
         self._adopt_body(self._body)
+
+    @property
+    def indent(self) -> str | None:
+        """Leading indentation for this block's first line, if known."""
+        return self._indent
+
+    @indent.setter
+    def indent(self, value: str | None) -> None:
+        """Set block indentation text and mark this block as dirty."""
+        self._indent = value
+        self._mark_dirty()
 
     @property
     def body(self) -> list[Element]:
@@ -231,4 +244,4 @@ class IndentBlock(Element):
 
     def __repr__(self) -> str:
         """Return a tree-oriented representation for debugging."""
-        return build_semantic_repr("IndentBlock", body=self._body)
+        return build_semantic_repr("IndentBlock", body=self._body, indent=self._indent)
