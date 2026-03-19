@@ -22,7 +22,7 @@ def test_block_repr_shows_embedded_elements() -> None:
 
     rendered = repr(document.body[0])
     assert "QuoteBlock(" in rendered
-    assert "contents=[" in rendered
+    assert "body=[" in rendered
     assert "List(items=[" in rendered
 
 

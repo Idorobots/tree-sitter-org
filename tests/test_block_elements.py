@@ -110,9 +110,9 @@ def test_text_block_contents_are_mutable_and_bubble_dirty() -> None:
     assert block.dirty is False
     assert document.dirty is False
 
-    block.contents = "new"
+    block.body = "new"
 
-    assert block.contents == "new"
+    assert block.body == "new"
     assert block.dirty is True
     assert document.dirty is True
     assert str(block) == "#+begin_example\nnew\n#+end_example\n"
@@ -124,10 +124,10 @@ def test_container_block_contents_are_mutable_and_adopt_parents() -> None:
 
     assert isinstance(document.body[0], QuoteBlock)
     block = document.body[0]
-    block.contents = [Paragraph(body=RichText("two\n"))]
+    block.body = [Paragraph(body=RichText("two\n"))]
 
-    assert isinstance(block.contents[0], Paragraph)
-    assert block.contents[0].parent is block
+    assert isinstance(block.body[0], Paragraph)
+    assert block.body[0].parent is block
     assert block.dirty is True
     assert document.dirty is True
     assert str(block) == "#+begin_quote\ntwo\n#+end_quote\n"
@@ -138,9 +138,9 @@ def test_nested_container_content_mutation_bubbles_dirty_state() -> None:
     document = loads("#+begin_quote\nold\n#+end_quote\n")
     assert isinstance(document.body[0], QuoteBlock)
     block = document.body[0]
-    assert isinstance(block.contents[0], Paragraph)
+    assert isinstance(block.body[0], Paragraph)
 
-    paragraph = block.contents[0]
+    paragraph = block.body[0]
     paragraph.body.text = "new\n"
 
     assert paragraph.dirty is True
@@ -170,13 +170,13 @@ def test_block_metadata_fields_are_exposed() -> None:
     source_block = body[0]
     assert source_block.language == "python"
     assert source_block.switches == "-n -r"
-    assert source_block.contents == "print('x')\n"
+    assert source_block.body == "print('x')\n"
 
     assert isinstance(body[1], ExportBlock)
     export_block = body[1]
     assert export_block.backend == "html"
     assert export_block.parameters == ":exports code"
-    assert export_block.contents == "<p>x</p>\n"
+    assert export_block.body == "<p>x</p>\n"
 
     assert isinstance(body[2], SpecialBlock)
     special_block = body[2]
@@ -187,8 +187,8 @@ def test_block_metadata_fields_are_exposed() -> None:
     dynamic_block = body[3]
     assert dynamic_block.name == "clocktable"
     assert dynamic_block.parameters == ":scope subtree"
-    assert len(dynamic_block.contents) == 1
-    assert isinstance(dynamic_block.contents[0], Table)
+    assert len(dynamic_block.body) == 1
+    assert isinstance(dynamic_block.body[0], Table)
 
 
 def test_fixed_width_contents_are_mutable() -> None:
@@ -197,9 +197,9 @@ def test_fixed_width_contents_are_mutable() -> None:
 
     assert isinstance(document.body[0], FixedWidthBlock)
     fixed = document.body[0]
-    assert fixed.contents == "before"
+    assert fixed.body == "before"
 
-    fixed.contents = "after"
+    fixed.body = "after"
 
     assert fixed.dirty is True
     assert document.dirty is True

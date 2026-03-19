@@ -65,56 +65,54 @@ class _ContainerBlock(Element):
         *,
         begin_line: str,
         end_line: str,
-        contents: list[Element] | None = None,
+        body: list[Element] | None = None,
         parent: Document | Heading | Element | None = None,
     ) -> None:
         super().__init__(parent=parent)
         self._begin_line = begin_line
         self._end_line = end_line
-        self._contents = contents if contents is not None else []
-        self._adopt_contents(self._contents)
+        self._body = body if body is not None else []
+        self._adopt_body(self._body)
 
     @property
-    def contents(self) -> list[Element]:
+    def body(self) -> list[Element]:
         """Mutable block contents as semantic elements."""
-        return self._contents
+        return self._body
 
-    @contents.setter
-    def contents(self, value: list[Element]) -> None:
+    @body.setter
+    def body(self, value: list[Element]) -> None:
         """Set block contents and mark this block as dirty."""
-        self._contents = value
-        self._adopt_contents(self._contents)
+        self._body = value
+        self._adopt_body(self._body)
         self._mark_dirty()
 
     def reformat(self) -> None:
         """Mark contents and this block dirty for scratch-built rendering."""
-        for element in self._contents:
+        for element in self._body:
             element.reformat()
         self.mark_dirty()
 
-    def _adopt_contents(self, contents: Sequence[Element]) -> None:
+    def _adopt_body(self, body: Sequence[Element]) -> None:
         """Assign this block as parent for each nested element."""
-        for element in contents:
+        for element in body:
             element.parent = self
 
-    def _render_contents(self) -> str:
+    def _render_body(self) -> str:
         """Render nested contents ensuring one trailing newline per child."""
-        return "".join(
-            ensure_trailing_newline(str(element)) for element in self._contents
-        )
+        return "".join(ensure_trailing_newline(str(element)) for element in self._body)
 
     def __str__(self) -> str:
         """Render block text preserving source while parse-backed and clean."""
         if not self.dirty and self._node is not None and self._document is not None:
             return node_source(self._node, self._document)
-        return f"{self._begin_line}\n{self._render_contents()}{self._end_line}\n"
+        return f"{self._begin_line}\n{self._render_body()}{self._end_line}\n"
 
     def __repr__(self) -> str:
         """Return a tree-oriented representation for debugging."""
         return build_semantic_repr(
             self.__class__.__name__,
             begin_line=self._begin_line,
-            contents=self._contents,
+            body=self._body,
         )
 
 
@@ -126,30 +124,30 @@ class _TextBlock(Element):
         *,
         begin_line: str,
         end_line: str,
-        contents: str,
+        body: str,
         parent: Document | Heading | Element | None = None,
     ) -> None:
         super().__init__(parent=parent)
         self._begin_line = begin_line
         self._end_line = end_line
-        self._contents = contents
+        self._body = body
 
     @property
-    def contents(self) -> str:
+    def body(self) -> str:
         """Mutable block contents text without delimiters."""
-        return self._contents
+        return self._body
 
-    @contents.setter
-    def contents(self, value: str) -> None:
+    @body.setter
+    def body(self, value: str) -> None:
         """Set block contents text and mark this block as dirty."""
-        self._contents = value
+        self._body = value
         self._mark_dirty()
 
     def __str__(self) -> str:
         """Render block text preserving source while parse-backed and clean."""
         if not self.dirty and self._node is not None and self._document is not None:
             return node_source(self._node, self._document)
-        content = _ensure_single_trailing_newline(self._contents)
+        content = _ensure_single_trailing_newline(self._body)
         return f"{self._begin_line}\n{content}{self._end_line}\n"
 
     def __repr__(self) -> str:
@@ -157,7 +155,7 @@ class _TextBlock(Element):
         return build_semantic_repr(
             self.__class__.__name__,
             begin_line=self._begin_line,
-            contents=self._contents,
+            body=self._body,
         )
 
 
@@ -168,14 +166,14 @@ class CenterBlock(_ContainerBlock):
         self,
         *,
         parameters: str | None = None,
-        contents: list[Element] | None = None,
+        body: list[Element] | None = None,
         parent: Document | Heading | Element | None = None,
     ) -> None:
         self._parameters = _normalize_optional_text(parameters)
         super().__init__(
             begin_line=_render_begin_line("center", self._parameters),
             end_line="#+end_center",
-            contents=contents,
+            body=body,
             parent=parent,
         )
 
@@ -193,7 +191,7 @@ class CenterBlock(_ContainerBlock):
         block = cls(
             parameters=_extract_optional_field_text(node, source, "parameters")
             or _extract_begin_parameters(source_text, "#+begin_center"),
-            contents=_extract_container_contents(node, document),
+            body=_extract_container_contents(node, document),
             parent=parent,
         )
         block._node = node
@@ -220,14 +218,14 @@ class QuoteBlock(_ContainerBlock):
         self,
         *,
         parameters: str | None = None,
-        contents: list[Element] | None = None,
+        body: list[Element] | None = None,
         parent: Document | Heading | Element | None = None,
     ) -> None:
         self._parameters = _normalize_optional_text(parameters)
         super().__init__(
             begin_line=_render_begin_line("quote", self._parameters),
             end_line="#+end_quote",
-            contents=contents,
+            body=body,
             parent=parent,
         )
 
@@ -245,7 +243,7 @@ class QuoteBlock(_ContainerBlock):
         block = cls(
             parameters=_extract_optional_field_text(node, source, "parameters")
             or _extract_begin_parameters(source_text, "#+begin_quote"),
-            contents=_extract_container_contents(node, document),
+            body=_extract_container_contents(node, document),
             parent=parent,
         )
         block._node = node
@@ -273,7 +271,7 @@ class SpecialBlock(_ContainerBlock):
         *,
         name: str,
         parameters: str | None = None,
-        contents: list[Element] | None = None,
+        body: list[Element] | None = None,
         parent: Document | Heading | Element | None = None,
     ) -> None:
         self._name = name
@@ -281,7 +279,7 @@ class SpecialBlock(_ContainerBlock):
         super().__init__(
             begin_line=_render_begin_line(name, self._parameters),
             end_line=f"#+end_{name}",
-            contents=contents,
+            body=body,
             parent=parent,
         )
 
@@ -302,7 +300,7 @@ class SpecialBlock(_ContainerBlock):
             name=parsed_name if name is None else name,
             parameters=_extract_optional_field_text(node, source, "parameters")
             or parsed_parameters,
-            contents=_extract_container_contents(node, document),
+            body=_extract_container_contents(node, document),
             parent=parent,
         )
         block._node = node
@@ -343,7 +341,7 @@ class DynamicBlock(_ContainerBlock):
         *,
         name: str,
         parameters: str | None = None,
-        contents: list[Element] | None = None,
+        body: list[Element] | None = None,
         parent: Document | Heading | Element | None = None,
     ) -> None:
         self._name = name
@@ -351,7 +349,7 @@ class DynamicBlock(_ContainerBlock):
         super().__init__(
             begin_line=_render_dynamic_begin_line(name, self._parameters),
             end_line="#+end:",
-            contents=contents,
+            body=body,
             parent=parent,
         )
 
@@ -372,7 +370,7 @@ class DynamicBlock(_ContainerBlock):
             name=parsed_name if name is None else name,
             parameters=_extract_optional_field_text(node, source, "parameters")
             or parsed_parameters,
-            contents=_extract_container_contents(node, document),
+            body=_extract_container_contents(node, document),
             parent=parent,
         )
         block._node = node
@@ -410,13 +408,13 @@ class VerseBlock(_ContainerBlock):
     def __init__(
         self,
         *,
-        contents: list[Element] | None = None,
+        body: list[Element] | None = None,
         parent: Document | Heading | Element | None = None,
     ) -> None:
         super().__init__(
             begin_line="#+begin_verse",
             end_line="#+end_verse",
-            contents=contents,
+            body=body,
             parent=parent,
         )
 
@@ -430,7 +428,7 @@ class VerseBlock(_ContainerBlock):
     ) -> VerseBlock:
         """Create a :class:`VerseBlock` from a ``verse_block`` node."""
         block = cls(
-            contents=_extract_container_contents(node, document),
+            body=_extract_container_contents(node, document),
             parent=parent,
         )
         block._node = node
@@ -444,13 +442,13 @@ class CommentBlock(_TextBlock):
     def __init__(
         self,
         *,
-        contents: str,
+        body: str,
         parent: Document | Heading | Element | None = None,
     ) -> None:
         super().__init__(
             begin_line="#+begin_comment",
             end_line="#+end_comment",
-            contents=contents,
+            body=body,
             parent=parent,
         )
 
@@ -465,7 +463,7 @@ class CommentBlock(_TextBlock):
         """Create a :class:`CommentBlock` from a ``comment_block`` node."""
         source_text = node_source(node, document)
         block = cls(
-            contents=_extract_block_body_text(source_text),
+            body=_extract_block_body_text(source_text),
             parent=parent,
         )
         block._node = node
@@ -480,14 +478,14 @@ class ExampleBlock(_TextBlock):
         self,
         *,
         parameters: str | None = None,
-        contents: str,
+        body: str,
         parent: Document | Heading | Element | None = None,
     ) -> None:
         self._parameters = _normalize_optional_text(parameters)
         super().__init__(
             begin_line=_render_begin_line("example", self._parameters),
             end_line="#+end_example",
-            contents=contents,
+            body=body,
             parent=parent,
         )
 
@@ -505,7 +503,7 @@ class ExampleBlock(_TextBlock):
         block = cls(
             parameters=_extract_optional_field_text(node, source, "parameters")
             or _extract_begin_parameters(source_text, "#+begin_example"),
-            contents=_extract_block_body_text(source_text),
+            body=_extract_block_body_text(source_text),
             parent=parent,
         )
         block._node = node
@@ -533,7 +531,7 @@ class ExportBlock(_TextBlock):
         *,
         backend: str,
         parameters: str | None = None,
-        contents: str,
+        body: str,
         parent: Document | Heading | Element | None = None,
     ) -> None:
         self._backend = backend
@@ -541,7 +539,7 @@ class ExportBlock(_TextBlock):
         super().__init__(
             begin_line=_render_export_begin_line(self._backend, self._parameters),
             end_line="#+end_export",
-            contents=contents,
+            body=body,
             parent=parent,
         )
 
@@ -562,7 +560,7 @@ class ExportBlock(_TextBlock):
             backend=parsed_backend if backend is None else backend,
             parameters=_extract_optional_field_text(node, source, "parameters")
             or parsed_parameters,
-            contents=_extract_block_body_text(source_text),
+            body=_extract_block_body_text(source_text),
             parent=parent,
         )
         block._node = node
@@ -602,7 +600,7 @@ class SourceBlock(_TextBlock):
         *,
         language: str | None = None,
         switches: str | None = None,
-        contents: str,
+        body: str,
         parent: Document | Heading | Element | None = None,
     ) -> None:
         self._language = _normalize_optional_text(language)
@@ -610,7 +608,7 @@ class SourceBlock(_TextBlock):
         super().__init__(
             begin_line=_render_source_begin_line(self._language, self._switches),
             end_line="#+end_src",
-            contents=contents,
+            body=body,
             parent=parent,
         )
 
@@ -631,7 +629,7 @@ class SourceBlock(_TextBlock):
             or parsed_language,
             switches=_extract_optional_field_text(node, source, "switches")
             or parsed_switches,
-            contents=_extract_block_body_text(source_text),
+            body=_extract_block_body_text(source_text),
             parent=parent,
         )
         block._node = node
@@ -669,11 +667,11 @@ class FixedWidthBlock(Element):
     def __init__(
         self,
         *,
-        contents: str,
+        body: str,
         parent: Document | Heading | Element | None = None,
     ) -> None:
         super().__init__(parent=parent)
-        self._contents = contents
+        self._body = body
 
     @classmethod
     def from_node(
@@ -686,7 +684,7 @@ class FixedWidthBlock(Element):
         """Create a :class:`FixedWidthBlock` from a ``fixed_width`` node."""
         source_text = node_source(node, document)
         block = cls(
-            contents=_extract_fixed_width_contents(source_text),
+            body=_extract_fixed_width_contents(source_text),
             parent=parent,
         )
         block._node = node
@@ -694,14 +692,14 @@ class FixedWidthBlock(Element):
         return block
 
     @property
-    def contents(self) -> str:
+    def body(self) -> str:
         """Mutable fixed-width content text without ``:`` prefixes."""
-        return self._contents
+        return self._body
 
-    @contents.setter
-    def contents(self, value: str) -> None:
+    @body.setter
+    def body(self, value: str) -> None:
         """Set fixed-width content text and mark this block as dirty."""
-        self._contents = value
+        self._body = value
         self._mark_dirty()
 
     def __str__(self) -> str:
@@ -709,7 +707,7 @@ class FixedWidthBlock(Element):
         if not self.dirty and self._node is not None and self._document is not None:
             return node_source(self._node, self._document)
 
-        lines = self._contents.splitlines()
+        lines = self._body.splitlines()
         if not lines:
             return ":\n"
         rendered = [":\n" if line == "" else f": {line}\n" for line in lines]
@@ -717,7 +715,7 @@ class FixedWidthBlock(Element):
 
     def __repr__(self) -> str:
         """Return a tree-oriented representation for debugging."""
-        return build_semantic_repr("FixedWidthBlock", contents=self._contents)
+        return build_semantic_repr("FixedWidthBlock", body=self._body)
 
 
 def _extract_container_contents(
