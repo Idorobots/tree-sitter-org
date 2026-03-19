@@ -50,11 +50,9 @@ class ListItem(Element):
         item_tag: RichText | None = None,
         first_line: RichText | None = None,
         body: list[Element] | None = None,
-        line_prefix: str = "",
         parent: Document | Heading | Element | None = None,
     ) -> None:
         super().__init__(parent=parent)
-        self._line_prefix = line_prefix
         self._bullet = bullet
         self._ordered_counter = ordered_counter
         self._counter_set = counter_set
@@ -79,7 +77,6 @@ class ListItem(Element):
     ) -> ListItem:
         """Create one :class:`ListItem` from a ``list_item`` parse node."""
         source = document.source if document is not None else b""
-        source_text = node_source(node, document)
         item = cls(
             bullet=_extract_bullet(node, source),
             ordered_counter=_extract_optional_field_text(node, source, "counter"),
@@ -88,7 +85,6 @@ class ListItem(Element):
             item_tag=_extract_item_tag(node, source, document),
             first_line=_extract_first_line(node, source, document),
             body=[],
-            line_prefix=_extract_leading_indent(source_text),
             parent=parent,
         )
         item._node = node
@@ -209,8 +205,7 @@ class ListItem(Element):
         ):
             return node_source(self._node, self._document)
 
-        default_indent = self._line_prefix if self._line_prefix != "" else None
-        return self.render_with_indent(default_indent)
+        return self.render_with_indent(None)
 
     def render_with_indent(self, indent: str | None, *, indent_step: int = 2) -> str:
         """Render list-item text with one explicit indentation prefix."""
@@ -267,7 +262,6 @@ class Repeat(ListItem):
         before: str,
         timestamp: Timestamp,
         body: list[Element] | None = None,
-        line_prefix: str = "",
         bullet: str = "-",
         ordered_counter: str | None = None,
         counter_set: str | None = None,
@@ -282,7 +276,6 @@ class Repeat(ListItem):
             item_tag=None,
             first_line=None,
             body=body,
-            line_prefix=line_prefix,
             parent=parent,
         )
         self._after = after
@@ -325,7 +318,6 @@ class Repeat(ListItem):
             ordered_counter=item.ordered_counter,
             counter_set=item.counter_set,
             checkbox=item.checkbox,
-            line_prefix=item._line_prefix,
             parent=item.parent,
         )
         repeat._node = item._node
@@ -381,8 +373,7 @@ class Repeat(ListItem):
         if not self.dirty and self._node is not None and self._document is not None:
             return node_source(self._node, self._document)
 
-        default_indent = self._line_prefix if self._line_prefix != "" else None
-        return self.render_with_indent(default_indent)
+        return self.render_with_indent(None)
 
     def render_with_indent(self, indent: str | None, *, indent_step: int = 2) -> str:
         """Render repeat entry text with one explicit indentation prefix."""
@@ -594,14 +585,6 @@ def _extract_first_line(
     return RichText.from_nodes(
         node.children_by_field_name("first_line"), source, document=document
     )
-
-
-def _extract_leading_indent(value: str) -> str:
-    """Return leading indentation from one line of source text."""
-    indent_end = 0
-    while indent_end < len(value) and value[indent_end] in {" ", "\t"}:
-        indent_end += 1
-    return value[:indent_end]
 
 
 def _indent_non_empty_lines(value: str, prefix: str) -> str:

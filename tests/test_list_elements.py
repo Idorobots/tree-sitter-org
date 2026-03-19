@@ -212,3 +212,14 @@ def test_dirty_list_indents_non_list_body_elements() -> None:
     parsed.items[0].first_line = RichText("ONE")
 
     assert str(parsed) == "- ONE\n  #+begin_quote\n    q\n    #+end_quote\n"
+
+
+def test_dirty_standalone_list_item_aligns_body_after_bullet_column() -> None:
+    """Standalone dirty list items indent continuation body by one step."""
+    item = ListItem(
+        bullet="-",
+        first_line=RichText("List item line"),
+        body=[Paragraph(body=RichText("body is aligned to the line text\n"))],
+    )
+
+    assert str(item) == "- List item line\n  body is aligned to the line text\n"
