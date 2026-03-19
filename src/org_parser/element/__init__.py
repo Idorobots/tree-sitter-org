@@ -39,7 +39,7 @@ from org_parser.element._structure import (
     HorizontalRule,
     IndentBlock,
 )
-from org_parser.element._table import Table, TableCell, TableRow
+from org_parser.element._table import Table, TableCell, TableRow, TableRuleRow
 
 __all__ = [
     "BlankLine",
@@ -70,6 +70,7 @@ __all__ = [
     "Table",
     "TableCell",
     "TableRow",
+    "TableRuleRow",
     "TblnameKeyword",
     "VerseBlock",
 ]

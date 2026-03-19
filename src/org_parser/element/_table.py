@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from org_parser.document._document import Document
     from org_parser.document._heading import Heading
 
-__all__ = ["Table", "TableCell", "TableRow"]
+__all__ = ["Table", "TableCell", "TableRow", "TableRuleRow"]
 
 
 class TableCell:
@@ -68,17 +68,15 @@ class TableCell:
 
 
 class TableRow:
-    """One mutable table row.
+    """One mutable data row in a table.
 
     Args:
-        cells: Row cells for data rows.
-        is_rule: Whether this is a horizontal rule row.
+        cells: Row cells.
         table: Owning table.
     """
 
-    def __init__(self, *, cells: list[TableCell], is_rule: bool, table: Table) -> None:
+    def __init__(self, *, cells: list[TableCell], table: Table) -> None:
         self._cells = cells
-        self._is_rule = is_rule
         self._table = table
         self._adopt_cells()
 
@@ -94,17 +92,6 @@ class TableRow:
         self._adopt_cells()
         self._table.mark_dirty()
 
-    @property
-    def is_rule(self) -> bool:
-        """Whether this row is a horizontal rule separator."""
-        return self._is_rule
-
-    @is_rule.setter
-    def is_rule(self, value: bool) -> None:
-        """Set row rule state and mark the owning table as dirty."""
-        self._is_rule = value
-        self._table.mark_dirty()
-
     def set_table(self, table: Table) -> None:
         """Assign a new owning table without marking dirty."""
         self._table = table
@@ -117,14 +104,43 @@ class TableRow:
 
     def __repr__(self) -> str:
         """Return a tree-oriented representation for debugging."""
-        return build_semantic_repr("TableRow", is_rule=self._is_rule, cells=self._cells)
+        return build_semantic_repr("TableRow", cells=self._cells)
+
+
+class TableRuleRow:
+    """A horizontal rule row in a table (e.g. ``|---+---|``).
+
+    Stores the raw source text of the rule so the original formatting is
+    preserved and accessible for inspection.
+
+    Args:
+        raw: Raw source text of the rule row (e.g. ``|---+---|``).
+        table: Owning table.
+    """
+
+    def __init__(self, *, raw: str, table: Table) -> None:
+        self._raw = raw
+        self._table = table
+
+    @property
+    def raw(self) -> str:
+        """Raw source text of the rule row."""
+        return self._raw
+
+    def set_table(self, table: Table) -> None:
+        """Assign a new owning table without marking dirty."""
+        self._table = table
+
+    def __repr__(self) -> str:
+        """Return a tree-oriented representation for debugging."""
+        return build_semantic_repr("TableRuleRow", raw=self._raw)
 
 
 class Table(Element):
     """Org/Table.el table semantic element.
 
     Args:
-        rows: Mutable table rows.
+        rows: Mutable table rows (data rows and rule rows).
         formulas: Table formulas without ``#+TBLFM:`` prefix.
         is_tableel: Whether source was parsed as a Table.el table.
         parent: Optional parent owner object.
@@ -133,7 +149,7 @@ class Table(Element):
     def __init__(
         self,
         *,
-        rows: list[TableRow],
+        rows: list[TableRow | TableRuleRow],
         formulas: list[str] | None = None,
         is_tableel: bool = False,
         parent: Document | Heading | Element | None = None,
@@ -177,7 +193,7 @@ class Table(Element):
         table._node = node
         table._document = document
 
-        rows: list[TableRow] = []
+        rows: list[TableRow | TableRuleRow] = []
         formulas: list[str] = []
         for child in node.named_children:
             if child.type == TABLE_ROW:
@@ -191,12 +207,12 @@ class Table(Element):
         return table
 
     @property
-    def rows(self) -> list[TableRow]:
-        """Mutable table rows."""
+    def rows(self) -> list[TableRow | TableRuleRow]:
+        """Mutable table rows (data rows and rule rows)."""
         return self._rows
 
     @rows.setter
-    def rows(self, value: list[TableRow]) -> None:
+    def rows(self, value: list[TableRow | TableRuleRow]) -> None:
         """Set rows and mark table dirty."""
         self._rows = value
         self._adopt_rows()
@@ -248,11 +264,12 @@ def _parse_org_table_row(
     source: bytes,
     table: Table,
     document: Document | None = None,
-) -> TableRow:
-    """Parse one ``table_row`` node into :class:`TableRow`."""
+) -> TableRow | TableRuleRow:
+    """Parse one ``table_row`` node into :class:`TableRow` or :class:`TableRuleRow`."""
     has_rule = any(child.type == TABLE_RULE for child in node.named_children)
     if has_rule:
-        return TableRow(cells=[], is_rule=True, table=table)
+        raw = source[node.start_byte : node.end_byte].decode().rstrip("\n")
+        return TableRuleRow(raw=raw, table=table)
 
     cells: list[TableCell] = []
     for child in node.named_children:
@@ -261,7 +278,7 @@ def _parse_org_table_row(
         value = RichText.from_nodes(child.named_children, source, document=document)
         rich_text = RichText("") if value is None else RichText(str(value).strip())
         cells.append(TableCell(value=rich_text, table=table))
-    return TableRow(cells=cells, is_rule=False, table=table)
+    return TableRow(cells=cells, table=table)
 
 
 def _extract_tblfm_formula(node: tree_sitter.Node, source: bytes) -> str:
@@ -273,14 +290,14 @@ def _extract_tblfm_formula(node: tree_sitter.Node, source: bytes) -> str:
     return line.strip()
 
 
-def _parse_tableel_rows(source_text: str) -> list[TableRow]:
+def _parse_tableel_rows(source_text: str) -> list[TableRow | TableRuleRow]:
     """Parse Table.el grid text into row abstractions."""
-    rows: list[TableRow] = []
+    rows: list[TableRow | TableRuleRow] = []
     dummy_table = Table(rows=[], formulas=[], is_tableel=True)
     for raw_line in source_text.splitlines():
         stripped = raw_line.lstrip()
         if stripped.startswith("+"):
-            rows.append(TableRow(cells=[], is_rule=True, table=dummy_table))
+            rows.append(TableRuleRow(raw=stripped.rstrip(), table=dummy_table))
             continue
         if not stripped.startswith("|"):
             continue
@@ -289,19 +306,22 @@ def _parse_tableel_rows(source_text: str) -> list[TableRow]:
             TableCell(value=RichText(piece.strip()), table=dummy_table)
             for piece in pieces
         ]
-        rows.append(TableRow(cells=cells, is_rule=False, table=dummy_table))
+        rows.append(TableRow(cells=cells, table=dummy_table))
     return rows
 
 
-def _render_org_table(rows: list[TableRow], formulas: list[str]) -> str:
+def _render_org_table(rows: list[TableRow | TableRuleRow], formulas: list[str]) -> str:
     """Render aligned Org table text from rows and formulas."""
-    column_count = max((len(row.cells) for row in rows if not row.is_rule), default=0)
+    column_count = max(
+        (len(row.cells) for row in rows if isinstance(row, TableRow)),
+        default=0,
+    )
     if column_count == 0:
         column_count = 1
 
     widths = [0] * column_count
     for row in rows:
-        if row.is_rule:
+        if isinstance(row, TableRuleRow):
             continue
         for idx in range(column_count):
             value = str(row.cells[idx]) if idx < len(row.cells) else ""
@@ -311,7 +331,7 @@ def _render_org_table(rows: list[TableRow], formulas: list[str]) -> str:
 
     parts: list[str] = []
     for row in rows:
-        if row.is_rule:
+        if isinstance(row, TableRuleRow):
             rule_segments = ["-" * (width + 2) for width in widths]
             parts.append(f"|{'+'.join(rule_segments)}|\n")
             continue
