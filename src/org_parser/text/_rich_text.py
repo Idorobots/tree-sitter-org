@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from org_parser._node import node_text
+from org_parser._node import is_error_node, node_text
 from org_parser._nodes import (
     ANGLE_LINK,
     BOLD,
@@ -413,7 +413,7 @@ def _parse_inline_node(  # noqa: PLR0911,PLR0912,PLR0915
     # Any remaining node that the grammar could not parse cleanly falls back to
     # PlainText.  Error and missing nodes are additionally reported so the
     # owning Document can accumulate them.
-    if (node.type == "ERROR" or node.is_missing) and document is not None:
+    if is_error_node(node) and document is not None:
         document.report_error(node)
     return PlainText(text)
 

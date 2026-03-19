@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 import pytest
 import tree_sitter
 
+from org_parser._node import is_error_node
 from org_parser.document import load_raw
 
 if TYPE_CHECKING:
@@ -21,7 +22,7 @@ if TYPE_CHECKING:
 
 def _has_error_nodes(node: tree_sitter.Node) -> bool:
     """Return True if *node* or any of its descendants is an ERROR node."""
-    if node.type == "ERROR" or node.is_missing:
+    if is_error_node(node):
         return True
     return any(_has_error_nodes(child) for child in node.children)
 

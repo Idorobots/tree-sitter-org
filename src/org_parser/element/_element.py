@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from org_parser._node import node_source
+from org_parser._node import is_error_node, node_source
 
 if TYPE_CHECKING:
     import tree_sitter
@@ -19,8 +19,6 @@ if TYPE_CHECKING:
     from org_parser.document._heading import Heading
 
 __all__ = ["Element", "node_source"]
-
-_ERROR_NODE_TYPE = "ERROR"
 
 
 def build_semantic_repr(class_name: str, /, **fields: object) -> str:
@@ -119,19 +117,6 @@ class Element:
 # ---------------------------------------------------------------------------
 
 
-def _is_error_node(node: tree_sitter.Node) -> bool:
-    """Return *True* if *node* is a parse-error or missing token.
-
-    Args:
-        node: Any tree-sitter node to inspect.
-
-    Returns:
-        ``True`` for ``ERROR``-typed nodes and for nodes where
-        ``node.is_missing`` is set by the parser's error-recovery.
-    """
-    return node.type == _ERROR_NODE_TYPE or node.is_missing
-
-
 def element_from_error_or_unknown(
     node: tree_sitter.Node,
     document: Document | None = None,
@@ -160,7 +145,7 @@ def element_from_error_or_unknown(
         A :class:`~org_parser.element._paragraph.Paragraph` for error nodes,
         or a plain :class:`Element` for unknown valid nodes.
     """
-    if _is_error_node(node):
+    if is_error_node(node):
         if document is not None:
             document.report_error(node)
         # Lazy imports avoid the circular dependency
