@@ -190,6 +190,10 @@ typedef struct {
   // Section-local indentation block stack.
   uint16_t section_block_indents[MAX_LIST_DEPTH];
   uint8_t section_block_depth;
+
+  // One-shot guard: after closing a block on an ``:end:`` marker, do not
+  // immediately reopen a block at the same line start.
+  bool suppress_block_begin_on_end_line;
 } Scanner;
 
 // ---------------------------------------------------------------------------
@@ -354,6 +358,7 @@ void *tree_sitter_org_external_scanner_create(void) {
     scanner->prev_char = 0;
     scanner->last_column = 0;
     scanner->plain_lbracket_depth = 0;
+    scanner->suppress_block_begin_on_end_line = false;
     reset_markup_open_state(scanner);
   }
   return scanner;
@@ -421,8 +426,8 @@ unsigned tree_sitter_org_external_scanner_serialize(
 
   // prev_char, consecutive_blank_lines, in_table, last_column,
   // plain_lbracket_depth,
-  // markup-open flags, in_heading_line
-  if (pos + 17 > SERIALIZE_BUF_SIZE) return 0;
+  // markup-open flags, in_heading_line, suppress_block_begin_on_end_line
+  if (pos + 18 > SERIALIZE_BUF_SIZE) return 0;
   buffer[pos++] = (char)((s->prev_char >> 24) & 0xFF);
   buffer[pos++] = (char)((s->prev_char >> 16) & 0xFF);
   buffer[pos++] = (char)((s->prev_char >> 8) & 0xFF);
@@ -440,6 +445,7 @@ unsigned tree_sitter_org_external_scanner_serialize(
   buffer[pos++] = (char)(s->verbatim_open ? 1 : 0);
   buffer[pos++] = (char)(s->code_open ? 1 : 0);
   buffer[pos++] = (char)(s->in_heading_line ? 1 : 0);
+  buffer[pos++] = (char)(s->suppress_block_begin_on_end_line ? 1 : 0);
 
   return pos;
 }
@@ -461,6 +467,7 @@ void tree_sitter_org_external_scanner_deserialize(
   s->last_column = 0;
   s->plain_lbracket_depth = 0;
   s->in_heading_line = false;
+  s->suppress_block_begin_on_end_line = false;
   reset_markup_open_state(s);
 
   for (int i = 0; i < NUM_DEFAULT_TODO_KWS; i++) {
@@ -518,7 +525,7 @@ void tree_sitter_org_external_scanner_deserialize(
 
   // prev_char, consecutive_blank_lines, in_table, last_column,
   // plain_lbracket_depth,
-  // markup-open flags, in_heading_line
+  // markup-open flags, in_heading_line, suppress_block_begin_on_end_line
   if (pos + 5 <= length) {
     s->prev_char = ((int32_t)(uint8_t)buffer[pos] << 24) |
                    ((int32_t)(uint8_t)buffer[pos + 1] << 16) |
@@ -558,6 +565,9 @@ void tree_sitter_org_external_scanner_deserialize(
   }
   if (pos < length) {
     s->in_heading_line = (bool)buffer[pos++];
+  }
+  if (pos < length) {
+    s->suppress_block_begin_on_end_line = (bool)buffer[pos++];
   }
 }
 
@@ -2219,7 +2229,7 @@ static int scan_paragraph_continue(TSLexer *lexer) {
 
   // Reject obvious element starters so indented lines parse as dedicated
   // constructs rather than paragraph continuations.
-  if (ch == '*' || ch == '#' || ch == ':' || ch == '|' ||
+  if (ch == '*' || ch == '#' || ch == '|' ||
       ch == '+' || ch == '-' || ch == '[' || ch == '%' ||
       ch == 'C' || ch == 'D' || ch == 'S' ||
       ch == '\n' || (ch >= '0' && ch <= '9') || eof(lexer)) {
@@ -2235,6 +2245,7 @@ static int scan_paragraph_continue(TSLexer *lexer) {
 static int scan_block_begin(Scanner *s, TSLexer *lexer, const bool *valid_symbols) {
   if (get_column(lexer) != 0) return 0;
   if (eof(lexer)) return 0;
+  if (s->suppress_block_begin_on_end_line) return 0;
 
   int32_t ch = lookahead(lexer);
   if (ch != ' ' && ch != '\t') return 0;
@@ -2326,12 +2337,17 @@ static int scan_block_end(Scanner *s, TSLexer *lexer, const bool *valid_symbols)
   }
 
   bool should_close = false;
+  bool close_on_end_marker = false;
 
   if (eof(lexer)) {
     should_close = true;
   } else if (indent_col < current) {
     should_close = true;
   } else if (indent_col == current && ch == ':') {
+    if (current <= 2) {
+      mark_end(lexer);
+    }
+
     /* Peek for ':end:' case-insensitively.  mark_end() was already called
      * above, so these advances do not extend the zero-width token boundary.
      * This handles drawer :END: markers at the same indentation level as
@@ -2349,6 +2365,7 @@ static int scan_block_end(Scanner *s, TSLexer *lexer, const bool *valid_symbols)
           int32_t c5 = lookahead(lexer);
           if (c5 == ':') {
             should_close = true;
+            close_on_end_marker = true;
           }
         }
       }
@@ -2358,6 +2375,7 @@ static int scan_block_end(Scanner *s, TSLexer *lexer, const bool *valid_symbols)
   if (!should_close) return -1;
 
   s->section_block_depth--;
+  s->suppress_block_begin_on_end_line = close_on_end_marker;
   lexer->result_symbol = TOKEN_BLOCK_END;
   return 1;
 }
@@ -2647,6 +2665,11 @@ bool tree_sitter_org_external_scanner_scan(
   // markup scanners correctly treat the beginning-of-line as a valid PRE
   // context, even after a line that ended with a non-PRE character.
   if (col == 0) {
+    if (s->suppress_block_begin_on_end_line &&
+        lookahead(lexer) != ' ' && lookahead(lexer) != '\t') {
+      s->suppress_block_begin_on_end_line = false;
+    }
+
     s->prev_char = 0;
     s->plain_lbracket_depth = 0;
     s->in_heading_line = false;

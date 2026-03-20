@@ -164,6 +164,21 @@ def test_dirty_document_preserves_blank_line_between_list_items() -> None:
     assert str(document) == "- a\n\n- b\n"
 
 
+def test_lone_end_after_indented_list_item_recovers_as_paragraph() -> None:
+    """A lone indented ``:END:`` after a list item is recovered as paragraph text."""
+    document = loads(
+        "* TODO Heading\n"
+        '  - State "DONE"       from "TODO"       [2014-08-15 Fri 23:25]\n'
+        "  :END:\n"
+    )
+
+    heading = document.children[0]
+    assert isinstance(heading.body[0], List)
+    assert isinstance(heading.body[1], Paragraph)
+    assert str(heading.body[1]) == ":END:\n"
+    assert document.errors == []
+
+
 def test_block_body_breaks_recovered_lists_on_non_list_nodes() -> None:
     """Paragraphs inside one block split recovered list runs."""
     document = loads("- parent\n  - child a\n  break\n  - child b\n")

@@ -17,6 +17,35 @@ Unordered list with dashes
       first_line: (plain_text))))
 
 ================
+Indented lone :END: after list item in heading
+================
+* TODO Heading
+  - State "DONE"       from "TODO"       [2014-08-15 Fri 23:25]
+  :END:
+
+---
+
+(document
+  (heading
+    stars: (stars)
+    todo: (todo_keyword)
+    title: (plain_text)
+    body: (section
+      (block
+        indent: (indent)
+        body: (list_item
+          first_line: (plain_text)
+          first_line: (timestamp
+            year: (ts_year)
+            month: (ts_month)
+            day: (ts_day)
+            dayname: (ts_dayname)
+            time: (ts_time))))
+      (paragraph
+        (plain_text)
+        (newline)))))
+
+================
 List items allow arrows inside verbatim markup
 ================
 - Line

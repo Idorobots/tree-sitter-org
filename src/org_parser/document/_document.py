@@ -358,13 +358,11 @@ class Document:
         Raises:
             ValueError: If this document has no source bytes.
         """
-        source_fragment = self.source_for(node)
-        text = source_fragment.decode()
         self._errors.append(
             ParseError(
                 start_point=node.start_point,
                 end_point=node.end_point,
-                text=text,
+                text=self.source_for(node).decode(),
                 _node=node,
             )
         )
