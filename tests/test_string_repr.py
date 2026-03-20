@@ -38,8 +38,7 @@ def test_document_str_clean_is_verbatim_zeroth_section(
 
     zeroth = _first_child_of_type(root, "zeroth_section")
     assert zeroth is not None
-
-    expected = document.source[zeroth.start_byte : zeroth.end_byte].decode()
+    expected = document.source_for(zeroth).decode()
     assert str(document) == expected
     assert "* PRODUCTION" not in str(document)
 
@@ -59,8 +58,9 @@ def test_heading_str_clean_is_verbatim_and_omits_subheadings(
 
     first_sub = _first_child_of_type(node, "heading")
     assert first_sub is not None
-
-    expected = document.source[node.start_byte : first_sub.start_byte].decode()
+    heading_source = document.source_for(node)
+    end_index = first_sub.start_byte - node.start_byte
+    expected = heading_source[:end_index].decode()
     assert str(heading) == expected
     assert "** First sub-heading" not in str(heading)
 

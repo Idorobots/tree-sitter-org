@@ -47,7 +47,7 @@ class BlankLine(Element):
     def from_node(
         cls,
         node: tree_sitter.Node,
-        document: Document | None = None,
+        document: Document,
         *,
         parent: Document | Heading | Element | None = None,
     ) -> BlankLine:
@@ -88,7 +88,7 @@ class Comment(Element):
     def from_node(
         cls,
         node: tree_sitter.Node,
-        document: Document | None = None,
+        document: Document,
         *,
         parent: Document | Heading | Element | None = None,
     ) -> Comment:
@@ -148,7 +148,7 @@ class HorizontalRule(Element):
     def from_node(
         cls,
         node: tree_sitter.Node,
-        document: Document | None = None,
+        document: Document,
         *,
         parent: Document | Heading | Element | None = None,
     ) -> HorizontalRule:

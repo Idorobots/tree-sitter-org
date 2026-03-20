@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from org_parser._node import is_error_node, node_text
+from org_parser._node import is_error_node, node_source
 from org_parser._nodes import (
     ANGLE_LINK,
     BOLD,
@@ -169,22 +169,23 @@ class RichText:
     def from_node(
         cls,
         node: tree_sitter.Node,
-        source: bytes,
         *,
-        document: Document | None = None,
+        document: Document,
     ) -> RichText:
         """Create a :class:`RichText` from a single tree-sitter node.
 
         Args:
             node: The tree-sitter node to parse.
-            source: Full document source bytes.
-            document: The owning :class:`Document`, or *None*. Used for
-                error reporting on error/missing inline nodes.
+            document: The owning :class:`Document`.
         """
+        root = document.node
+        if root is None:
+            raise ValueError("RichText.from_node requires document parse node")
+        source = document.source_for(root)
         if node.type == PARAGRAPH:
-            parts = _parse_inline_nodes(node.named_children, source, document)
+            parts = _parse_inline_nodes(node.named_children, document)
         else:
-            parts = _parse_inline_nodes([node], source, document)
+            parts = _parse_inline_nodes([node], document)
         rt = cls(parts)
         rt._node = node
         rt._source = source
@@ -196,23 +197,24 @@ class RichText:
     def from_nodes(
         cls,
         nodes: Sequence[tree_sitter.Node],
-        source: bytes,
         *,
-        document: Document | None = None,
+        document: Document,
     ) -> RichText | None:
         """Create a :class:`RichText` from multiple contiguous nodes.
 
         Args:
             nodes: Ordered sequence of tree-sitter nodes to parse.
-            source: Full document source bytes.
-            document: The owning :class:`Document`, or *None*. Used for
-                error reporting on error/missing inline nodes.
+            document: The owning :class:`Document`.
         """
         if not nodes:
             return None
+        root = document.node
+        if root is None:
+            raise ValueError("RichText.from_nodes requires document parse node")
+        source = document.source_for(root)
         first = nodes[0]
         last = nodes[-1]
-        parts = _parse_inline_nodes(nodes, source, document)
+        parts = _parse_inline_nodes(nodes, document)
         rt = cls(parts)
         rt._node = first
         rt._source = source
@@ -259,35 +261,29 @@ def _coerce_inline_object(part: InlineObject | str) -> InlineObject:
 
 def _parse_inline_nodes(
     nodes: Sequence[tree_sitter.Node],
-    source: bytes,
-    document: Document | None = None,
+    document: Document,
 ) -> list[InlineObject]:
     """Parse a sequence of tree-sitter nodes into inline object abstractions.
 
     Args:
         nodes: Ordered sequence of tree-sitter inline nodes.
-        source: Full document source bytes.
-        document: The owning :class:`Document`, or *None*. Used for error
-            reporting on error/missing nodes.
+        document: The owning :class:`Document`.
     """
-    return [_parse_inline_node(node, source, document) for node in nodes]
+    return [_parse_inline_node(node, document) for node in nodes]
 
 
 def _parse_inline_node(  # noqa: PLR0911,PLR0912,PLR0915
     node: tree_sitter.Node,
-    source: bytes,
-    document: Document | None = None,
+    document: Document,
 ) -> InlineObject:
     """Parse one tree-sitter inline node into an inline object abstraction.
 
     Args:
         node: A single inline tree-sitter node.
-        source: Full document source bytes.
-        document: The owning :class:`Document`, or *None*. Used for error
-            reporting when this node is an error or missing node.
+        document: The owning :class:`Document`.
     """
     node_type = node.type
-    text = node_text(node, source)
+    text = document.source_for(node).decode()
 
     if node_type == PLAIN_TEXT:
         return PlainText(text)
@@ -298,65 +294,57 @@ def _parse_inline_node(  # noqa: PLR0911,PLR0912,PLR0915
 
     if node_type == COMPLETION_COUNTER:
         value_node = node.child_by_field_name("value")
-        return CompletionCounter(node_text(value_node, source))
+        return CompletionCounter(node_source(value_node, document))
 
     if node_type == BOLD:
         return Bold(
-            body=_parse_inline_nodes(
-                node.children_by_field_name("body"), source, document
-            )
+            body=_parse_inline_nodes(node.children_by_field_name("body"), document)
         )
 
     if node_type == ITALIC:
         return Italic(
-            body=_parse_inline_nodes(
-                node.children_by_field_name("body"), source, document
-            ),
+            body=_parse_inline_nodes(node.children_by_field_name("body"), document),
         )
 
     if node_type == UNDERLINE:
         return Underline(
-            body=_parse_inline_nodes(
-                node.children_by_field_name("body"), source, document
-            ),
+            body=_parse_inline_nodes(node.children_by_field_name("body"), document),
         )
 
     if node_type == STRIKE_THROUGH:
         return StrikeThrough(
-            body=_parse_inline_nodes(
-                node.children_by_field_name("body"), source, document
-            ),
+            body=_parse_inline_nodes(node.children_by_field_name("body"), document),
         )
 
     if node_type == VERBATIM:
         body_node = node.child_by_field_name("body")
-        return Verbatim(body=node_text(body_node, source))
+        return Verbatim(body=node_source(body_node, document))
 
     if node_type == CODE:
         body_node = node.child_by_field_name("body")
-        return Code(body=node_text(body_node, source))
+        return Code(body=node_source(body_node, document))
 
     if node_type == EXPORT_SNIPPET:
         backend_node = node.child_by_field_name("backend")
         value_node = node.child_by_field_name("value")
-        value = node_text(value_node, source) if value_node is not None else None
-        return ExportSnippet(backend=node_text(backend_node, source), value=value)
+        value = node_source(value_node, document) if value_node is not None else None
+        return ExportSnippet(backend=node_source(backend_node, document), value=value)
 
     if node_type == FOOTNOTE_REFERENCE:
         label_node = node.child_by_field_name("label")
         definition_nodes = node.children_by_field_name("definition")
         definition = (
-            _parse_inline_nodes(definition_nodes, source, document)
+            _parse_inline_nodes(definition_nodes, document)
             if definition_nodes
             else None
         )
-        label = node_text(label_node, source) if label_node is not None else None
+        label = node_source(label_node, document) if label_node is not None else None
         return FootnoteReference(label=label, definition=definition)
 
     if node_type == CITATION:
         style = _extract_citation_style(text)
         body_node = node.child_by_field_name("body")
-        body = node_text(body_node, source) if body_node is not None else None
+        body = node_source(body_node, document) if body_node is not None else None
         return Citation(body=body, style=style)
 
     if node_type == INLINE_SOURCE_BLOCK:
@@ -365,12 +353,12 @@ def _parse_inline_node(  # noqa: PLR0911,PLR0912,PLR0915
         headers = None
         for candidate in headers_nodes:
             if candidate.type == INLINE_HEADERS:
-                headers = node_text(candidate, source)
+                headers = node_source(candidate, document)
                 break
         body_node = node.child_by_field_name("body")
-        body = node_text(body_node, source) if body_node is not None else None
+        body = node_source(body_node, document) if body_node is not None else None
         return InlineSourceBlock(
-            language=node_text(language_node, source),
+            language=node_source(language_node, document),
             headers=headers,
             body=body,
         )
@@ -379,41 +367,43 @@ def _parse_inline_node(  # noqa: PLR0911,PLR0912,PLR0915
         link_type_node = node.child_by_field_name("type")
         path_node = node.child_by_field_name("path")
         return PlainLink(
-            link_type=node_text(link_type_node, source),
-            path=node_text(path_node, source),
+            link_type=node_source(link_type_node, document),
+            path=node_source(path_node, document),
         )
 
     if node_type == ANGLE_LINK:
         link_type_node = node.child_by_field_name("type")
         path_node = node.child_by_field_name("path")
-        link_type = node_text(link_type_node, source) if link_type_node else None
-        return AngleLink(path=node_text(path_node, source), link_type=link_type)
+        link_type = node_source(link_type_node, document) if link_type_node else None
+        return AngleLink(path=node_source(path_node, document), link_type=link_type)
 
     if node_type == REGULAR_LINK:
         path_node = node.child_by_field_name("path")
         description_nodes = node.children_by_field_name("description")
         description = (
-            _parse_inline_nodes(description_nodes, source, document)
+            _parse_inline_nodes(description_nodes, document)
             if description_nodes
             else None
         )
-        return RegularLink(path=node_text(path_node, source), description=description)
+        return RegularLink(
+            path=node_source(path_node, document), description=description
+        )
 
     if node_type == TARGET:
         value_node = node.child_by_field_name("value")
-        return Target(value=node_text(value_node, source))
+        return Target(value=node_source(value_node, document))
 
     if node_type == RADIO_TARGET:
         body_nodes = node.children_by_field_name("body")
-        return RadioTarget(body=_parse_inline_nodes(body_nodes, source, document))
+        return RadioTarget(body=_parse_inline_nodes(body_nodes, document))
 
     if node_type == TIMESTAMP:
-        return Timestamp.from_node(node, source)
+        return Timestamp.from_node(node, document)
 
     # Any remaining node that the grammar could not parse cleanly falls back to
     # PlainText.  Error and missing nodes are additionally reported so the
     # owning Document can accumulate them.
-    if is_error_node(node) and document is not None:
+    if is_error_node(node):
         document.report_error(node)
     return PlainText(text)
 

@@ -21,6 +21,7 @@ from unittest.mock import MagicMock
 from org_parser.document import Document, ParseError, load_raw
 from org_parser.element._element import element_from_error_or_unknown
 from org_parser.element._paragraph import Paragraph
+from org_parser.text import RichText
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -157,6 +158,47 @@ class TestDocumentErrorsClean:
         doc = Document(filename="test.org")
         assert doc.errors == []
 
+    def test_report_error_without_source_raises_value_error(self) -> None:
+        """Programmatic documents cannot report node errors without source bytes."""
+        import pytest
+
+        doc = Document(filename="test.org")
+        node = _make_fake_error_node("ERROR text")
+        with pytest.raises(ValueError):
+            doc.report_error(node)
+
+    def test_source_for_without_source_raises_value_error(self) -> None:
+        """Programmatic documents cannot slice source without source bytes."""
+        import pytest
+
+        doc = Document(filename="test.org")
+        node = _make_fake_error_node("ERROR text")
+        with pytest.raises(ValueError):
+            doc.source_for(node)
+
+    def test_source_for_returns_full_source_and_node_slice(self) -> None:
+        """source_for returns bytes for requested node spans."""
+        from org_parser._lang import PARSER
+
+        source = b"* Heading\n"
+        tree = PARSER.parse(source)
+        root = tree.root_node
+        node = root.children[0]
+        doc = Document.from_tree(tree, "<test>", source)
+        assert doc.source_for(node) == source[node.start_byte : node.end_byte]
+        assert doc.source_for(root) == source[root.start_byte : root.end_byte]
+
+    def test_rich_text_from_node_without_source_raises_value_error(self) -> None:
+        """Source-backed from_node paths reject documents without source bytes."""
+        import pytest
+
+        from org_parser._lang import PARSER
+
+        node = PARSER.parse(b"plain text\n").root_node
+        doc = Document(filename="test.org")
+        with pytest.raises(ValueError):
+            RichText.from_node(node, document=doc)
+
     def test_from_tree_simple_org_has_no_errors(
         self, example_file: Callable[[str], Path]
     ) -> None:
@@ -184,10 +226,14 @@ class TestDocumentErrorsClean:
 
 
 def _make_doc_with_source(source_bytes: bytes) -> Document:
-    """Return a minimal :class:`Document` whose ``source`` is *source_bytes*."""
-    doc = Document(filename="<test>")
-    doc.source = source_bytes
-    return doc
+    """Return a minimal parse-backed :class:`Document` for *source_bytes*."""
+    from org_parser._lang import PARSER
+
+    parse_source = (
+        source_bytes if source_bytes.endswith(b"\n") else source_bytes + b"\n"
+    )
+    tree = PARSER.parse(parse_source)
+    return Document.from_tree(tree, "<test>", parse_source)
 
 
 class TestElementFromErrorOrUnknown:
@@ -333,3 +379,32 @@ class TestHeadingChildErrorRecovery:
         """A heading with a valid properties drawer records no errors."""
         doc = _parse_source("* test\n:PROPERTIES:\n:key: value\n:END:\n")
         assert doc.errors == []
+
+
+class TestZerothSectionErrorRecovery:
+    """ERROR nodes that appear inside the zeroth section (before any heading)."""
+
+    def test_error_inside_zeroth_section_is_recorded(self) -> None:
+        """An ERROR node inside zeroth_section is recorded in doc.errors."""
+        # '<<unclosed' is an incomplete link target and parses as an ERROR
+        # named child of zeroth_section, exercising the else-branch of
+        # _parse_zeroth_section via extract_body_element.
+        doc = _parse_source("#+TITLE: Doc\n<<unclosed\n* Heading\n")
+        assert len(doc.errors) >= 1
+
+    def test_error_inside_zeroth_section_recovered_in_body(self) -> None:
+        """The recovered element from a zeroth-section ERROR lands in doc.body."""
+        doc = _parse_source("#+TITLE: Doc\n<<unclosed\n* Heading\n")
+        assert any(isinstance(e, Paragraph) for e in doc.body)
+
+    def test_error_inside_zeroth_section_heading_still_parsed(self) -> None:
+        """A heading following a zeroth-section ERROR is still parsed."""
+        doc = _parse_source("#+TITLE: Doc\n<<unclosed\n* Heading\n")
+        assert len(doc.children) == 1
+        assert str(doc.children[0].title) == "Heading"
+
+    def test_error_inside_zeroth_section_keyword_still_extracted(self) -> None:
+        """Keywords before the ERROR in the zeroth section are still extracted."""
+        doc = _parse_source("#+TITLE: Doc\n<<unclosed\n* Heading\n")
+        assert doc.title is not None
+        assert str(doc.title.value) == "Doc"

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from org_parser._node import node_source
+from org_parser._node import is_error_node, node_source
 from org_parser._nodes import BLOCK
 from org_parser.element import Logbook, Properties, Repeat
 from org_parser.element._dispatch import body_element_factories
@@ -96,21 +96,25 @@ def extract_body_element(
     node: tree_sitter.Node,
     *,
     parent: Heading | Document,
-    document: Document | None = None,
+    document: Document,
 ) -> Element:
     """Build one body element instance from a tree-sitter node.
+
+    Error nodes (``ERROR`` type or ``is_missing``) are recovered immediately
+    before dispatch so that callers do not need to guard the call site.
 
     Args:
         node: A tree-sitter child node from a section or zeroth-section.
         parent: Owner heading or document.
-        document: The owning :class:`Document`, or *None*. When *None*,
-            source defaults to ``b""`` and errors are not recorded.
+        document: The owning :class:`Document`.
 
     Returns:
         A semantic :class:`Element` subclass matching *node.type*, or a
         recovered :class:`~org_parser.element._paragraph.Paragraph` for
-        error nodes.
+        error and unrecognised nodes.
     """
+    if is_error_node(node):
+        return element_from_error_or_unknown(node, document, parent=parent)
     dispatch: dict[str, Callable[..., Element]] = {
         **body_element_factories(),
         BLOCK: extract_indent_block,
@@ -123,7 +127,7 @@ def extract_body_element(
 
 def extract_indent_block(
     node: tree_sitter.Node,
-    document: Document | None = None,
+    document: Document,
     *,
     parent: Heading | Document,
 ) -> IndentBlock:
@@ -131,7 +135,7 @@ def extract_indent_block(
 
     Args:
         node: A tree-sitter ``block`` node.
-        document: The owning :class:`Document`, or *None*.
+        document: The owning :class:`Document`.
         parent: Owner heading or document.
 
     Returns:

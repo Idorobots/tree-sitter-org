@@ -81,7 +81,6 @@ def test_document_setters_mark_dirty() -> None:
     document.todo = todo
     document.body = body
     document.children = [child]
-    document.source = b"* Updated\n"
 
     assert document.filename == "new.org"
     assert document.title is title
@@ -97,7 +96,6 @@ def test_document_setters_mark_dirty() -> None:
     assert document.keywords["TODO"] is todo
     assert document.body is body
     assert document.children == [child]
-    assert document.source == b"* Updated\n"
     assert document.dirty is True
 
 

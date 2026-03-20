@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 
     from org_parser.document._document import Document
 
-__all__ = ["is_error_node", "node_source", "node_text"]
+__all__ = ["is_error_node", "node_source"]
 
 _ERROR_NODE_TYPE = "ERROR"
 
@@ -42,22 +42,6 @@ def is_error_node(node: tree_sitter.Node) -> bool:
     return node.type == _ERROR_NODE_TYPE or node.is_missing
 
 
-def node_text(node: tree_sitter.Node | None, source: bytes) -> str:
-    """Return the decoded text covered by *node* in *source*.
-
-    Args:
-        node: A tree-sitter node, or ``None``.
-        source: The raw source bytes buffer the node was parsed from.
-
-    Returns:
-        The decoded substring ``source[node.start_byte:node.end_byte]``,
-        or an empty string when *node* is ``None``.
-    """
-    if node is None:
-        return ""
-    return source[node.start_byte : node.end_byte].decode()
-
-
 def node_source(node: tree_sitter.Node | None, document: Document | None) -> str:
     """Return the decoded source text of *node* within *document*.
 
@@ -70,7 +54,10 @@ def node_source(node: tree_sitter.Node | None, document: Document | None) -> str
     Returns:
         The decoded source slice, or an empty string when either argument is
         ``None``.
+
+    Raises:
+        ValueError: If the provided document has no backing source bytes.
     """
     if node is None or document is None:
         return ""
-    return document.source[node.start_byte : node.end_byte].decode()
+    return document.source_for(node).decode()

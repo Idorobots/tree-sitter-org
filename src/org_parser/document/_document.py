@@ -107,7 +107,7 @@ class Document:
         self._body: list[Element] = body if body is not None else []
         self._children: list[Heading] = children if children is not None else []
         self._node: tree_sitter.Node | None = None
-        self._source: bytes = b""
+        self._source: bytes | None = None
         self._dirty = False
         self._errors: list[ParseError] = []
 
@@ -316,16 +316,26 @@ class Document:
         self._adopt_elements(self._children)
         self._mark_dirty()
 
-    @property
-    def source(self) -> bytes:
-        """Original source bytes used to build this document."""
-        return self._source
+    def source_for(self, node: tree_sitter.Node) -> bytes:
+        """Return source bytes for one node span.
 
-    @source.setter
-    def source(self, value: bytes) -> None:
-        """Set source bytes and mark the document as dirty."""
-        self._source = value
-        self._mark_dirty()
+        Args:
+            node: Tree-sitter node to slice against.
+
+        Returns:
+            The source bytes covered by ``node.start_byte:node.end_byte``.
+
+        Raises:
+            ValueError: If this document has no source bytes.
+        """
+        if self._source is None:
+            raise ValueError("Cannot slice source without document source bytes")
+        return self._source[node.start_byte : node.end_byte]
+
+    @property
+    def node(self) -> tree_sitter.Node | None:
+        """Root parse node that backs this document, when present."""
+        return self._node
 
     @property
     def dirty(self) -> bool:
@@ -349,8 +359,12 @@ class Document:
 
         Args:
             node: The tree-sitter ``ERROR`` or missing node to record.
+
+        Raises:
+            ValueError: If this document has no source bytes.
         """
-        text = self._source[node.start_byte : node.end_byte].decode()
+        source_fragment = self.source_for(node)
+        text = source_fragment.decode()
         self._errors.append(
             ParseError(
                 start_point=node.start_point,
@@ -475,7 +489,7 @@ class Document:
             zeroth = _find_first_child_by_type(self._node, ZEROTH_SECTION)
             if zeroth is None:
                 return ""
-            return self._source[zeroth.start_byte : zeroth.end_byte].decode()
+            return self.source_for(zeroth).decode()
 
         return _render_document_dirty(self)
 
@@ -609,8 +623,8 @@ def render_document(document: Document) -> str:
     Returns:
         Full Org Mode text including all headings.
     """
-    if not document.dirty and document.source:
-        return document.source.decode()
+    if not document.dirty and document.node is not None:
+        return document.source_for(document.node).decode()
     parts: list[str] = [str(document)]
     _append_heading_subtree(document.children, parts)
     return "".join(parts)

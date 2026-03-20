@@ -25,7 +25,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from org_parser._node import node_source, node_text
+from org_parser._node import node_source
 from org_parser.element._element import Element
 from org_parser.text._rich_text import RichText
 
@@ -74,7 +74,7 @@ class Keyword(Element):
     def from_node(
         cls,
         node: tree_sitter.Node,
-        document: Document | None = None,
+        document: Document,
         *,
         parent: Document | Heading | Element | None = None,
     ) -> Keyword:
@@ -82,21 +82,15 @@ class Keyword(Element):
 
         Args:
             node: The ``special_keyword`` tree-sitter node.
-            document: The owning :class:`Document`, or *None* for programmatic
-                construction (source defaults to ``b""``).
+            document: The owning :class:`Document`.
             parent: Optional parent owner object.
         """
-        source = document.source if document is not None else b""
         key_node = node.child_by_field_name("key")
-        key = (
-            key_node.text.decode().upper()
-            if key_node is not None and key_node.text is not None
-            else ""
-        )
+        key = document.source_for(key_node).decode().upper() if key_node else ""
 
         value_node = node.child_by_field_name("value")
         value = (
-            RichText.from_node(value_node, source, document=document)
+            RichText.from_node(value_node, document=document)
             if value_node is not None
             else RichText("")
         )
@@ -182,14 +176,13 @@ class _AffiliatedKeyword(Element):
     def _value_from_node(
         cls,
         node: tree_sitter.Node,
-        document: Document | None,
+        document: Document,
     ) -> str | None:
         """Extract the optional ``value`` field text from an affiliated keyword node."""
-        source = document.source if document is not None else b""
         value_node = node.child_by_field_name("value")
         if value_node is None:
             return None
-        text = node_text(value_node, source)
+        text = document.source_for(value_node).decode()
         return text if text != "" else None
 
     @property
@@ -249,14 +242,16 @@ class CaptionKeyword(_AffiliatedKeyword):
     def from_node(
         cls,
         node: tree_sitter.Node,
-        document: Document | None = None,
+        document: Document,
         *,
         parent: Document | Heading | Element | None = None,
     ) -> CaptionKeyword:
         """Create a :class:`CaptionKeyword` from a ``caption_keyword`` node."""
-        source = document.source if document is not None else b""
         optval_node = node.child_by_field_name("optval")
-        short = node_text(optval_node, source) if optval_node is not None else None
+        if optval_node is None:
+            short = None
+        else:
+            short = document.source_for(optval_node).decode()
         elem = cls(
             value=cls._value_from_node(node, document),
             short=short,
@@ -309,7 +304,7 @@ class TblnameKeyword(_AffiliatedKeyword):
     def from_node(
         cls,
         node: tree_sitter.Node,
-        document: Document | None = None,
+        document: Document,
         *,
         parent: Document | Heading | Element | None = None,
     ) -> TblnameKeyword:
@@ -342,7 +337,7 @@ class ResultsKeyword(_AffiliatedKeyword):
     def from_node(
         cls,
         node: tree_sitter.Node,
-        document: Document | None = None,
+        document: Document,
         *,
         parent: Document | Heading | Element | None = None,
     ) -> ResultsKeyword:
@@ -367,7 +362,7 @@ class PlotKeyword(_AffiliatedKeyword):
     def from_node(
         cls,
         node: tree_sitter.Node,
-        document: Document | None = None,
+        document: Document,
         *,
         parent: Document | Heading | Element | None = None,
     ) -> PlotKeyword:

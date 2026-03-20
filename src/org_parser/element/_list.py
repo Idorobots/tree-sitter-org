@@ -6,7 +6,7 @@ import re
 import textwrap
 from typing import TYPE_CHECKING
 
-from org_parser._node import node_source, node_text
+from org_parser._node import node_source
 from org_parser._nodes import (
     LIST_ITEM,
     TIMESTAMP,
@@ -71,19 +71,18 @@ class ListItem(Element):
     def from_node(
         cls,
         node: tree_sitter.Node,
-        document: Document | None = None,
+        document: Document,
         *,
         parent: Document | Heading | Element | None = None,
     ) -> ListItem:
         """Create one :class:`ListItem` from a ``list_item`` parse node."""
-        source = document.source if document is not None else b""
         item = cls(
-            bullet=_extract_bullet(node, source),
-            ordered_counter=_extract_optional_field_text(node, source, "counter"),
-            counter_set=_extract_counter_set(node, source),
-            checkbox=_extract_checkbox(node, source),
-            item_tag=_extract_item_tag(node, source, document),
-            first_line=_extract_first_line(node, source, document),
+            bullet=_extract_bullet(node, document),
+            ordered_counter=_extract_optional_field_text(node, document, "counter"),
+            counter_set=_extract_counter_set(node, document),
+            checkbox=_extract_checkbox(node, document),
+            item_tag=_extract_item_tag(node, document),
+            first_line=_extract_first_line(node, document),
             body=[],
             parent=parent,
         )
@@ -292,7 +291,10 @@ class Repeat(ListItem):
         parsed = _parse_repeat_first_line(str(item.first_line))
         if parsed is None:
             return None
-        after, before, timestamp, has_line_break, note_text = parsed
+        after, before, timestamp_text, has_line_break, note_text = parsed
+        timestamp = _extract_repeat_timestamp(item, timestamp_text)
+        if timestamp is None:
+            return None
 
         body = list(item.body)
         if note_text is not None:
@@ -420,7 +422,7 @@ class List(Element):
     def from_node(
         cls,
         node: tree_sitter.Node,
-        document: Document | None = None,
+        document: Document,
         *,
         parent: Document | Heading | Element | None = None,
     ) -> List:
@@ -501,27 +503,33 @@ class List(Element):
 
 def _extract_optional_field_text(
     node: tree_sitter.Node,
-    source: bytes,
+    document: Document,
     field_name: str,
 ) -> str | None:
     """Return one optional field's text, or ``None`` when absent."""
     field_node = node.child_by_field_name(field_name)
-    value = node_text(field_node, source)
+    if field_node is None:
+        return None
+    value = document.source_for(field_node).decode()
     return value if value != "" else None
 
 
-def _extract_bullet(node: tree_sitter.Node, source: bytes) -> str:
+def _extract_bullet(node: tree_sitter.Node, document: Document) -> str:
     """Return bullet marker text from one list item node."""
     bullet_nodes = node.children_by_field_name("bullet")
     if not bullet_nodes:
         return "-"
     bullet_node = bullet_nodes[-1]
-    return node_text(bullet_node, source)
+    value = document.source_for(bullet_node).decode()
+    return value if value != "" else "-"
 
 
-def _extract_counter_set(node: tree_sitter.Node, source: bytes) -> str | None:
+def _extract_counter_set(
+    node: tree_sitter.Node,
+    document: Document,
+) -> str | None:
     """Return counter-set value from ``[@n]`` syntax without wrappers."""
-    counter_set = _extract_optional_field_text(node, source, "counter_set")
+    counter_set = _extract_optional_field_text(node, document, "counter_set")
     if counter_set is None:
         return None
     stripped = counter_set.strip()
@@ -531,35 +539,36 @@ def _extract_counter_set(node: tree_sitter.Node, source: bytes) -> str | None:
     return stripped if stripped != "" else None
 
 
-def _extract_checkbox(node: tree_sitter.Node, source: bytes) -> str | None:
+def _extract_checkbox(node: tree_sitter.Node, document: Document) -> str | None:
     """Return checkbox status character from one list item node."""
     checkbox_node = node.child_by_field_name("checkbox")
     if checkbox_node is None:
         return None
     status_node = checkbox_node.child_by_field_name("status")
-    return node_text(status_node, source) or None
+    if status_node is None:
+        return None
+    value = document.source_for(status_node).decode()
+    return value or None
 
 
 def _extract_item_tag(
     node: tree_sitter.Node,
-    source: bytes,
-    document: Document | None = None,
+    document: Document,
 ) -> RichText | None:
     """Return descriptive-list tag rich text, if present."""
     tag_node = node.child_by_field_name("tag")
     if tag_node is None:
         return None
-    return RichText.from_nodes(tag_node.named_children, source, document=document)
+    return RichText.from_nodes(tag_node.named_children, document=document)
 
 
 def _extract_first_line(
     node: tree_sitter.Node,
-    source: bytes,
-    document: Document | None = None,
+    document: Document,
 ) -> RichText | None:
     """Return first-line rich text composed from all ``first_line`` objects."""
     return RichText.from_nodes(
-        node.children_by_field_name("first_line"), source, document=document
+        node.children_by_field_name("first_line"), document=document
     )
 
 
@@ -573,7 +582,7 @@ def _indent_non_empty_lines(value: str, prefix: str) -> str:
 
 def _parse_repeat_first_line(
     first_line: str,
-) -> tuple[str, str, Timestamp, bool, str | None] | None:
+) -> tuple[str, str, str, bool, str | None] | None:
     """Parse one repeat header from a list item's first-line text.
 
     Returns:
@@ -593,41 +602,33 @@ def _parse_repeat_first_line(
         return None
 
     timestamp_text = matched.group("timestamp")
-    try:
-        timestamp = _parse_timestamp_text(timestamp_text)
-    except ValueError:
-        return None
-
     return (
         matched.group("after"),
         matched.group("before"),
-        timestamp,
+        timestamp_text,
         has_line_break,
         note_text,
     )
 
 
-def _parse_timestamp_text(raw: str) -> Timestamp:
-    """Parse one timestamp string into :class:`Timestamp`."""
-    from org_parser._lang import PARSER
+def _extract_repeat_timestamp(item: ListItem, timestamp_text: str) -> Timestamp | None:
+    """Return repeat timestamp from the original parse-backed list item."""
+    if item._node is None or item._document is None:
+        return None
 
-    source = f"{raw}\n".encode()
-    root = PARSER.parse(source).root_node
-    timestamp_node = _find_first_timestamp_node(root)
-    if timestamp_node is None:
-        raise ValueError(f"Could not parse repeat timestamp: {raw!r}")
-    return Timestamp.from_node(timestamp_node, source)
+    timestamp_nodes = [
+        n
+        for n in item._node.children_by_field_name("first_line")
+        if n.type == TIMESTAMP
+    ]
+    if not timestamp_nodes:
+        return None
 
+    for timestamp_node in timestamp_nodes:
+        if item._document.source_for(timestamp_node).decode() == timestamp_text:
+            return Timestamp.from_node(timestamp_node, item._document)
 
-def _find_first_timestamp_node(node: tree_sitter.Node) -> tree_sitter.Node | None:
-    """Return first ``timestamp`` descendant node in source order."""
-    if node.type == TIMESTAMP:
-        return node
-    for child in node.named_children:
-        matched = _find_first_timestamp_node(child)
-        if matched is not None:
-            return matched
-    return None
+    return Timestamp.from_node(timestamp_nodes[0], item._document)
 
 
 def _normalize_optional_text(value: str | None) -> str | None:

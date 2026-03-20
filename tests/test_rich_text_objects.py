@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from org_parser.document import load_raw
+from org_parser import load, loads
+from org_parser.document import Document, load_raw
 from org_parser.text import (
     AngleLink,
     Bold,
@@ -87,9 +88,10 @@ def test_rich_text_from_paragraph_parses_inline_objects(
     """RichText.from_node parses mixed inline objects in paragraphs."""
     path = example_file("inline-markup-basic.org")
     source = path.read_bytes()
+    document = load(str(path))
     tree = load_raw(path)
     paragraph = _find_first_paragraph_with_prefix(tree.root_node, source, "Markup mid-")
-    rich_text = RichText.from_node(paragraph, source)
+    rich_text = RichText.from_node(paragraph, document=document)
 
     object_types = {type(part) for part in rich_text.parts}
     assert PlainText in object_types
@@ -104,10 +106,10 @@ def test_rich_text_from_nodes_parses_heading_title_objects(
 ) -> None:
     """RichText.from_node parses heading title inline object nodes."""
     path = example_file("export-snippet-basic.org")
-    source = path.read_bytes()
+    document = load(str(path))
     tree = load_raw(path)
     snippet = _find_first_heading_title_node_with_type(tree.root_node, "export_snippet")
-    rich_text = RichText.from_node(snippet, source)
+    rich_text = RichText.from_node(snippet, document=document)
     assert len(rich_text.parts) == 1
     assert isinstance(rich_text.parts[0], ExportSnippet)
 
@@ -118,11 +120,12 @@ def test_rich_text_clean_str_is_verbatim_source(
     """Clean RichText stringification reuses verbatim source slice."""
     path = example_file("footnote-basic.org")
     source = path.read_bytes()
+    document = load(str(path))
     tree = load_raw(path)
     paragraph = _find_first_paragraph_with_prefix(
         tree.root_node, source, "An inline foot"
     )
-    rich_text = RichText.from_node(paragraph, source)
+    rich_text = RichText.from_node(paragraph, document=document)
     expected = source[paragraph.start_byte : paragraph.end_byte].decode()
     assert str(rich_text) == expected
 
@@ -133,9 +136,10 @@ def test_rich_text_mutation_marks_dirty_and_reconstructs(
     """Mutations switch RichText to reconstructed rendering mode."""
     path = example_file("inline-markup-basic.org")
     source = path.read_bytes()
+    document = load(str(path))
     tree = load_raw(path)
     paragraph = _find_first_paragraph_with_prefix(tree.root_node, source, "*bold text*")
-    rich_text = RichText.from_node(paragraph, source)
+    rich_text = RichText.from_node(paragraph, document=document)
 
     rich_text.prepend(PlainText("START "))
     rich_text.append(PlainText(" END"))
@@ -152,10 +156,10 @@ def test_paragraph_plain_text_children_keep_trailing_newlines(tmp_path: Path) ->
     path = tmp_path / "multiline-paragraph.org"
     path.write_text(content, encoding="utf-8")
 
-    source = path.read_bytes()
+    document = loads(content)
     tree = load_raw(path)
     paragraph = _find_first_node_with_type(tree.root_node, "paragraph")
-    rich_text = RichText.from_node(paragraph, source)
+    rich_text = RichText.from_node(paragraph, document=document)
 
     assert str(rich_text) == content
     newline_parts = [
@@ -231,9 +235,10 @@ def test_timestamp_from_node_exposes_components(
     path = example_file("timestamps-advanced.org")
     source = path.read_bytes()
     tree = load_raw(path)
+    document = Document.from_tree(tree, path.name, source)
     timestamp_node = _find_first_node_with_type(tree.root_node, "timestamp")
 
-    timestamp = Timestamp.from_node(timestamp_node, source)
+    timestamp = Timestamp.from_node(timestamp_node, document)
 
     assert timestamp.is_active is True
     assert timestamp.start_year == 2025
@@ -252,19 +257,20 @@ def test_timestamp_from_node_with_range_has_end(
     path = example_file("timestamps-advanced.org")
     source = path.read_bytes()
     tree = load_raw(path)
+    document = Document.from_tree(tree, path.name, source)
 
     stack: list[tree_sitter.Node] = [tree.root_node]
     range_timestamp_node: tree_sitter.Node | None = None
     while stack:
         node = stack.pop()
         if node.type == "timestamp":
-            timestamp = Timestamp.from_node(node, source)
+            timestamp = Timestamp.from_node(node, document)
             if timestamp.end is not None:
                 range_timestamp_node = node
                 break
         stack.extend(reversed(node.children))
 
     assert range_timestamp_node is not None
-    ranged = Timestamp.from_node(range_timestamp_node, source)
+    ranged = Timestamp.from_node(range_timestamp_node, document)
     assert ranged.end is not None
     assert ranged.end >= ranged.start

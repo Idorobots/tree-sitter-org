@@ -143,15 +143,14 @@ class Heading:
             A fully populated :class:`Heading` with recursively built
             children.
         """
-        source = document.source
-        level = _extract_level(node)
-        todo = _extract_todo(node)
-        priority = _extract_priority(node)
+        level = _extract_level(node, document)
+        todo = _extract_todo(node, document)
+        priority = _extract_priority(node, document)
         title_nodes = node.children_by_field_name("title")
-        title = RichText.from_nodes(title_nodes, source, document=document)
-        counter = _extract_counter(title_nodes)
-        tags = _extract_tags(node)
-        scheduled, deadline, closed = _extract_planning(node, source)
+        title = RichText.from_nodes(title_nodes, document=document)
+        counter = _extract_counter(title_nodes, document)
+        tags = _extract_tags(node, document)
+        scheduled, deadline, closed = _extract_planning(node, document)
 
         heading = cls(
             level=level,
@@ -490,11 +489,12 @@ class Heading:
         from semantic fields.
         """
         if not self._dirty and self._node is not None:
-            end_byte = self._node.end_byte
+            source = self.document.source_for(self._node)
+            end_index = len(source)
             first_subheading = _find_first_subheading(self._node)
             if first_subheading is not None:
-                end_byte = first_subheading.start_byte
-            return self.document.source[self._node.start_byte : end_byte].decode()
+                end_index = first_subheading.start_byte - self._node.start_byte
+            return source[:end_index].decode()
 
         return _render_heading_dirty(self)
 
@@ -531,39 +531,40 @@ class Heading:
 # ---------------------------------------------------------------------------
 
 
-def _extract_level(node: tree_sitter.Node) -> int:
+def _extract_level(node: tree_sitter.Node, document: Document) -> int:
     """Return the heading level from the ``stars`` field."""
     stars_node = node.child_by_field_name("stars")
-    if stars_node is None or stars_node.text is None:
+    if stars_node is None:
         return 0  # pragma: no cover - defensive
-    return len(stars_node.text)
+    return len(document.source_for(stars_node))
 
 
-def _extract_todo(node: tree_sitter.Node) -> str | None:
+def _extract_todo(node: tree_sitter.Node, document: Document) -> str | None:
     """Return the TODO keyword text, or *None*."""
     todo_node = node.child_by_field_name("todo")
-    if todo_node is None or todo_node.text is None:
+    if todo_node is None:
         return None
     # The todo_keyword node includes trailing whitespace; strip it.
-    return todo_node.text.decode().strip() or None
+    return document.source_for(todo_node).decode().strip() or None
 
 
-def _extract_priority(node: tree_sitter.Node) -> str | None:
+def _extract_priority(node: tree_sitter.Node, document: Document) -> str | None:
     """Return the priority value (letter or number), or *None*.
 
     The priority node stores its value in the ``value`` field.
     """
     prio_node = node.child_by_field_name("priority")
-    if prio_node is None or prio_node.text is None:
+    if prio_node is None:
         return None
     value_node = prio_node.child_by_field_name("value")
-    if value_node is None or value_node.text is None:
+    if value_node is None:
         return None
-    return value_node.text.decode() or None
+    return document.source_for(value_node).decode() or None
 
 
 def _extract_counter(
     title_nodes: list[tree_sitter.Node],
+    document: Document,
 ) -> CompletionCounter | None:
     """Scan title children for a ``completion_counter`` and return its inner value.
 
@@ -572,24 +573,24 @@ def _extract_counter(
     for n in title_nodes:
         if n.type == COMPLETION_COUNTER:
             value_node = n.child_by_field_name("value")
-            if value_node is None or value_node.text is None:
+            if value_node is None:
                 continue  # pragma: no cover - defensive
-            value = value_node.text.decode()
+            value = document.source_for(value_node).decode()
             if value == "":
                 return None
             return CompletionCounter(value)
     return None
 
 
-def _extract_tags(node: tree_sitter.Node) -> list[str]:
+def _extract_tags(node: tree_sitter.Node, document: Document) -> list[str]:
     """Return the list of tag strings from the ``tags`` field."""
     tags_node = node.child_by_field_name("tags")
     if tags_node is None:
         return []
     return [
-        child.text.decode()
+        document.source_for(child).decode()
         for child in tags_node.named_children
-        if child.type == TAG and child.text is not None
+        if child.type == TAG
     ]
 
 
@@ -597,7 +598,7 @@ def _extract_body(
     node: tree_sitter.Node,
     *,
     parent: Heading | Document,
-    document: Document | None = None,
+    document: Document,
 ) -> tuple[Properties | None, Logbook | None, list[Element]]:
     """Return merged drawers and body elements for heading section content."""
     properties_drawers: list[Properties] = []
@@ -645,7 +646,7 @@ def _extract_body(
 
 def _extract_planning(
     node: tree_sitter.Node,
-    source: bytes,
+    document: Document,
 ) -> tuple[Timestamp | None, Timestamp | None, Timestamp | None]:
     """Return ``(scheduled, deadline, closed)`` planning timestamps."""
     planning_node = node.child_by_field_name("planning")
@@ -659,12 +660,12 @@ def _extract_planning(
 
     for child in planning_node.named_children:
         if child.type == PLANNING_KEYWORD:
-            current_keyword = source[child.start_byte : child.end_byte].decode().upper()
+            current_keyword = document.source_for(child).decode().upper()
             continue
         if child.type != TIMESTAMP or current_keyword is None:
             continue
 
-        timestamp = Timestamp.from_node(child, source)
+        timestamp = Timestamp.from_node(child, document)
         if current_keyword == SCHEDULED:
             scheduled = timestamp
         elif current_keyword == DEADLINE:

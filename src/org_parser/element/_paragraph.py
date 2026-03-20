@@ -41,7 +41,7 @@ class Paragraph(Element):
     def from_node(
         cls,
         node: tree_sitter.Node,
-        document: Document | None = None,
+        document: Document,
         *,
         parent: Document | Heading | Element | None = None,
     ) -> Paragraph:
@@ -53,10 +53,9 @@ class Paragraph(Element):
                 construction (source defaults to ``b""``).
             parent: Optional parent owner object.
         """
-        source_bytes = document.source if document is not None else b""
         paragraph = cls(
-            body=RichText.from_node(node, source_bytes, document=document),
-            indent=_extract_indent(node, source_bytes),
+            body=RichText.from_node(node, document=document),
+            indent=_extract_indent(node, document),
             parent=parent,
         )
         paragraph._node = node
@@ -106,10 +105,10 @@ class Paragraph(Element):
         return build_semantic_repr("Paragraph", body=self._body, indent=self._indent)
 
 
-def _extract_indent(node: tree_sitter.Node, source_bytes: bytes) -> str | None:
+def _extract_indent(node: tree_sitter.Node, document: Document) -> str | None:
     """Return paragraph first-line indentation from parse field, if present."""
     field_node = node.child_by_field_name("indent")
     if field_node is None:
         return None
-    value = source_bytes[field_node.start_byte : field_node.end_byte].decode()
+    value = document.source_for(field_node).decode()
     return value if value != "" else None

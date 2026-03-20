@@ -10,7 +10,6 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from org_parser._node import node_text
 from org_parser._nodes import (
     TIMESTAMP,
     TS_DAY,
@@ -22,6 +21,8 @@ from org_parser._nodes import (
 
 if TYPE_CHECKING:
     import tree_sitter
+
+    from org_parser.document._document import Document
 
 __all__ = ["Timestamp"]
 
@@ -69,9 +70,9 @@ class Timestamp:
     _dirty: bool = field(default=False, init=False, repr=False, compare=False)
 
     @classmethod
-    def from_node(cls, node: tree_sitter.Node, source: bytes) -> Timestamp:
+    def from_node(cls, node: tree_sitter.Node, document: Document) -> Timestamp:
         """Create a :class:`Timestamp` from a tree-sitter timestamp-like node."""
-        raw = _extract_raw_timestamp_text(node, source)
+        raw = _extract_raw_timestamp_text(node, document)
         is_active = raw.startswith("<")
 
         year_nodes = list(_descendants_by_type(node, TS_YEAR))
@@ -80,17 +81,19 @@ class Timestamp:
         dayname_nodes = list(_descendants_by_type(node, TS_DAYNAME))
         time_nodes = list(_descendants_by_type(node, TS_TIME))
 
-        start_year = int(node_text(year_nodes[0], source))
-        start_month = int(node_text(month_nodes[0], source))
-        start_day = int(node_text(day_nodes[0], source))
+        start_year = int(document.source_for(year_nodes[0]).decode())
+        start_month = int(document.source_for(month_nodes[0]).decode())
+        start_day = int(document.source_for(day_nodes[0]).decode())
         start_dayname = (
-            node_text(dayname_nodes[0], source) if len(dayname_nodes) >= 1 else None
+            document.source_for(dayname_nodes[0]).decode()
+            if len(dayname_nodes) >= 1
+            else None
         )
 
         start_hour, start_minute = (None, None)
         if len(time_nodes) >= 1:
             start_hour, start_minute = _parse_time_components(
-                node_text(time_nodes[0], source)
+                document.source_for(time_nodes[0]).decode()
             )
 
         end_year: int | None = None
@@ -104,11 +107,11 @@ class Timestamp:
         is_same_day_time_range = "--" not in raw and len(time_nodes) >= 2
 
         if is_explicit_range:
-            end_year = int(node_text(year_nodes[1], source))
-            end_month = int(node_text(month_nodes[1], source))
-            end_day = int(node_text(day_nodes[1], source))
+            end_year = int(document.source_for(year_nodes[1]).decode())
+            end_month = int(document.source_for(month_nodes[1]).decode())
+            end_day = int(document.source_for(day_nodes[1]).decode())
             if len(dayname_nodes) >= 2:
-                end_dayname = node_text(dayname_nodes[1], source)
+                end_dayname = document.source_for(dayname_nodes[1]).decode()
         elif is_same_day_time_range:
             end_year = start_year
             end_month = start_month
@@ -117,7 +120,7 @@ class Timestamp:
 
         if end_year is not None and len(time_nodes) >= 2:
             end_hour, end_minute = _parse_time_components(
-                node_text(time_nodes[1], source)
+                document.source_for(time_nodes[1]).decode()
             )
 
         return cls(
@@ -284,15 +287,20 @@ def _render_date_part(
     return " ".join(parts)
 
 
-def _extract_raw_timestamp_text(node: tree_sitter.Node, source: bytes) -> str:
+def _extract_raw_timestamp_text(node: tree_sitter.Node, document: Document) -> str:
     """Return timestamp text slice for one timestamp-like parser node."""
     if node.type == TIMESTAMP:
-        return source[node.start_byte : node.end_byte].decode()
+        return document.source_for(node).decode()
 
     value_nodes = node.children_by_field_name("value")
     if not value_nodes:
         raise ValueError("Node does not contain a timestamp value")
-    return source[value_nodes[0].start_byte : value_nodes[-1].end_byte].decode()
+    first = value_nodes[0].start_byte
+    last = value_nodes[-1].end_byte
+    text = document.source_for(node).decode()
+    relative_start = first - node.start_byte
+    relative_end = last - node.start_byte
+    return text[relative_start:relative_end]
 
 
 def _descendants_by_type(

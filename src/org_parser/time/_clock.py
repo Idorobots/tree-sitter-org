@@ -41,15 +41,14 @@ class Clock(Element):
     def from_node(
         cls,
         node: tree_sitter.Node,
-        document: Document | None = None,
+        document: Document,
         *,
         parent: Document | Heading | Element | None = None,
     ) -> Clock:
         """Create a :class:`Clock` from a tree-sitter ``clock`` node."""
-        source = document.source if document is not None else b""
         clock = cls(
-            timestamp=_extract_clock_timestamp(node, source),
-            duration=_extract_clock_duration(node, source),
+            timestamp=_extract_clock_timestamp(node, document),
+            duration=_extract_clock_duration(node, document),
             parent=parent,
         )
         clock._node = node
@@ -104,21 +103,27 @@ class Clock(Element):
         return "CLOCK:\n"
 
 
-def _extract_clock_timestamp(node: tree_sitter.Node, source: bytes) -> Timestamp | None:
+def _extract_clock_timestamp(
+    node: tree_sitter.Node,
+    document: Document,
+) -> Timestamp | None:
     """Return parsed timestamp from a ``clock`` node, if present."""
     if not node.children_by_field_name("year"):
         return None
-    return Timestamp.from_node(node, source)
+    return Timestamp.from_node(node, document)
 
 
-def _extract_clock_duration(node: tree_sitter.Node, source: bytes) -> str | None:
+def _extract_clock_duration(
+    node: tree_sitter.Node,
+    document: Document,
+) -> str | None:
     """Return ``H:MM`` duration text from a ``clock`` node, if present."""
     duration_nodes = node.children_by_field_name("duration")
     if not duration_nodes:
         return None
-    duration_fragment = (
-        source[duration_nodes[0].start_byte : node.end_byte].decode().strip()
-    )
+    source_fragment = document.source_for(node).decode()
+    duration_start = duration_nodes[0].start_byte - node.start_byte
+    duration_fragment = source_fragment[duration_start:].strip()
     if not duration_fragment.startswith("=>"):
         return None
     duration = duration_fragment[2:].strip()

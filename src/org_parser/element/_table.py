@@ -164,13 +164,12 @@ class Table(Element):
     def from_node(
         cls,
         node: tree_sitter.Node,
-        document: Document | None = None,
+        document: Document,
         *,
         parent: Document | Heading | Element | None = None,
     ) -> Table:
         """Create a :class:`Table` from an ``org_table`` or ``tableel_table`` node."""
-        source = document.source if document is not None else b""
-        source_text = source[node.start_byte : node.end_byte].decode()
+        source_text = document.source_for(node).decode()
         if node.type == TABLEEL_TABLE:
             parsed_rows = _parse_tableel_rows(source_text)
             table = cls(
@@ -197,9 +196,9 @@ class Table(Element):
         formulas: list[str] = []
         for child in node.named_children:
             if child.type == TABLE_ROW:
-                rows.append(_parse_org_table_row(child, source, table, document))
+                rows.append(_parse_org_table_row(child, table, document))
             elif child.type == TBLFM_LINE:
-                formulas.append(_extract_tblfm_formula(child, source))
+                formulas.append(_extract_tblfm_formula(child, document))
 
         table._rows = rows
         table._formulas = formulas
@@ -261,29 +260,32 @@ class Table(Element):
 
 def _parse_org_table_row(
     node: tree_sitter.Node,
-    source: bytes,
     table: Table,
-    document: Document | None = None,
+    document: Document,
 ) -> TableRow | TableRuleRow:
     """Parse one ``table_row`` node into :class:`TableRow` or :class:`TableRuleRow`."""
     has_rule = any(child.type == TABLE_RULE for child in node.named_children)
     if has_rule:
-        raw = source[node.start_byte : node.end_byte].decode().rstrip("\n")
+        raw_source = document.source_for(node).decode()
+        raw = raw_source.rstrip("\n")
         return TableRuleRow(raw=raw, table=table)
 
     cells: list[TableCell] = []
     for child in node.named_children:
         if child.type != TABLE_CELL:
             continue
-        value = RichText.from_nodes(child.named_children, source, document=document)
+        value = RichText.from_nodes(child.named_children, document=document)
         rich_text = RichText("") if value is None else RichText(str(value).strip())
         cells.append(TableCell(value=rich_text, table=table))
     return TableRow(cells=cells, table=table)
 
 
-def _extract_tblfm_formula(node: tree_sitter.Node, source: bytes) -> str:
+def _extract_tblfm_formula(
+    node: tree_sitter.Node,
+    document: Document,
+) -> str:
     """Extract formula text from one ``tblfm_line`` node."""
-    line = source[node.start_byte : node.end_byte].decode()
+    line = document.source_for(node).decode()
     prefix = "#+TBLFM:"
     if line.upper().startswith(prefix.upper()):
         return line[len(prefix) :].strip()

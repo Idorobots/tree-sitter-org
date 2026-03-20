@@ -56,18 +56,13 @@ class Drawer(Element):
     def from_node(
         cls,
         node: tree_sitter.Node,
-        document: Document | None = None,
+        document: Document,
         *,
         parent: Document | Heading | Element | None = None,
     ) -> Drawer:
         """Create a :class:`Drawer` from a tree-sitter ``drawer`` node."""
-        source = document.source if document is not None else b""
         name_node = node.child_by_field_name("name")
-        name = (
-            source[name_node.start_byte : name_node.end_byte].decode()
-            if name_node is not None
-            else ""
-        )
+        name = "" if name_node is None else document.source_for(name_node).decode()
         drawer = cls(
             name=name,
             body=recover_lists(
@@ -156,7 +151,7 @@ class Logbook(Drawer):
     def from_node(
         cls,
         node: tree_sitter.Node,
-        document: Document | None = None,
+        document: Document,
         *,
         parent: Document | Heading | Element | None = None,
     ) -> Logbook:
@@ -251,12 +246,11 @@ class Properties(Element, MutableMapping[str, RichText]):
     def from_node(
         cls,
         node: tree_sitter.Node,
-        document: Document | None = None,
+        document: Document,
         *,
         parent: Document | Heading | Element | None = None,
     ) -> Properties:
         """Create a :class:`Properties` from ``property_drawer`` node."""
-        source = document.source if document is not None else b""
         properties = cls(parent=parent)
         for child in node.named_children:
             if child.type != NODE_PROPERTY:
@@ -264,10 +258,10 @@ class Properties(Element, MutableMapping[str, RichText]):
             name_node = child.child_by_field_name("name")
             if name_node is None:
                 continue
-            key = source[name_node.start_byte : name_node.end_byte].decode()
+            key = document.source_for(name_node).decode()
             value_node = child.child_by_field_name("value")
             value = (
-                RichText.from_node(value_node, source, document=document)
+                RichText.from_node(value_node, document=document)
                 if value_node is not None
                 else RichText("")
             )
@@ -357,7 +351,7 @@ class Properties(Element, MutableMapping[str, RichText]):
 
 def _extract_drawer_body_element(
     node: tree_sitter.Node,
-    document: Document | None = None,
+    document: Document,
     *,
     parent: Document | Heading | Element | None = None,
 ) -> Element:
@@ -374,7 +368,7 @@ def _extract_drawer_body_element(
 
 def _extract_indent_block(
     node: tree_sitter.Node,
-    document: Document | None = None,
+    document: Document,
     *,
     parent: Document | Heading | Element | None = None,
 ) -> IndentBlock:
