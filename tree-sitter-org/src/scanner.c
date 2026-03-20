@@ -57,6 +57,8 @@ enum TokenType {
   TOKEN_DYNBLOCK_SYNC,
   TOKEN_TODO_SETUP_SYNC,
   TOKEN_AFFILIATED_SYNC,
+  TOKEN_DRAWER_ENTER_SYNC,
+  TOKEN_DRAWER_EXIT_SYNC,
   TOKEN_ERROR_SENTINEL,
   TOKEN_TABLE_START,   // zero-width gate emitted once at the start of each org_table
   TOKEN_TABLE_BREAK_SYNC, // zero-width sync emitted when current org_table must end
@@ -194,6 +196,9 @@ typedef struct {
   // One-shot guard: after closing a block on an ``:end:`` marker, do not
   // immediately reopen a block at the same line start.
   bool suppress_block_begin_on_end_line;
+
+  // Drawer nesting depth (custom/property/logbook).
+  uint8_t drawer_depth;
 } Scanner;
 
 // ---------------------------------------------------------------------------
@@ -359,6 +364,7 @@ void *tree_sitter_org_external_scanner_create(void) {
     scanner->last_column = 0;
     scanner->plain_lbracket_depth = 0;
     scanner->suppress_block_begin_on_end_line = false;
+    scanner->drawer_depth = 0;
     reset_markup_open_state(scanner);
   }
   return scanner;
@@ -426,8 +432,9 @@ unsigned tree_sitter_org_external_scanner_serialize(
 
   // prev_char, consecutive_blank_lines, in_table, last_column,
   // plain_lbracket_depth,
-  // markup-open flags, in_heading_line, suppress_block_begin_on_end_line
-  if (pos + 18 > SERIALIZE_BUF_SIZE) return 0;
+  // markup-open flags, in_heading_line, suppress_block_begin_on_end_line,
+  // drawer_depth
+  if (pos + 19 > SERIALIZE_BUF_SIZE) return 0;
   buffer[pos++] = (char)((s->prev_char >> 24) & 0xFF);
   buffer[pos++] = (char)((s->prev_char >> 16) & 0xFF);
   buffer[pos++] = (char)((s->prev_char >> 8) & 0xFF);
@@ -446,6 +453,7 @@ unsigned tree_sitter_org_external_scanner_serialize(
   buffer[pos++] = (char)(s->code_open ? 1 : 0);
   buffer[pos++] = (char)(s->in_heading_line ? 1 : 0);
   buffer[pos++] = (char)(s->suppress_block_begin_on_end_line ? 1 : 0);
+  buffer[pos++] = (char)s->drawer_depth;
 
   return pos;
 }
@@ -468,6 +476,7 @@ void tree_sitter_org_external_scanner_deserialize(
   s->plain_lbracket_depth = 0;
   s->in_heading_line = false;
   s->suppress_block_begin_on_end_line = false;
+  s->drawer_depth = 0;
   reset_markup_open_state(s);
 
   for (int i = 0; i < NUM_DEFAULT_TODO_KWS; i++) {
@@ -525,7 +534,8 @@ void tree_sitter_org_external_scanner_deserialize(
 
   // prev_char, consecutive_blank_lines, in_table, last_column,
   // plain_lbracket_depth,
-  // markup-open flags, in_heading_line, suppress_block_begin_on_end_line
+  // markup-open flags, in_heading_line, suppress_block_begin_on_end_line,
+  // drawer_depth
   if (pos + 5 <= length) {
     s->prev_char = ((int32_t)(uint8_t)buffer[pos] << 24) |
                    ((int32_t)(uint8_t)buffer[pos + 1] << 16) |
@@ -568,6 +578,9 @@ void tree_sitter_org_external_scanner_deserialize(
   }
   if (pos < length) {
     s->suppress_block_begin_on_end_line = (bool)buffer[pos++];
+  }
+  if (pos < length) {
+    s->drawer_depth = (uint8_t)buffer[pos++];
   }
 }
 
@@ -1506,6 +1519,27 @@ static bool probe_markup_close_in_rest_of_line(
 static bool scan_plain_text(Scanner *s, TSLexer *lexer, const bool *valid_symbols) {
   if (eof(lexer) || lookahead(lexer) == '\n') return false;
 
+  if (s->drawer_depth == 0 && s->section_block_depth > 0 &&
+      get_column(lexer) > 0 && lookahead(lexer) == ':') {
+    advance(lexer);
+    int32_t c2 = lookahead(lexer);
+    if (c2 != 'e' && c2 != 'E') return false;
+    advance(lexer);
+    int32_t c3 = lookahead(lexer);
+    if (c3 != 'n' && c3 != 'N') return false;
+    advance(lexer);
+    int32_t c4 = lookahead(lexer);
+    if (c4 != 'd' && c4 != 'D') return false;
+    advance(lexer);
+    if (lookahead(lexer) != ':') return false;
+    advance(lexer);
+    s->prev_char = ':';
+    mark_end(lexer);
+    lexer->result_symbol = TOKEN_PLAIN_TEXT;
+    s->plain_lbracket_depth = 0;
+    return true;
+  }
+
   if (get_column(lexer) == 0 &&
       (lookahead(lexer) == ' ' || lookahead(lexer) == '\t')) {
     return false;
@@ -1521,14 +1555,19 @@ static bool scan_plain_text(Scanner *s, TSLexer *lexer, const bool *valid_symbol
     if (starter == '#' || starter == ':' || starter == '|' ||
         starter == '+' || starter == '*' ||
         starter == '[') {
-      return false;
+      if (starter == ':' && s->drawer_depth == 0) {
+        // Outside drawer context, allow malformed lone ":END:" lines to
+        // degrade to plain text instead of forcing drawer dispatch.
+      } else {
+        return false;
+      }
     }
   }
 
   // When we are at the first non-whitespace column of a line inside an
   // indentation block, keep ':' available for drawer/fixed-width element
   // dispatch instead of consuming it as plain text.
-  if (s->section_block_depth > 0 &&
+  if (s->drawer_depth > 0 && s->section_block_depth > 0 &&
       get_column(lexer) > 0 && lookahead(lexer) == ':') {
     return false;
   }
@@ -2287,7 +2326,7 @@ static int scan_block_begin(Scanner *s, TSLexer *lexer, const bool *valid_symbol
   /* Don't open a block for ':end:' lines: after scan_block_end closes a
    * block via the :end:-detection path, we must not immediately re-open
    * one so that the enclosing drawer rule can match its terminator token. */
-  if (starter == ':') {
+  if (s->drawer_depth > 0 && starter == ':') {
     advance(lexer);
     int32_t c2 = lookahead(lexer);
     if (c2 == 'e' || c2 == 'E') {
@@ -2343,7 +2382,7 @@ static int scan_block_end(Scanner *s, TSLexer *lexer, const bool *valid_symbols)
     should_close = true;
   } else if (indent_col < current) {
     should_close = true;
-  } else if (indent_col == current && ch == ':') {
+  } else if (s->drawer_depth > 0 && indent_col == current && ch == ':') {
     if (current <= 2) {
       mark_end(lexer);
     }
@@ -2505,6 +2544,30 @@ static bool scan_affiliated_sync(Scanner *s, TSLexer *lexer) {
   return true;
 }
 
+// _DRAWER_ENTER_SYNC: zero-width sync point used immediately after drawer
+// opening lines. Keeps scanner state aligned with grammar-level drawer entry.
+static bool scan_drawer_enter_sync(Scanner *s, TSLexer *lexer) {
+  if (s->drawer_depth < UINT8_MAX) {
+    s->drawer_depth++;
+  }
+
+  mark_end(lexer);
+  lexer->result_symbol = TOKEN_DRAWER_ENTER_SYNC;
+  return true;
+}
+
+// _DRAWER_EXIT_SYNC: zero-width sync point used immediately after drawer
+// closing lines. Keeps scanner state aligned with grammar-level drawer exit.
+static bool scan_drawer_exit_sync(Scanner *s, TSLexer *lexer) {
+  if (s->drawer_depth > 0) {
+    s->drawer_depth--;
+  }
+
+  mark_end(lexer);
+  lexer->result_symbol = TOKEN_DRAWER_EXIT_SYNC;
+  return true;
+}
+
 // _TODO_SETUP_SYNC: zero-width sync point used on special_keyword lines.
 //
 // When positioned at a line that begins with "#+TODO:", parse the remainder
@@ -2658,6 +2721,14 @@ bool tree_sitter_org_external_scanner_scan(
   // Affiliated-keyword sync hook used to reset table state between elements.
   if (valid_symbols[TOKEN_AFFILIATED_SYNC]) {
     if (scan_affiliated_sync(s, lexer)) return true;
+  }
+
+  if (valid_symbols[TOKEN_DRAWER_ENTER_SYNC]) {
+    if (scan_drawer_enter_sync(s, lexer)) return true;
+  }
+
+  if (valid_symbols[TOKEN_DRAWER_EXIT_SYNC]) {
+    if (scan_drawer_exit_sync(s, lexer)) return true;
   }
 
   // _NL is a grammar regex and never updates prev_char.  Reset it to 0

@@ -60,6 +60,8 @@ module.exports = grammar({
     $._DYNBLOCK_SYNC,     // Zero-width sync point for dynamic-block boundaries
     $._TODO_SETUP_SYNC,   // Zero-width sync point to update TODO keyword set
     $._AFFILIATED_SYNC,   // Zero-width sync point for affiliated-keyword boundaries
+    $._DRAWER_ENTER_SYNC, // Zero-width sync point to enter drawer context
+    $._DRAWER_EXIT_SYNC,  // Zero-width sync point to exit drawer context
     $._ERROR_SENTINEL,
     $._TABLE_START,   // Zero-width gate: emitted once at the start of each org_table
     $._TABLE_BREAK_SYNC, // Zero-width sync: emitted only when current table must end
@@ -230,6 +232,7 @@ module.exports = grammar({
       $._lesser_block,
       $.diary_sexp,
       $.fixed_width,
+      alias($.lone_end_line, $.paragraph),
       $.horizontal_rule,
       prec(-1, $.paragraph),
     ),
@@ -260,6 +263,7 @@ module.exports = grammar({
       $._lesser_block,
       $.diary_sexp,
       $.fixed_width,
+      alias($.lone_end_line, $.paragraph),
       $.horizontal_rule,
       prec(-1, $.paragraph),
     ),
@@ -347,6 +351,7 @@ module.exports = grammar({
         seq(':', $._NL),
         seq(':', field('body', $.drawer_start_text), $._NL),
       ),
+      $._DRAWER_ENTER_SYNC,
       field('body', optional($._drawer_body)),
       token(prec(2, /[ \t]*:end:/i)),
       optional(choice(
@@ -354,9 +359,15 @@ module.exports = grammar({
         field('end_text', alias($._REST_OF_LINE, $.plain_text)),
       )),
       $._NL,
+      $._DRAWER_EXIT_SYNC,
     ),
 
-    _DRAWER_NAME: _ => /[A-Za-z0-9_\-]+/,
+    _DRAWER_NAME: _ => token(choice(
+      /[A-DF-Za-df-z0-9_\-][A-Za-z0-9_\-]*/,
+      /[Ee][A-MO-Za-mo-z0-9_\-][A-Za-z0-9_\-]*/,
+      /[Ee][Nn][A-CE-Za-ce-z0-9_\-][A-Za-z0-9_\-]*/,
+      /[Ee][Nn][Dd][A-Za-z0-9_\-]+/,
+    )),
 
     drawer_start_text: _ => /[^\n]+/,
 
@@ -404,6 +415,7 @@ module.exports = grammar({
         $._NL,
         seq(field('body', $.drawer_start_text), $._NL),
       ),
+      $._DRAWER_ENTER_SYNC,
       field('body', optional($._drawer_body)),
       token(prec(3, /[ \t]*:end:/i)),
       optional(choice(
@@ -411,6 +423,7 @@ module.exports = grammar({
         field('end_text', alias($._REST_OF_LINE, $.plain_text)),
       )),
       $._NL,
+      $._DRAWER_EXIT_SYNC,
     ),
 
     // --- 6.4 Dynamic Blocks ---
@@ -521,6 +534,7 @@ module.exports = grammar({
       token(prec(3, ci(':properties:'))),
       optional($._TRAILING),
       $._NL,
+      $._DRAWER_ENTER_SYNC,
       repeat(choice(
         $.blank_line,
         seq(optional($._INDENT), $.node_property),
@@ -531,6 +545,7 @@ module.exports = grammar({
         field('end_text', alias($._REST_OF_LINE, $.plain_text)),
       )),
       $._NL,
+      $._DRAWER_EXIT_SYNC,
     )),
 
     node_property: $ => seq(
@@ -836,6 +851,11 @@ module.exports = grammar({
       token(prec(2, /-----(-)*/)),
       optional($._TRAILING),
       $._NL,
+    ),
+
+    lone_end_line: $ => seq(
+      alias(token(prec(2, /:end:/i)), $.plain_text),
+      $.newline,
     ),
 
     // --- 7.8 Special Keywords ---

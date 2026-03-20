@@ -40,10 +40,10 @@ Indented lone :END: after list item in heading
             month: (ts_month)
             day: (ts_day)
             dayname: (ts_dayname)
-            time: (ts_time))))
-      (paragraph
-        (plain_text)
-        (newline)))))
+            time: (ts_time)))
+        body: (paragraph
+          (plain_text)
+          (newline))))))
 
 ================
 List items allow arrows inside verbatim markup
