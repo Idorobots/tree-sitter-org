@@ -424,13 +424,12 @@ Custom drawer with indented timestamp line
       name: (drawer_name)
       body: (block
         indent: (indent)
-        (ERROR
+        body: (paragraph
           (timestamp
             year: (ts_year)
             month: (ts_month)
             day: (ts_day)
-            dayname: (ts_dayname)))
-        body: (paragraph
+            dayname: (ts_dayname))
           (plain_text)
           (newline))))))
 
@@ -1056,10 +1055,11 @@ Fully indented custom drawer with timestamp line
       indent: (indent)
       body: (drawer
         name: (drawer_name)
-        body: (timestamp
-          year: (ts_year)
-          month: (ts_month)
-          day: (ts_day)
-          dayname: (ts_dayname))
-        body: (plain_text)
-        body: (newline)))))
+        body: (paragraph
+          (timestamp
+            year: (ts_year)
+            month: (ts_month)
+            day: (ts_day)
+            dayname: (ts_dayname))
+          (plain_text)
+          (newline))))))

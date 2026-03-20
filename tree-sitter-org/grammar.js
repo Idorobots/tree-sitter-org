@@ -364,7 +364,6 @@ module.exports = grammar({
 
     _drawer_body_line: $ => choice(
       $.blank_line,
-      $._drawer_timestamp_line,
       $.block,
       seq(optional($._INDENT), choice(
         $.drawer_kv_line,
@@ -372,20 +371,6 @@ module.exports = grammar({
         $._drawer_element,
       )),
     ),
-
-    _drawer_timestamp_line: $ => prec(10, choice(
-      seq(
-        $._INDENT,
-        $.timestamp,
-        optional(seq($._S, alias($._REST_OF_LINE, $.plain_text))),
-        $.newline,
-      ),
-      seq(
-        $.timestamp,
-        optional(seq($._S, alias($._REST_OF_LINE, $.plain_text))),
-        $.newline,
-      ),
-    )),
 
     drawer_kv_line: $ => prec(1, seq(
       ':',

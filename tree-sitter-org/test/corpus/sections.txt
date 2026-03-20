@@ -403,6 +403,37 @@ Indented timestamp and link lines in heading section
           (newline))))))
 
 ================
+Timestamp-prefixed paragraph lines in zeroth section
+================
+  [2025-01-06 Mon] 12,400 documents collected. Deduplication in progress.
+
+[2025-01-06 Mon] 12,400 documents collected. Deduplication in progress.
+
+---
+
+(document
+  (zeroth_section
+    (block
+      indent: (indent)
+      body: (paragraph
+        (timestamp
+          year: (ts_year)
+          month: (ts_month)
+          day: (ts_day)
+          dayname: (ts_dayname))
+        (plain_text)
+        (newline)))
+    (blank_line)
+    (paragraph
+      (timestamp
+        year: (ts_year)
+        month: (ts_month)
+        day: (ts_day)
+        dayname: (ts_dayname))
+      (plain_text)
+      (newline))))
+
+================
 Backslash text in paragraph body
 ================
 * Math notes

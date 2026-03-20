@@ -2675,7 +2675,9 @@ bool tree_sitter_org_external_scanner_scan(
     // bullets/spaces or heading stars/space). No external scanner token has
     // consumed visible text on this line yet, so markup PRE context should be
     // whitespace at this position.
-    if (s->section_block_depth == 0) {
+    if (lookahead(lexer) == ' ' || lookahead(lexer) == '\t') {
+      s->prev_char = ' ';
+    } else if (s->section_block_depth == 0) {
       s->prev_char = ' ';
     }
   }
