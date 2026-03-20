@@ -55,8 +55,7 @@ def test_repeat_uses_entire_item_body_as_note_payload() -> None:
     repeat = document.children[0].repeated_tasks[0]
     assert len(repeat.body) == 1
     assert isinstance(repeat.body[0], Paragraph)
-    assert str(repeat.body[0]) == "One note paragraph."
-    assert str(repeat.body[0]) == "One note paragraph."
+    assert str(repeat.body[0]) == "One note paragraph.\n"
 
 
 def test_repeat_mutation_bubbles_to_list_logbook_and_heading() -> None:

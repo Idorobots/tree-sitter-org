@@ -365,6 +365,7 @@ module.exports = grammar({
     _drawer_body_line: $ => choice(
       $.blank_line,
       $._drawer_timestamp_line,
+      $.block,
       seq(optional($._INDENT), choice(
         $.drawer_kv_line,
         $.drawer_double_colon_line,

@@ -422,14 +422,17 @@ Custom drawer with indented timestamp line
   (zeroth_section
     (drawer
       name: (drawer_name)
-      body: (paragraph
-        (timestamp
-          year: (ts_year)
-          month: (ts_month)
-          day: (ts_day)
-          dayname: (ts_dayname))
-        (plain_text)
-        (newline)))))
+      body: (block
+        indent: (indent)
+        (ERROR
+          (timestamp
+            year: (ts_year)
+            month: (ts_month)
+            day: (ts_day)
+            dayname: (ts_dayname)))
+        body: (paragraph
+          (plain_text)
+          (newline))))))
 
 ================
 LOGBOOK drawer with mis-aligned end in archive style
@@ -455,37 +458,39 @@ LOGBOOK drawer with mis-aligned end in archive style
           day: (ts_day)
           dayname: (ts_dayname)
           time: (ts_time)))
-      body: (paragraph
-        (plain_text)
-        (timestamp
-          year: (ts_year)
-          month: (ts_month)
-          day: (ts_day)
-          dayname: (ts_dayname)
-          time: (ts_time))
-        (plain_text)
-        (line_break)
-        (newline)
-        (plain_text)
-        (newline))
-      body: (paragraph
-        (plain_text)
-        (timestamp
-          year: (ts_year)
-          month: (ts_month)
-          day: (ts_day)
-          dayname: (ts_dayname)
-          time: (ts_time))
-        (newline))
-      body: (paragraph
-        (plain_text)
-        (timestamp
-          year: (ts_year)
-          month: (ts_month)
-          day: (ts_day)
-          dayname: (ts_dayname)
-          time: (ts_time))
-        (newline)))))
+      body: (block
+        indent: (indent)
+        body: (list_item
+          first_line: (plain_text)
+          first_line: (timestamp
+            year: (ts_year)
+            month: (ts_month)
+            day: (ts_day)
+            dayname: (ts_dayname)
+            time: (ts_time))
+          first_line: (plain_text)
+          first_line: (line_break))
+        body: (block
+          indent: (indent)
+          body: (paragraph
+            (plain_text)
+            (newline)))
+        body: (list_item
+          first_line: (plain_text)
+          first_line: (timestamp
+            year: (ts_year)
+            month: (ts_month)
+            day: (ts_day)
+            dayname: (ts_dayname)
+            time: (ts_time)))
+        body: (list_item
+          first_line: (plain_text)
+          first_line: (timestamp
+            year: (ts_year)
+            month: (ts_month)
+            day: (ts_day)
+            dayname: (ts_dayname)
+            time: (ts_time)))))))
 
 ================
 Logbook drawer end with trailing angle text
@@ -566,6 +571,41 @@ Indented LOGBOOK drawer with note line
               time: (ts_time))
             first_line: (plain_text)
             first_line: (line_break))
+          body: (block
+            indent: (indent)
+            body: (paragraph
+              (plain_text)
+              (newline))))))))
+
+================
+Unindented LOGBOOK drawer with continuation note
+================
+* H
+:LOGBOOK:
+- State "CANCELLED"  from "TODO"       [2026-03-08 Sun 13:18] \\
+  No need to.
+:END:
+
+---
+
+(document
+  (heading
+    stars: (stars)
+    title: (plain_text)
+    body: (section
+      (logbook_drawer
+        body: (list_item
+          first_line: (plain_text)
+          first_line: (timestamp
+            year: (ts_year)
+            month: (ts_month)
+            day: (ts_day)
+            dayname: (ts_dayname)
+            time: (ts_time))
+          first_line: (plain_text)
+          first_line: (line_break))
+        body: (block
+          indent: (indent)
           body: (paragraph
             (plain_text)
             (newline)))))))

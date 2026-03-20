@@ -2256,6 +2256,8 @@ static int scan_block_begin(Scanner *s, TSLexer *lexer, const bool *valid_symbol
 
   if (lookahead(lexer) == '\n' || eof(lexer)) return -1;
 
+  int32_t starter = lookahead(lexer);
+
   uint16_t current = s->section_block_depth == 0
     ? 0
     : s->section_block_indents[s->section_block_depth - 1];
@@ -2265,11 +2267,36 @@ static int scan_block_begin(Scanner *s, TSLexer *lexer, const bool *valid_symbol
   if (indent_col < current) return -1;
   if (s->section_block_depth >= MAX_LIST_DEPTH) return -1;
 
+  /* Fix the token boundary to the consumed whitespace now.  All advance()
+   * calls below are purely for lookahead and do not extend the token.
+   * State changes happen only after these checks succeed. */
+  lexer->result_symbol = TOKEN_BLOCK_BEGIN;
+  mark_end(lexer);
+
+  /* Don't open a block for ':end:' lines: after scan_block_end closes a
+   * block via the :end:-detection path, we must not immediately re-open
+   * one so that the enclosing drawer rule can match its terminator token. */
+  if (starter == ':') {
+    advance(lexer);
+    int32_t c2 = lookahead(lexer);
+    if (c2 == 'e' || c2 == 'E') {
+      advance(lexer);
+      int32_t c3 = lookahead(lexer);
+      if (c3 == 'n' || c3 == 'N') {
+        advance(lexer);
+        int32_t c4 = lookahead(lexer);
+        if (c4 == 'd' || c4 == 'D') {
+          advance(lexer);
+          int32_t c5 = lookahead(lexer);
+          if (c5 == ':') return -1;  /* no state modified yet — safe */
+        }
+      }
+    }
+  }
+
   s->section_block_indents[s->section_block_depth] = (uint16_t)indent_col;
   s->section_block_depth++;
   s->prev_char = 0;
-  lexer->result_symbol = TOKEN_BLOCK_BEGIN;
-  mark_end(lexer);
   return 1;
 }
 
@@ -2304,6 +2331,28 @@ static int scan_block_end(Scanner *s, TSLexer *lexer, const bool *valid_symbols)
     should_close = true;
   } else if (indent_col < current) {
     should_close = true;
+  } else if (indent_col == current && ch == ':') {
+    /* Peek for ':end:' case-insensitively.  mark_end() was already called
+     * above, so these advances do not extend the zero-width token boundary.
+     * This handles drawer :END: markers at the same indentation level as
+     * the block content (e.g. mis-aligned archive-style logbooks). */
+    advance(lexer);
+    int32_t c2 = lookahead(lexer);
+    if (c2 == 'e' || c2 == 'E') {
+      advance(lexer);
+      int32_t c3 = lookahead(lexer);
+      if (c3 == 'n' || c3 == 'N') {
+        advance(lexer);
+        int32_t c4 = lookahead(lexer);
+        if (c4 == 'd' || c4 == 'D') {
+          advance(lexer);
+          int32_t c5 = lookahead(lexer);
+          if (c5 == ':') {
+            should_close = true;
+          }
+        }
+      }
+    }
   }
 
   if (!should_close) return -1;
