@@ -7,15 +7,13 @@ import textwrap
 from typing import TYPE_CHECKING
 
 from org_parser._node import node_source
-from org_parser._nodes import (
-    LIST_ITEM,
-    TIMESTAMP,
-)
+from org_parser._nodes import LIST_ITEM
 from org_parser.element._element import (
     Element,
     build_semantic_repr,
     ensure_trailing_newline,
 )
+from org_parser.text._inline import PlainText
 from org_parser.text._rich_text import RichText
 from org_parser.time import Timestamp
 
@@ -30,10 +28,8 @@ if TYPE_CHECKING:
 __all__ = ["List", "ListItem", "Repeat"]
 
 
-_REPEAT_HEADER_PATTERN = re.compile(
-    r'^State\s+"(?P<after>[^"]+)"\s+from\s+"(?P<before>[^"]+)"\s+'
-    r"(?P<timestamp><[^>\n]+>|\[[^\]\n]+\](?:--\[[^\]\n]+\])?)"
-    r"\s*$"
+_REPEAT_HEADER_PREFIX_PATTERN = re.compile(
+    r'^State\s+"(?P<after>[^"]+)"\s+from\s+"(?P<before>[^"]+)"\s+$'
 )
 
 
@@ -288,13 +284,10 @@ class Repeat(ListItem):
         ):
             return None
 
-        parsed = _parse_repeat_first_line(str(item.first_line))
+        parsed = _parse_repeat_first_line(item.first_line)
         if parsed is None:
             return None
-        after, before, timestamp_text, has_line_break, note_text = parsed
-        timestamp = _extract_repeat_timestamp(item, timestamp_text)
-        if timestamp is None:
-            return None
+        after, before, timestamp, has_line_break, note_text = parsed
 
         body = list(item.body)
         if note_text is not None:
@@ -581,54 +574,46 @@ def _indent_non_empty_lines(value: str, prefix: str) -> str:
 
 
 def _parse_repeat_first_line(
-    first_line: str,
-) -> tuple[str, str, str, bool, str | None] | None:
+    first_line: RichText,
+) -> tuple[str, str, Timestamp, bool, str | None] | None:
     """Parse one repeat header from a list item's first-line text.
 
     Returns:
         A tuple of ``(after, before, timestamp, has_line_break, note_text)``
         when the line matches repeat syntax, otherwise ``None``.
     """
-    has_line_break = "\\\\n" in first_line
+    if len(first_line.parts) < 2:
+        return None
+
+    prefix_part = first_line.parts[0]
+    timestamp_part = first_line.parts[1]
+    if not isinstance(prefix_part, PlainText) or not isinstance(
+        timestamp_part, Timestamp
+    ):
+        return None
+
+    remainder = "".join(str(part) for part in first_line.parts[2:])
+    has_line_break = "\\\\n" in remainder
     note_text: str | None = None
-    header_text = first_line
+    trailing = remainder
     if has_line_break:
-        header_text, raw_note_text = first_line.split("\\\\n", maxsplit=1)
+        trailing, raw_note_text = remainder.split("\\\\n", maxsplit=1)
         normalized_note = textwrap.dedent(raw_note_text)
         note_text = _normalize_optional_text(normalized_note)
+    elif trailing.strip() != "":
+        return None
 
-    matched = _REPEAT_HEADER_PATTERN.match(header_text)
+    matched = _REPEAT_HEADER_PREFIX_PATTERN.match(prefix_part.text)
     if matched is None:
         return None
 
-    timestamp_text = matched.group("timestamp")
     return (
         matched.group("after"),
         matched.group("before"),
-        timestamp_text,
+        timestamp_part,
         has_line_break,
         note_text,
     )
-
-
-def _extract_repeat_timestamp(item: ListItem, timestamp_text: str) -> Timestamp | None:
-    """Return repeat timestamp from the original parse-backed list item."""
-    if item._node is None or item._document is None:
-        return None
-
-    timestamp_nodes = [
-        n
-        for n in item._node.children_by_field_name("first_line")
-        if n.type == TIMESTAMP
-    ]
-    if not timestamp_nodes:
-        return None
-
-    for timestamp_node in timestamp_nodes:
-        if item._document.source_for(timestamp_node).decode() == timestamp_text:
-            return Timestamp.from_node(timestamp_node, item._document)
-
-    return Timestamp.from_node(timestamp_nodes[0], item._document)
 
 
 def _normalize_optional_text(value: str | None) -> str | None:
