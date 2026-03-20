@@ -577,7 +577,7 @@ module.exports = grammar({
       ']',
     )),
 
-    _PROP_LINK_PATH_TEXT: _ => /[^\\\[\]\n]+/,
+    _PROP_LINK_PATH_TEXT: _ => /[^\\\[\]]+/,
     _PROP_LINK_PATH_ESC: _ => /\\./,
 
     _PROP_NAME: _ => /[^ \t\n:+]+\+?/,

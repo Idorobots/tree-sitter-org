@@ -207,6 +207,31 @@ Property link with multiline description
           description: (plain_text))))))
 
 ================
+Property link with multiline path
+================
+:PROPERTIES:
+:context: [[file:src/org_parser/text/_rich_text.py::@classmethod
+ def from_node(
+ cls,
+ node: tree_sitter.Node,
+ *,
+ document: Document,
+ ) -> RichText:
+ """Create a :class:`RichText` from a single tree-sitter node."""]]
+:END:
+
+---
+
+(document
+  (zeroth_section
+    (property_drawer
+      (node_property
+        name: (property_name)
+        value: (regular_link
+          path: (link_path
+            (plain_text)))))))
+
+================
 Drawer transition after property link keeps logbook timestamp
 ================
 :PROPERTIES:
