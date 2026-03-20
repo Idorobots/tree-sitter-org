@@ -60,7 +60,9 @@ def _recover_stream(  # noqa: PLR0915
             if in_block:
                 flush_list_run()
                 recovered.append(element)
-            elif not list_run:
+            elif list_run:
+                list_run[-1].append_body(element, mark_dirty=False)
+            else:
                 recovered.append(element)
         elif isinstance(element, ListItem):
             flush_paragraph_run()

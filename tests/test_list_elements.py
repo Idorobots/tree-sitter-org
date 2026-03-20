@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from org_parser import loads
-from org_parser.element import Drawer, List, ListItem, Paragraph, QuoteBlock
+from org_parser.element import BlankLine, Drawer, List, ListItem, Paragraph, QuoteBlock
 from org_parser.text import RichText
 
 
@@ -140,9 +140,28 @@ def test_single_blank_line_keeps_continuation_ownership() -> None:
     assert isinstance(document.body[0], List)
     parsed = document.body[0]
     assert len(parsed.items) == 2
-    assert len(parsed.items[0].body) == 1
-    assert isinstance(parsed.items[0].body[0], Paragraph)
-    assert str(parsed.items[0].body[0]) == "continued\n"
+    assert len(parsed.items[0].body) == 2
+    assert isinstance(parsed.items[0].body[0], BlankLine)
+    assert isinstance(parsed.items[0].body[1], Paragraph)
+    assert str(parsed.items[0].body[1]) == "continued\n"
+
+
+def test_dirty_document_preserves_blank_line_between_list_and_paragraph() -> None:
+    """Dirty rendering keeps list-to-paragraph blank-line separators."""
+    document = loads("- a\n\nPara\n")
+
+    document.mark_dirty()
+
+    assert str(document) == "- a\n\nPara\n"
+
+
+def test_dirty_document_preserves_blank_line_between_list_items() -> None:
+    """Dirty rendering keeps blank lines that separate list items."""
+    document = loads("- a\n\n- b\n")
+
+    document.mark_dirty()
+
+    assert str(document) == "- a\n\n- b\n"
 
 
 def test_block_body_breaks_recovered_lists_on_non_list_nodes() -> None:
@@ -163,11 +182,12 @@ def test_consecutive_blocks_of_same_indent_stay_separate() -> None:
 
     assert isinstance(document.body[0], List)
     item = document.body[0].items[0]
-    assert len(item.body) == 2
+    assert len(item.body) == 3
     assert isinstance(item.body[0], Paragraph)
-    assert isinstance(item.body[1], Paragraph)
+    assert isinstance(item.body[1], BlankLine)
+    assert isinstance(item.body[2], Paragraph)
     assert str(item.body[0]) == "first\n"
-    assert str(item.body[1]) == "second\n"
+    assert str(item.body[2]) == "second\n"
 
 
 def test_dirty_nested_list_rendering_uses_item_driven_indentation() -> None:
