@@ -245,6 +245,8 @@ class ListItem(Element):
 class Repeat(ListItem):
     """Repeated-task logbook entry represented as a specialized list item."""
 
+    state_alignment_space = 12
+
     def __init__(
         self,
         *,
@@ -376,7 +378,12 @@ class Repeat(ListItem):
             parts.append(f"[@{self._counter_set}] ")
         if self._checkbox is not None:
             parts.append(f"[{self._checkbox}] ")
-        parts.append(f'State "{self._after}" from "{self._before}" {self._timestamp}')
+        after = f'"{self._after}"'
+        before = f'"{self._before}"'
+        parts.append(
+            f"State {after:<{self.state_alignment_space}}"
+            f" from {before:<{self.state_alignment_space}} {self._timestamp}"
+        )
         if not self._body:
             parts.append("\n")
             return "".join(parts)

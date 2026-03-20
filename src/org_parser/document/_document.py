@@ -37,7 +37,7 @@ if TYPE_CHECKING:
 
     from org_parser.document._heading import Heading
 
-__all__ = ["Document", "ParseError", "render_document"]
+__all__ = ["Document", "ParseError"]
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -333,11 +333,6 @@ class Document:
         return self._source[node.start_byte : node.end_byte]
 
     @property
-    def node(self) -> tree_sitter.Node | None:
-        """Root parse node that backs this document, when present."""
-        return self._node
-
-    @property
     def dirty(self) -> bool:
         """Whether this document has been mutated after creation."""
         return self._dirty
@@ -475,6 +470,24 @@ class Document:
         for value in values:
             self._adopt_element(value)
 
+    def render(self) -> str:
+        """Return the complete Org Mode text for a document including headings.
+
+        For clean (unmodified) parse-backed documents the original source bytes are
+        returned verbatim, preserving all whitespace and formatting.  For dirty
+        documents, or documents built without a backing source, the zeroth section
+        and every heading subtree are reconstructed from their semantic fields via
+        :func:`str`.
+
+        Returns:
+            Full Org Mode text including all headings.
+        """
+        if not self.dirty and self._node is not None:
+            return self.source_for(self._node).decode()
+        parts: list[str] = [str(self)]
+        parts.extend(heading.render() for heading in self.children)
+        return "".join(parts)
+
     # -- dunder protocols ----------------------------------------------------
 
     def __str__(self) -> str:
@@ -606,28 +619,6 @@ def _find_first_child_by_type(
         if child.type == node_type:
             return child
     return None
-
-
-def render_document(document: Document) -> str:
-    """Return the complete Org Mode text for a document.
-
-    For clean (unmodified) parse-backed documents the original source bytes are
-    returned verbatim, preserving all whitespace and formatting.  For dirty
-    documents, or documents built without a backing source, the zeroth section
-    and every heading subtree are reconstructed from their semantic fields via
-    :func:`str`.
-
-    Args:
-        document: The document to serialize.
-
-    Returns:
-        Full Org Mode text including all headings.
-    """
-    if not document.dirty and document.node is not None:
-        return document.source_for(document.node).decode()
-    parts: list[str] = [str(document)]
-    _append_heading_subtree(document.children, parts)
-    return "".join(parts)
 
 
 def _append_heading_subtree(headings: Sequence[Heading], parts: list[str]) -> None:

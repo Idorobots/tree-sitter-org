@@ -478,6 +478,24 @@ class Heading:
         """Other headings at the same level under the same parent."""
         return [h for h in self._parent.children if h is not self]
 
+    def render(self) -> str:
+        """Return the complete Org Mode text for a heading including subheadings.
+
+        For clean (unmodified) parse-backed headings the original source bytes are
+        returned verbatim, preserving all whitespace and formatting.  For dirty
+        headings, or heaidngs built without a backing source, the representation is
+        reconstructed from their semantic fields via
+        :func:`str`.
+
+        Returns:
+            Full Org Mode text including all subheadings.
+        """
+        if not self.dirty and self._node is not None:
+            return self._document.source_for(self._node).decode()
+        parts: list[str] = [str(self)]
+        parts.extend(heading.render() for heading in self.children)
+        return "".join(parts)
+
     # -- dunder protocols ----------------------------------------------------
 
     def __str__(self) -> str:
@@ -700,7 +718,8 @@ def _render_heading_dirty(heading: Heading) -> str:
     headline = " ".join(line_parts)
 
     if heading.tags:
-        headline = f"{headline} :{':'.join(heading.tags)}:"
+        space = "" if headline.endswith(" ") else " "
+        headline = f"{headline}{space}:{':'.join(heading.tags)}:"
 
     parts = [f"{headline}\n"]
     planning_entries: list[str] = []

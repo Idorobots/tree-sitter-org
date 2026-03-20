@@ -10,7 +10,6 @@ from pathlib import Path
 
 from org_parser._lang import PARSER
 from org_parser.document import Document
-from org_parser.document._document import render_document
 
 __all__ = ["Document", "dump", "dumps", "load", "loads"]
 
@@ -60,7 +59,7 @@ def dumps(document: Document) -> str:
     Returns:
         Full Org Mode source text.
     """
-    return render_document(document)
+    return document.render()
 
 
 def dump(document: Document, filename: str | None = None) -> None:
