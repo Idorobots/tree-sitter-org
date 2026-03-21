@@ -63,6 +63,8 @@ enum TokenType {
   TOKEN_TABLE_START,   // zero-width gate emitted once at the start of each org_table
   TOKEN_TABLE_BREAK_SYNC, // zero-width sync emitted when current org_table must end
   TOKEN_FIXED_WIDTH_COLON, // consumes optional indent + ':' only at BOL context
+  TOKEN_INLINE_BABEL_START, // consumes 'call_' when followed by a valid name-start char
+  TOKEN_INLINE_SRC_START,   // consumes 'src_' when followed by a valid lang-start char
 };
 
 // ---------------------------------------------------------------------------
@@ -1520,12 +1522,99 @@ static bool probe_markup_close_in_rest_of_line(
   return false;
 }
 
+// ---------------------------------------------------------------------------
+// _INLINE_BABEL_START: consume 'call_' when followed by a valid name-start char.
+//
+// This external token replaces the literal 'call_' string in the
+// inline_babel_call grammar rule.  Using an external token ensures that the
+// scanner (not the GLR plain_text path) controls the token boundary: when
+// TOKEN_PLAIN_TEXT and TOKEN_INLINE_BABEL_START are both valid, we emit the
+// latter whenever 'call_' is followed by a valid function-name character,
+// preventing plain_text from consuming the 'call_' prefix.
+//
+// s->prev_char is updated on every partial-match failure so that
+// scan_plain_text (which runs next in the same scan() call) sees the correct
+// lookbehind character when it decides whether markup delimiters can open or
+// close.  Without this update the stale prev_char from before 'c' was
+// consumed would cause incorrect markup detection for the first character
+// after the partial match.
+// ---------------------------------------------------------------------------
+static bool scan_inline_babel_start(Scanner *s, TSLexer *lexer) {
+  if (lookahead(lexer) != 'c') return false;
+  advance(lexer);
+  if (lookahead(lexer) != 'a') { s->prev_char = 'c'; return false; }
+  advance(lexer);
+  if (lookahead(lexer) != 'l') { s->prev_char = 'a'; return false; }
+  advance(lexer);
+  if (lookahead(lexer) != 'l') { s->prev_char = 'l'; return false; }
+  advance(lexer);
+  if (lookahead(lexer) != '_') { s->prev_char = 'l'; return false; }
+  advance(lexer);
+  int32_t next = lookahead(lexer);
+  if (next == ' ' || next == '\t' || next == '\n' ||
+      next == '[' || next == ']' || next == '(' || next == ')' || eof(lexer)) {
+    s->prev_char = '_';
+    return false;
+  }
+  mark_end(lexer);
+  lexer->result_symbol = TOKEN_INLINE_BABEL_START;
+  return true;
+}
+
+// ---------------------------------------------------------------------------
+// _INLINE_SRC_START: consume 'src_' when followed by a valid language-name start.
+//
+// Same rationale as _INLINE_BABEL_START but for inline_source_block.
+// s->prev_char is updated on partial-match failure for the same reasons
+// described above for scan_inline_babel_start.
+// ---------------------------------------------------------------------------
+static bool scan_inline_src_start(Scanner *s, TSLexer *lexer) {
+  if (lookahead(lexer) != 's') return false;
+  advance(lexer);
+  if (lookahead(lexer) != 'r') { s->prev_char = 's'; return false; }
+  advance(lexer);
+  if (lookahead(lexer) != 'c') { s->prev_char = 'r'; return false; }
+  advance(lexer);
+  if (lookahead(lexer) != '_') { s->prev_char = 'c'; return false; }
+  advance(lexer);
+  int32_t next = lookahead(lexer);
+  if (next == ' ' || next == '\t' || next == '\n' ||
+      next == '[' || next == '{' || eof(lexer)) {
+    s->prev_char = '_';
+    return false;
+  }
+  mark_end(lexer);
+  lexer->result_symbol = TOKEN_INLINE_SRC_START;
+  return true;
+}
+
 // _PLAIN_TEXT: scan forward to next object/element boundary
 // Consumes "safe" characters that cannot start an object or element.
 // If positioned at a markup character (*/_ +=~) that the markup scanner
 // already rejected, consumes it as plain text to keep prev_char accurate.
-static bool scan_plain_text(Scanner *s, TSLexer *lexer, const bool *valid_symbols) {
-  if (eof(lexer) || lookahead(lexer) == '\n') return false;
+static bool scan_plain_text(Scanner *s, TSLexer *lexer, const bool *valid_symbols,
+                            bool prev_scanner_advanced) {
+  // When scan_inline_babel_start or scan_inline_src_start ran before us in
+  // the same scan() call, it may have consumed characters (e.g. 'c' or 's')
+  // and returned false, leaving the lexer positioned past them.  If we are
+  // now at '\n' or EOF, those already-consumed characters are part of the
+  // current token.  Commit them as TOKEN_PLAIN_TEXT so they are not dropped.
+  //
+  // prev_scanner_advanced is true only when get_column() actually increased
+  // during the babel/src scanner attempt, i.e. at least one advance() fired.
+  // Using get_column() > 0 directly would be wrong: it reflects the document
+  // column, which is non-zero any time the scanner is called mid-line — even
+  // when no characters were consumed in this scan() call.  That would produce
+  // zero-length TOKEN_PLAIN_TEXT tokens and cause an infinite parse loop.
+  if (prev_scanner_advanced && (eof(lexer) || lookahead(lexer) == '\n')) {
+    mark_end(lexer);
+    lexer->result_symbol = TOKEN_PLAIN_TEXT;
+    s->plain_lbracket_depth = 0;
+    return true;
+  }
+  if (eof(lexer) || lookahead(lexer) == '\n') {
+    return false;
+  }
 
   if (s->drawer_depth == 0 && s->section_block_depth > 0 &&
       get_column(lexer) > 0 && lookahead(lexer) == ':') {
@@ -1588,6 +1677,26 @@ static bool scan_plain_text(Scanner *s, TSLexer *lexer, const bool *valid_symbol
 
   while (!eof(lexer) && lookahead(lexer) != '\n') {
     int32_t ch = lookahead(lexer);
+
+    // ---------------------------------------------------------------------------
+    // Alpha-bullet guard: when scan_inline_babel_start or scan_inline_src_start
+    // ran first in this scan() call and consumed the BOL letter (column 0), the
+    // lexer is now at column 1.  If the current character is '.' or ')' followed
+    // by whitespace, this is the tail of an alpha-counter bullet ("c. text",
+    // "s) text").  Yield to the grammar's _ordered_bullet rule — the same way
+    // the explicit alpha-bullet check below does when starting at column 0.
+    // ---------------------------------------------------------------------------
+    if (!found_any && get_column(lexer) == 1 && (ch == '.' || ch == ')')) {
+      advance(lexer);
+      if (lookahead(lexer) == ' ' || lookahead(lexer) == '\t') {
+        return false;  // yield to _ordered_bullet
+      }
+      // Not a bullet — include the consumed chars in the plain_text token.
+      s->prev_char = ch;
+      mark_end(lexer);
+      found_any = true;
+      continue;
+    }
 
     if (!found_any && (get_column(lexer) == 0 || s->prev_char == 0) && is_ascii_digit(ch)) {
       int32_t last = ch;
@@ -1703,6 +1812,28 @@ static bool scan_plain_text(Scanner *s, TSLexer *lexer, const bool *valid_symbol
       advance(lexer);
       mark_end(lexer);
       continue;
+    }
+
+    // Guard: when a previous scanner (scan_inline_babel_start or
+    // scan_inline_src_start) consumed characters and we are now at a markup
+    // delimiter as the very first character of this token, commit those
+    // already-consumed characters as TOKEN_PLAIN_TEXT without including the
+    // delimiter.  This prevents the markup-handling code below from firing
+    // `!found_any → return false` (which would drop the consumed characters)
+    // and allows the markup open/close scanners to handle the delimiter on
+    // the very next scan() call.
+    //
+    // Example: inside /s/ (italic containing only 's'), scan_inline_src_start
+    // consumes 's' and fails because '/' follows.  Without this guard,
+    // scan_plain_text would see '/' as the first char, detect it as a viable
+    // markup-close, and return false — leaving 's' uncommitted and causing a
+    // parse error that cascades to an ERROR node for the enclosing paragraph.
+    if (prev_scanner_advanced && !found_any && is_markup_marker(ch)) {
+      mark_end(lexer);
+      lexer->result_symbol = TOKEN_PLAIN_TEXT;
+      // prev_char was already updated by the preceding scanner to the last
+      // character it consumed, so no update is needed here.
+      return true;
     }
 
     // Stop at characters that can start objects/elements, except when they
@@ -2003,6 +2134,72 @@ static bool scan_plain_text(Scanner *s, TSLexer *lexer, const bool *valid_symbol
       }
 
       break;
+    }
+
+    // ---------------------------------------------------------------------------
+    // Stop plain_text before 'src_LANG' (inline_source_block start) so the
+    // scanner's next call can emit TOKEN_INLINE_SRC_START instead.  Only probe
+    // when TOKEN_INLINE_SRC_START is valid (we are in an _object context) AND
+    // we already have prior text to emit (found_any).  The !found_any case is
+    // handled by scan_inline_src_start being dispatched first in scan().
+    // ---------------------------------------------------------------------------
+    if (ch == 's' && found_any && valid_symbols[TOKEN_INLINE_SRC_START]) {
+      advance(lexer);  // consume 's'
+      if (lookahead(lexer) != 'r') {
+        s->prev_char = 's'; mark_end(lexer); found_any = true; continue;
+      }
+      advance(lexer);  // consume 'r'
+      if (lookahead(lexer) != 'c') {
+        s->prev_char = 'r'; mark_end(lexer); found_any = true; continue;
+      }
+      advance(lexer);  // consume 'c'
+      if (lookahead(lexer) != '_') {
+        s->prev_char = 'c'; mark_end(lexer); found_any = true; continue;
+      }
+      advance(lexer);  // consume '_'
+      int32_t lang_ch = lookahead(lexer);
+      bool valid_lang_start = lang_ch != ' ' && lang_ch != '\t' && lang_ch != '\n' &&
+                              lang_ch != '[' && lang_ch != '{' && !eof(lexer);
+      if (valid_lang_start) {
+        // Looks like 'src_LANG' — stop before 's' so _INLINE_SRC_START can fire.
+        break;
+      }
+      // Not a valid start — include 'src_' in the token.
+      s->prev_char = '_'; mark_end(lexer); found_any = true; continue;
+    }
+
+    // ---------------------------------------------------------------------------
+    // Stop plain_text before 'call_NAME' (inline_babel_call start).  Same logic
+    // as the 'src_' probe above: only fires when found_any is true.
+    // ---------------------------------------------------------------------------
+    if (ch == 'c' && found_any && valid_symbols[TOKEN_INLINE_BABEL_START]) {
+      advance(lexer);  // consume 'c'
+      if (lookahead(lexer) != 'a') {
+        s->prev_char = 'c'; mark_end(lexer); found_any = true; continue;
+      }
+      advance(lexer);  // consume 'a'
+      if (lookahead(lexer) != 'l') {
+        s->prev_char = 'a'; mark_end(lexer); found_any = true; continue;
+      }
+      advance(lexer);  // consume first 'l'
+      if (lookahead(lexer) != 'l') {
+        s->prev_char = 'l'; mark_end(lexer); found_any = true; continue;
+      }
+      advance(lexer);  // consume second 'l'
+      if (lookahead(lexer) != '_') {
+        s->prev_char = 'l'; mark_end(lexer); found_any = true; continue;
+      }
+      advance(lexer);  // consume '_'
+      int32_t name_ch = lookahead(lexer);
+      bool valid_name_start = name_ch != ' ' && name_ch != '\t' && name_ch != '\n' &&
+                              name_ch != '[' && name_ch != ']' &&
+                              name_ch != '(' && name_ch != ')' && !eof(lexer);
+      if (valid_name_start) {
+        // Looks like 'call_NAME' — stop before 'c' so _INLINE_BABEL_START fires.
+        break;
+      }
+      // Not a valid start — include 'call_' in the token.
+      s->prev_char = '_'; mark_end(lexer); found_any = true; continue;
     }
 
     if (maybe_clock_kw) {
@@ -2966,9 +3163,31 @@ bool tree_sitter_org_external_scanner_scan(
     if (result == -1) return false;
   }
 
-  // --- PLAIN_TEXT (fallback) ---
-  if (valid_symbols[TOKEN_PLAIN_TEXT]) {
-    if (scan_plain_text(s, lexer, valid_symbols)) return true;
+  // --- INLINE_BABEL_START / INLINE_SRC_START / PLAIN_TEXT ---
+  // scan_inline_babel_start and scan_inline_src_start are checked first.  If
+  // either one returns false after having called advance() (i.e. consumed one
+  // or more characters), the lexer is left past those characters.  We detect
+  // this by comparing get_column() before and after each attempt and pass the
+  // result to scan_plain_text so its recovery guard fires only when chars were
+  // actually consumed — not merely because the scan was called mid-line.
+  {
+    uint32_t col_before = get_column(lexer);
+    bool prev_scanner_advanced = false;
+
+    if (valid_symbols[TOKEN_INLINE_BABEL_START]) {
+      if (scan_inline_babel_start(s, lexer)) return true;
+      prev_scanner_advanced = (get_column(lexer) > col_before);
+    }
+
+    if (valid_symbols[TOKEN_INLINE_SRC_START]) {
+      if (scan_inline_src_start(s, lexer)) return true;
+      if (!prev_scanner_advanced)
+        prev_scanner_advanced = (get_column(lexer) > col_before);
+    }
+
+    if (valid_symbols[TOKEN_PLAIN_TEXT]) {
+      if (scan_plain_text(s, lexer, valid_symbols, prev_scanner_advanced)) return true;
+    }
   }
 
   return false;

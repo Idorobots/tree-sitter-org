@@ -66,6 +66,8 @@ module.exports = grammar({
     $._TABLE_START,   // Zero-width gate: emitted once at the start of each org_table
     $._TABLE_BREAK_SYNC, // Zero-width sync: emitted only when current table must end
     $._FIXED_WIDTH_COLON, // Consumes optional indent + ':' only at BOL context
+    $._INLINE_BABEL_START, // Consumes 'call_' when followed by a valid function-name start
+    $._INLINE_SRC_START,   // Consumes 'src_' when followed by a valid language-name start
   ],
 
   extras: _ => [],
@@ -292,6 +294,7 @@ module.exports = grammar({
     _non_affiliatable: $ => choice(
       $.comment,
       $.clock,
+      $.babel_call,
     ),
 
     // §6 Greater Elements
@@ -931,6 +934,37 @@ module.exports = grammar({
       ']',
     ),
 
+    // --- 7.11 Babel Calls (top-level) ---
+    // #+call: NAME[H1](ARGS)[H2]
+    babel_call: $ => seq(
+      token(prec(2, ci('#+call:'))),
+      $._S,
+      field('name', alias($._BABEL_CALL_NAME, $.call_name)),
+      optional($._babel_inside_header),
+      '(',
+      field('arguments', optional(alias($._BABEL_ARGS, $.call_arguments))),
+      ')',
+      optional($._babel_outside_header),
+      optional($._TRAILING),
+      $._NL,
+    ),
+
+    _BABEL_CALL_NAME: _ => /[^ \t\n\[\]()]+/,
+    _BABEL_ARGS: _ => /[^)\n]+/,
+    _BABEL_HEADER: _ => /[^\]\n]+/,
+
+    _babel_inside_header: $ => seq(
+      '[',
+      field('inside_header', alias($._BABEL_HEADER, $.call_inside_header)),
+      ']',
+    ),
+
+    _babel_outside_header: $ => seq(
+      '[',
+      field('outside_header', alias($._BABEL_HEADER, $.call_outside_header)),
+      ']',
+    ),
+
     // --- 7.10 Paragraphs ---
     paragraph: $ => prec(-1, repeat1($._paragraph_line)),
 
@@ -1039,8 +1073,12 @@ module.exports = grammar({
     _CITE_BODY: _ => /[^\]]+/,
 
     // --- 8.5 Inline Source Blocks ---
+    // _INLINE_SRC_START is an external token that consumes 'src_' only when
+    // followed by a valid language-name start character.  This ensures the
+    // external scanner (not the plain_text scanner) controls the token boundary
+    // so the GLR parser can choose inline_source_block over plain_text.
     inline_source_block: $ => seq(
-      'src_',
+      $._INLINE_SRC_START,
       field('language', alias($._INLINE_LANG, $.inline_language)),
       optional(field('headers', $._inline_headers_group)),
       '{',
@@ -1052,6 +1090,22 @@ module.exports = grammar({
     _inline_headers_group: $ => seq('[', alias($._inline_headers, $.inline_headers), ']'),
     _inline_headers: _ => /[^\]\n]*/,
     _inline_body: _ => /[^}\n]*/,
+
+    // --- 8.5b Inline Babel Calls ---
+    // call_NAME[H1](ARGS)[H2]
+    // _INLINE_BABEL_START is an external token that consumes 'call_' only when
+    // followed by a valid function-name start character, giving the scanner
+    // priority over TOKEN_PLAIN_TEXT so the GLR parser can recognise the rule.
+    // prec.right resolves the optional-outside-header shift/reduce conflict.
+    inline_babel_call: $ => prec.right(seq(
+        $._INLINE_BABEL_START,
+        field('name', alias($._BABEL_CALL_NAME, $.call_name)),
+        optional($._babel_inside_header),
+        '(',
+        field('arguments', optional(alias($._BABEL_ARGS, $.call_arguments))),
+        ')',
+        optional($._babel_outside_header),
+    )),
 
     // --- 8.6 Line Breaks ---
     line_break: _ => seq(token(prec(1, '\\\\')), /[ \t]*/),
@@ -1249,7 +1303,7 @@ module.exports = grammar({
     // §9 Object Sets
     _object: $ => choice(
       $.export_snippet, $.footnote_reference, $.citation,
-      $.inline_source_block, $.line_break,
+      $.inline_source_block, $.inline_babel_call, $.line_break,
       $.regular_link, $.angle_link, $.plain_link,
       $.target, $.radio_target, $.timestamp,
       $.completion_counter,
@@ -1259,7 +1313,7 @@ module.exports = grammar({
 
     _object_nolb: $ => choice(
       $.export_snippet, $.footnote_reference, $.citation,
-      $.inline_source_block,
+      $.inline_source_block, $.inline_babel_call,
       $.regular_link, $.angle_link, $.plain_link,
       $.target, $.radio_target, $.timestamp,
       $.completion_counter,
@@ -1269,7 +1323,7 @@ module.exports = grammar({
 
     _object_nofn: $ => choice(
       $.export_snippet, $.citation,
-      $.inline_source_block, $.line_break,
+      $.inline_source_block, $.inline_babel_call, $.line_break,
       $.regular_link, $.angle_link, $.plain_link,
       $.target, $.radio_target, $.timestamp,
       $.completion_counter,
@@ -1278,7 +1332,7 @@ module.exports = grammar({
     ),
 
     _object_min: $ => choice(
-      $.export_snippet, $.inline_source_block, $.line_break,
+      $.export_snippet, $.inline_source_block, $.inline_babel_call, $.line_break,
       $.regular_link, $.angle_link, $.plain_link,
       $.target, $.radio_target, $.timestamp,
       $.completion_counter,
@@ -1288,7 +1342,7 @@ module.exports = grammar({
 
     _object_table: $ => choice(
       $.export_snippet, $.footnote_reference, $.citation,
-      $.inline_source_block,
+      $.inline_source_block, $.inline_babel_call,
       $.regular_link, $.angle_link, $.plain_link,
       $.target, $.radio_target, $.timestamp,
       $.completion_counter,
