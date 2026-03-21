@@ -131,7 +131,7 @@ static bool is_special_char(int32_t ch) {
           ch == '=' || ch == '~' || ch == '[' || ch == '<' ||
           ch == '\\' || ch == '@' ||
           ch == '#' || ch == ':' || ch == '|' || ch == '>' ||
-          ch == ']';
+          ch == ']' || ch == '{';
 }
 
 // ---------------------------------------------------------------------------
@@ -2128,6 +2128,42 @@ static bool scan_plain_text(Scanner *s, TSLexer *lexer, const bool *valid_symbol
         }
 
         s->prev_char = ch;
+        mark_end(lexer);
+        found_any = true;
+        continue;
+      }
+
+      // Stop plain_text before '{{{LETTER' which starts a macro.
+      // Single '{' and '{{' that are not followed by a third '{' + letter
+      // are consumed as plain text.
+      if (ch == '{') {
+        advance(lexer);                // consume first '{'
+        if (lookahead(lexer) != '{') {
+          // '{X' — include in plain text
+          s->prev_char = '{';
+          mark_end(lexer);
+          found_any = true;
+          continue;
+        }
+        advance(lexer);                // consume second '{'
+        if (lookahead(lexer) != '{') {
+          // '{{X' — include in plain text
+          s->prev_char = '{';
+          mark_end(lexer);
+          found_any = true;
+          continue;
+        }
+        advance(lexer);                // consume third '{'
+        int32_t name_ch = lookahead(lexer);
+        bool valid_macro_name_start =
+          (name_ch >= 'A' && name_ch <= 'Z') || (name_ch >= 'a' && name_ch <= 'z');
+        if (valid_macro_name_start) {
+          // '{{{LETTER' — looks like a macro; stop here so the grammar rule fires.
+          if (!found_any) return false;
+          break;
+        }
+        // '{{{' not followed by a letter — include as plain text
+        s->prev_char = '{';
         mark_end(lexer);
         found_any = true;
         continue;

@@ -21,6 +21,7 @@ from org_parser._nodes import (
     INLINE_SOURCE_BLOCK,
     ITALIC,
     LINE_BREAK,
+    MACRO,
     PARAGRAPH,
     PLAIN_LINK,
     PLAIN_TEXT,
@@ -44,6 +45,7 @@ from org_parser.text._inline import (
     InlineSourceBlock,
     Italic,
     LineBreak,
+    Macro,
     PlainLink,
     PlainText,
     RadioTarget,
@@ -342,6 +344,21 @@ def _parse_inline_node(  # noqa: PLR0911,PLR0912,PLR0915
             language=node_source(language_node, document),
             headers=headers,
             body=body,
+        )
+
+    if node_type == MACRO:
+        name_node = node.child_by_field_name("name")
+        args_node = node.child_by_field_name("arguments")
+        # args_node is the macro_arguments child; None when the macro has no
+        # argument list (either {{{name}}} or {{{name()}}}).  We distinguish
+        # the two via grammar structure: an empty () produces no macro_arguments
+        # child, so both cases yield arguments=None here, which is correct —
+        # the user-visible API does not distinguish them.
+        return Macro(
+            name=node_source(name_node, document),
+            arguments=node_source(args_node, document)
+            if args_node is not None
+            else None,
         )
 
     if node_type == PLAIN_LINK:

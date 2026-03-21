@@ -1107,6 +1107,26 @@ module.exports = grammar({
         optional($._babel_outside_header),
     )),
 
+    // --- 8.5c Macros ---
+    // {{{NAME}}}  |  {{{NAME(ARGUMENTS)}}}
+    // No external token needed: '{{{' is not ambiguous in plain_text since the
+    // scanner stops at '{{{' followed by a letter (see scanner.c).
+    macro: $ => seq(
+      '{{{',
+      field('name', alias($._MACRO_NAME, $.macro_name)),
+      optional(seq(
+        '(',
+        field('arguments', optional(alias($._MACRO_ARGS, $.macro_arguments))),
+        ')',
+      )),
+      '}}}',
+    ),
+
+    _MACRO_NAME: _ => /[A-Za-z][A-Za-z0-9_\-]*/,
+    // Argument content: any char except ')', newline, or the start of '}}}'.
+    // Stops before ')' so the enclosing seq can consume it.
+    _MACRO_ARGS: _ => /([^})\n]|}[^})\n]|}}[^})\n])*/,
+
     // --- 8.6 Line Breaks ---
     line_break: _ => seq(token(prec(1, '\\\\')), /[ \t]*/),
 
@@ -1303,7 +1323,7 @@ module.exports = grammar({
     // §9 Object Sets
     _object: $ => choice(
       $.export_snippet, $.footnote_reference, $.citation,
-      $.inline_source_block, $.inline_babel_call, $.line_break,
+      $.inline_source_block, $.inline_babel_call, $.macro, $.line_break,
       $.regular_link, $.angle_link, $.plain_link,
       $.target, $.radio_target, $.timestamp,
       $.completion_counter,
@@ -1313,7 +1333,7 @@ module.exports = grammar({
 
     _object_nolb: $ => choice(
       $.export_snippet, $.footnote_reference, $.citation,
-      $.inline_source_block, $.inline_babel_call,
+      $.inline_source_block, $.inline_babel_call, $.macro,
       $.regular_link, $.angle_link, $.plain_link,
       $.target, $.radio_target, $.timestamp,
       $.completion_counter,
@@ -1323,7 +1343,7 @@ module.exports = grammar({
 
     _object_nofn: $ => choice(
       $.export_snippet, $.citation,
-      $.inline_source_block, $.inline_babel_call, $.line_break,
+      $.inline_source_block, $.inline_babel_call, $.macro, $.line_break,
       $.regular_link, $.angle_link, $.plain_link,
       $.target, $.radio_target, $.timestamp,
       $.completion_counter,
@@ -1332,7 +1352,7 @@ module.exports = grammar({
     ),
 
     _object_min: $ => choice(
-      $.export_snippet, $.inline_source_block, $.inline_babel_call, $.line_break,
+      $.export_snippet, $.inline_source_block, $.inline_babel_call, $.macro, $.line_break,
       $.regular_link, $.angle_link, $.plain_link,
       $.target, $.radio_target, $.timestamp,
       $.completion_counter,
@@ -1342,7 +1362,7 @@ module.exports = grammar({
 
     _object_table: $ => choice(
       $.export_snippet, $.footnote_reference, $.citation,
-      $.inline_source_block, $.inline_babel_call,
+      $.inline_source_block, $.inline_babel_call, $.macro,
       $.regular_link, $.angle_link, $.plain_link,
       $.target, $.radio_target, $.timestamp,
       $.completion_counter,

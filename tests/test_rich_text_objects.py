@@ -17,6 +17,7 @@ from org_parser.text import (
     InlineSourceBlock,
     Italic,
     LineBreak,
+    Macro,
     PlainLink,
     PlainText,
     RadioTarget,
@@ -216,6 +217,10 @@ def test_programmatic_rich_text_construction_uses_public_objects() -> None:
             PlainText(" "),
             ExportSnippet("html", "<b>"),
             PlainText(" "),
+            Macro("version"),
+            PlainText(" "),
+            Macro("date", "%Y-%m-%d"),
+            PlainText(" "),
             LineBreak(),
         ]
     )
@@ -223,7 +228,7 @@ def test_programmatic_rich_text_construction_uses_public_objects() -> None:
         "A *bold* /italic/ _under_ +gone+ =raw= ~x()~ [2/5] https://example.org "
         "<https://example.org> [[id:abc][desc]] <<anchor>> <<<radio>>> "
         "<2025-01-01 Wed> [fn:a:d] [cite/t:@k] src_python[:results]{1+1} "
-        "@@html:<b>@@ \\\\"
+        "@@html:<b>@@ {{{version}}} {{{date(%Y-%m-%d)}}} \\\\"
     )
     assert str(rich_text) == expected
 
@@ -274,3 +279,80 @@ def test_timestamp_from_node_with_range_has_end(
     ranged = Timestamp.from_node(range_timestamp_node, document)
     assert ranged.end is not None
     assert ranged.end >= ranged.start
+
+
+def test_macro_str_no_arguments() -> None:
+    """Macro without arguments renders as {{{name}}}."""
+    macro = Macro("version")
+    assert str(macro) == "{{{version}}}"
+
+
+def test_macro_str_with_arguments() -> None:
+    """Macro with arguments renders as {{{name(args)}}}."""
+    macro = Macro("date", "%Y-%m-%d")
+    assert str(macro) == "{{{date(%Y-%m-%d)}}}"
+
+
+def test_macro_from_node_no_arguments(
+    example_file: Callable[[str], Path],
+) -> None:
+    """Macro with no arguments parses name correctly and arguments is None."""
+    path = example_file("macro-basic.org")
+    source = path.read_bytes()
+    tree = load_raw(path)
+    document = Document.from_tree(tree, path.name, source)
+    macro_node = _find_first_node_with_type(tree.root_node, "macro")
+
+    rt = RichText.from_node(macro_node, document=document)
+
+    assert len(rt.parts) == 1
+    macro = rt.parts[0]
+    assert isinstance(macro, Macro)
+    assert macro.name == "version"
+    assert macro.arguments is None
+
+
+def test_macro_from_node_with_arguments(
+    example_file: Callable[[str], Path],
+) -> None:
+    """Macro with arguments parses name and argument string correctly."""
+    path = example_file("macro-basic.org")
+    source = path.read_bytes()
+    tree = load_raw(path)
+    document = Document.from_tree(tree, path.name, source)
+
+    # Find the macro node that carries arguments — it is the second macro in
+    # the document (the first one after the heading with {{{date(%Y-%m-%d)}}}).
+    macro_nodes: list[tree_sitter.Node] = []
+    stack: list[tree_sitter.Node] = [tree.root_node]
+    while stack:
+        node = stack.pop()
+        if node.type == "macro":
+            macro_nodes.append(node)
+        stack.extend(reversed(node.children))
+
+    args_macro_node = next(
+        n for n in macro_nodes if n.child_by_field_name("arguments") is not None
+    )
+    rt = RichText.from_node(args_macro_node, document=document)
+
+    assert len(rt.parts) == 1
+    macro = rt.parts[0]
+    assert isinstance(macro, Macro)
+    assert macro.name == "date"
+    assert macro.arguments == "%Y-%m-%d"
+
+
+def test_macro_parsed_from_loads(tmp_path: Path) -> None:
+    """loads() surfaces Macro objects from inline macro call syntax."""
+    content = "{{{name}}}\n"
+    path = tmp_path / "macro-inline.org"
+    path.write_text(content, encoding="utf-8")
+    tree = load_raw(path)
+    document = loads(content)
+    paragraph = _find_first_node_with_type(tree.root_node, "paragraph")
+    rich_text = RichText.from_node(paragraph, document=document)
+    macro_parts = [p for p in rich_text.parts if isinstance(p, Macro)]
+    assert len(macro_parts) == 1
+    assert macro_parts[0].name == "name"
+    assert macro_parts[0].arguments is None

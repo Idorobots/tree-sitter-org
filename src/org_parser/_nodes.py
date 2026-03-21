@@ -44,6 +44,9 @@ __all__ = [
     "LINE_BREAK",
     "LIST_ITEM",
     "LOGBOOK_DRAWER",
+    "MACRO",
+    "MACRO_ARGUMENTS",
+    "MACRO_NAME",
     "NODE_PROPERTY",
     "ORG_TABLE",
     "PARAGRAPH",
@@ -196,6 +199,9 @@ INLINE_HEADERS = "inline_headers"
 INLINE_SOURCE_BLOCK = "inline_source_block"
 ITALIC = "italic"
 LINE_BREAK = "line_break"
+MACRO = "macro"
+MACRO_ARGUMENTS = "macro_arguments"
+MACRO_NAME = "macro_name"
 PLAIN_LINK = "plain_link"
 PLAIN_TEXT = "plain_text"
 RADIO_TARGET = "radio_target"

@@ -23,6 +23,7 @@ __all__ = [
     "InlineSourceBlock",
     "Italic",
     "LineBreak",
+    "Macro",
     "PlainLink",
     "PlainText",
     "RadioTarget",
@@ -223,6 +224,20 @@ class InlineSourceBlock(_InlineBase):
         headers = f"[{self.headers}]" if self.headers is not None else ""
         body = self.body if self.body is not None else ""
         return f"src_{self.language}{headers}{{{body}}}"
+
+
+@dataclass(frozen=True, slots=True)
+class Macro(_InlineBase):
+    """Macro call object, e.g. ``{{{name}}}`` or ``{{{name(args)}}}``."""
+
+    name: str
+    arguments: str | None = None
+
+    def __str__(self) -> str:
+        """Render macro call."""
+        if self.arguments is not None:
+            return "{{{" + self.name + "(" + self.arguments + ")}}}"
+        return "{{{" + self.name + "}}}"
 
 
 @dataclass(frozen=True, slots=True)
