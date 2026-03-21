@@ -31,6 +31,8 @@ __all__ = [
     "RadioTarget",
     "RegularLink",
     "StrikeThrough",
+    "Subscript",
+    "Superscript",
     "Target",
     "Timestamp",
     "Underline",
@@ -176,6 +178,38 @@ class StrikeThrough(_InlineBase):
     def __str__(self) -> str:
         """Render strike-through markup."""
         return f"+{_render_parts(self.body)}+"
+
+
+@dataclass(frozen=True, slots=True)
+class Subscript(_InlineBase):
+    """Subscript inline object."""
+
+    body: list[InlineObject]
+    form: str = "{}"
+
+    def __str__(self) -> str:
+        """Render subscript markup."""
+        if self.form == "*":
+            return "_*"
+        if self.form == "()":
+            return f"_({_render_parts(self.body)})"
+        return f"_{{{_render_parts(self.body)}}}"
+
+
+@dataclass(frozen=True, slots=True)
+class Superscript(_InlineBase):
+    """Superscript inline object."""
+
+    body: list[InlineObject]
+    form: str = "{}"
+
+    def __str__(self) -> str:
+        """Render superscript markup."""
+        if self.form == "*":
+            return "^*"
+        if self.form == "()":
+            return f"^({_render_parts(self.body)})"
+        return f"^{{{_render_parts(self.body)}}}"
 
 
 @dataclass(frozen=True, slots=True)

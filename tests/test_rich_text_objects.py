@@ -25,6 +25,8 @@ from org_parser.text import (
     RegularLink,
     RichText,
     StrikeThrough,
+    Subscript,
+    Superscript,
     Target,
     Underline,
     Verbatim,
@@ -458,3 +460,81 @@ def test_entity_included_in_programmatic_richtext() -> None:
     )
     assert "\\alpha" in str(rt)
     assert "\\_ " in str(rt)
+
+
+def test_subscript_brace_form_parsed(tmp_path: Path) -> None:
+    """Subscript brace form parses into Subscript with inline body."""
+    content = "x_{i+1}\n"
+    path = tmp_path / "subscript-brace.org"
+    path.write_text(content, encoding="utf-8")
+    document = loads(content)
+    tree = load_raw(path)
+    paragraph = _find_first_node_with_type(tree.root_node, "paragraph")
+    rich_text = RichText.from_node(paragraph, document=document)
+
+    subscript_parts = [p for p in rich_text.parts if isinstance(p, Subscript)]
+    assert len(subscript_parts) == 1
+    assert subscript_parts[0].form == "{}"
+    assert str(subscript_parts[0]) == "_{i+1}"
+
+
+def test_superscript_paren_form_parsed(tmp_path: Path) -> None:
+    """Superscript paren form parses into Superscript with inline body."""
+    content = "x^(n-1)\n"
+    path = tmp_path / "superscript-paren.org"
+    path.write_text(content, encoding="utf-8")
+    document = loads(content)
+    tree = load_raw(path)
+    paragraph = _find_first_node_with_type(tree.root_node, "paragraph")
+    rich_text = RichText.from_node(paragraph, document=document)
+
+    superscript_parts = [p for p in rich_text.parts if isinstance(p, Superscript)]
+    assert len(superscript_parts) == 1
+    assert superscript_parts[0].form == "()"
+    assert str(superscript_parts[0]) == "^(n-1)"
+
+
+def test_script_star_forms_parse(tmp_path: Path) -> None:
+    """Star forms ``_*`` and ``^*`` parse as script objects."""
+    content = "x_* and y^*\n"
+    path = tmp_path / "script-star.org"
+    path.write_text(content, encoding="utf-8")
+    document = loads(content)
+    tree = load_raw(path)
+    paragraph = _find_first_node_with_type(tree.root_node, "paragraph")
+    rich_text = RichText.from_node(paragraph, document=document)
+
+    assert any(
+        isinstance(part, Subscript) and part.form == "*" for part in rich_text.parts
+    )
+    assert any(
+        isinstance(part, Superscript) and part.form == "*" for part in rich_text.parts
+    )
+
+
+def test_caret_non_script_stays_plain_text(tmp_path: Path) -> None:
+    """Caret not followed by script form remains plain text."""
+    content = "foo^bar\n"
+    path = tmp_path / "script-caret-plain.org"
+    path.write_text(content, encoding="utf-8")
+    document = loads(content)
+    tree = load_raw(path)
+    paragraph = _find_first_node_with_type(tree.root_node, "paragraph")
+    rich_text = RichText.from_node(paragraph, document=document)
+
+    assert not any(isinstance(part, Superscript) for part in rich_text.parts)
+    assert str(rich_text) == content
+
+
+def test_underscore_word_non_script_stays_plain_text(tmp_path: Path) -> None:
+    """Underscore words are not interpreted as subscript."""
+    content = "Fixed_Width stays text\n"
+    path = tmp_path / "script-underscore-plain.org"
+    path.write_text(content, encoding="utf-8")
+    document = loads(content)
+    tree = load_raw(path)
+    paragraph = _find_first_node_with_type(tree.root_node, "paragraph")
+    rich_text = RichText.from_node(paragraph, document=document)
+
+    assert not any(isinstance(part, Subscript) for part in rich_text.parts)
+    assert str(rich_text) == content

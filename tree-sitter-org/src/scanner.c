@@ -128,7 +128,7 @@ static bool is_markup_post_for_marker(int32_t marker, int32_t ch) {
 // that might start an object, markup, element, or special syntax.
 static bool is_special_char(int32_t ch) {
   return ch == '*' || ch == '/' || ch == '_' || ch == '+' ||
-          ch == '=' || ch == '~' || ch == '[' || ch == '<' ||
+          ch == '=' || ch == '~' || ch == '^' || ch == '[' || ch == '<' ||
           ch == '\\' || ch == '@' ||
           ch == '#' || ch == ':' || ch == '|' || ch == '>' ||
           ch == ']' || ch == '{';
@@ -1872,6 +1872,16 @@ static bool scan_plain_text(Scanner *s, TSLexer *lexer, const bool *valid_symbol
           }
         }
 
+        // Script candidate: x_*, x_{...}, x_(...).
+        // Keep '_' available for grammar-level subscript parsing instead of
+        // consuming it as plain text or underline marker.
+        if (ch == '_' && prev_before_marker != ' ' && prev_before_marker != '\t' &&
+            prev_before_marker != '\n' && prev_before_marker != 0 &&
+            (lookahead(lexer) == '*' || lookahead(lexer) == '{' || lookahead(lexer) == '(')) {
+          if (!found_any) return false;
+          break;
+        }
+
         if (s->prev_char != ' ' && s->prev_char != '\t' && s->prev_char != '\n' &&
             (eof(lexer) || is_markup_post_for_marker(ch, lookahead(lexer))) &&
             is_marker_open(s, ch)) {
@@ -1984,6 +1994,23 @@ static bool scan_plain_text(Scanner *s, TSLexer *lexer, const bool *valid_symbol
         }
 
         s->prev_char = '@';
+        mark_end(lexer);
+        found_any = true;
+        continue;
+      }
+
+      if (ch == '^') {
+        advance(lexer);
+
+        // Script candidate: x^*, x^{...}, x^(...).
+        if (s->prev_char != ' ' && s->prev_char != '\t' && s->prev_char != '\n' &&
+            s->prev_char != 0 &&
+            (lookahead(lexer) == '*' || lookahead(lexer) == '{' || lookahead(lexer) == '(')) {
+          if (!found_any) return false;
+          break;
+        }
+
+        s->prev_char = '^';
         mark_end(lexer);
         found_any = true;
         continue;

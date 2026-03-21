@@ -68,6 +68,8 @@ __all__ = [
     "SPECIAL_KEYWORD",
     "SRC_BLOCK",
     "STRIKE_THROUGH",
+    "SUBSCRIPT",
+    "SUPERSCRIPT",
     "TABLEEL_TABLE",
     "TABLE_CELL",
     "TABLE_ROW",
@@ -213,6 +215,8 @@ PLAIN_TEXT = "plain_text"
 RADIO_TARGET = "radio_target"
 REGULAR_LINK = "regular_link"
 STRIKE_THROUGH = "strike_through"
+SUBSCRIPT = "subscript"
+SUPERSCRIPT = "superscript"
 TARGET = "target"
 UNDERLINE = "underline"
 VERBATIM = "verbatim"

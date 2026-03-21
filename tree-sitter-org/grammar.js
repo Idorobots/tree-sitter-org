@@ -1332,7 +1332,34 @@ module.exports = grammar({
       /\\_[ \t]+/,
     )),
 
-    // --- 8.12 Plain Text ---
+    // --- 8.12 Subscript / Superscript ---
+    // Restricted forms only:
+    //   _* / ^*
+    //   _{...} / ^{...}
+    //   _(...) / ^(...)
+    //
+    // The inner text for bracketed forms is captured as raw script_text and
+    // parsed into inline objects in the Python wrapper.
+    subscript: $ => seq(
+      '_',
+      field('body', $._script_form),
+    ),
+
+    superscript: $ => seq(
+      '^',
+      field('body', $._script_form),
+    ),
+
+    _script_form: $ => choice(
+      alias('*', $.script_text),
+      seq('{', alias($._SCRIPT_BRACE_TEXT, $.script_text), '}'),
+      seq('(', alias($._SCRIPT_PAREN_TEXT, $.script_text), ')'),
+    ),
+
+    _SCRIPT_BRACE_TEXT: _ => /[^{}\n]*/,
+    _SCRIPT_PAREN_TEXT: _ => /[^()\n]*/,
+
+    // --- 8.13 Plain Text ---
     // Plain text is handled by the external scanner to keep prev_char
     // tracking coherent for markup PRE/POST constraints.
     plain_text: $ => $._PLAIN_TEXT,
@@ -1345,6 +1372,7 @@ module.exports = grammar({
       $.target, $.radio_target, $.timestamp,
       $.completion_counter,
       $.entity,
+      $.subscript, $.superscript,
       $.bold, $.italic, $.underline, $.strike_through,
       $.verbatim, $.code, $.plain_text,
     ),
@@ -1356,6 +1384,7 @@ module.exports = grammar({
       $.target, $.radio_target, $.timestamp,
       $.completion_counter,
       $.entity,
+      $.subscript, $.superscript,
       $.bold, $.italic, $.underline, $.strike_through,
       $.verbatim, $.code, $.plain_text,
     ),
@@ -1367,6 +1396,7 @@ module.exports = grammar({
       $.target, $.radio_target, $.timestamp,
       $.completion_counter,
       $.entity,
+      $.subscript, $.superscript,
       $.bold, $.italic, $.underline, $.strike_through,
       $.verbatim, $.code, $.plain_text,
     ),
@@ -1377,6 +1407,7 @@ module.exports = grammar({
       $.target, $.radio_target, $.timestamp,
       $.completion_counter,
       $.entity,
+      $.subscript, $.superscript,
       $.bold, $.italic, $.underline, $.strike_through,
       $.verbatim, $.code, $.plain_text,
     ),
@@ -1388,6 +1419,7 @@ module.exports = grammar({
       $.target, $.radio_target, $.timestamp,
       $.completion_counter,
       $.entity,
+      $.subscript, $.superscript,
       $.bold, $.italic, $.underline, $.strike_through,
       $.verbatim, $.code, $.plain_text,
     ),

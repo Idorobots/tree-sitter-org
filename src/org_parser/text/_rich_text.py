@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from org_parser._lang import PARSER
 from org_parser._node import is_error_node, node_source
 from org_parser._nodes import (
     ANGLE_LINK,
@@ -30,6 +31,8 @@ from org_parser._nodes import (
     RADIO_TARGET,
     REGULAR_LINK,
     STRIKE_THROUGH,
+    SUBSCRIPT,
+    SUPERSCRIPT,
     TARGET,
     TIMESTAMP,
     UNDERLINE,
@@ -55,6 +58,8 @@ from org_parser.text._inline import (
     RadioTarget,
     RegularLink,
     StrikeThrough,
+    Subscript,
+    Superscript,
     Target,
     Underline,
     Verbatim,
@@ -420,6 +425,30 @@ def _parse_inline_node(  # noqa: PLR0911,PLR0912,PLR0915
     if node_type == TIMESTAMP:
         return Timestamp.from_node(node, document)
 
+    if node_type == SUBSCRIPT:
+        source_text = document.source_for(node).decode()
+        if source_text.startswith("_*"):
+            return Subscript(body=[PlainText("*")], form="*")
+        if source_text.startswith("_{") and source_text.endswith("}"):
+            return Subscript(body=_parse_inline_fragment(source_text[2:-1]), form="{}")
+        if source_text.startswith("_(") and source_text.endswith(")"):
+            return Subscript(body=_parse_inline_fragment(source_text[2:-1]), form="()")
+        return PlainText(source_text)
+
+    if node_type == SUPERSCRIPT:
+        source_text = document.source_for(node).decode()
+        if source_text.startswith("^*"):
+            return Superscript(body=[PlainText("*")], form="*")
+        if source_text.startswith("^{") and source_text.endswith("}"):
+            return Superscript(
+                body=_parse_inline_fragment(source_text[2:-1]), form="{}"
+            )
+        if source_text.startswith("^(") and source_text.endswith(")"):
+            return Superscript(
+                body=_parse_inline_fragment(source_text[2:-1]), form="()"
+            )
+        return PlainText(source_text)
+
     if node_type == ENTITY:
         source_text = document.source_for(node).decode()
         if source_text.startswith("\\_"):
@@ -448,3 +477,52 @@ def _extract_citation_style(text: str) -> str | None:
     if not prefix.startswith("[cite/"):
         return None
     return prefix[len("[cite/") :]
+
+
+def _parse_inline_fragment(fragment: str) -> list[InlineObject]:
+    """Parse an inline fragment string into inline objects.
+
+    Args:
+        fragment: Fragment text that may contain inline Org objects.
+
+    Returns:
+        Parsed inline objects for *fragment*.
+    """
+    if fragment == "":
+        return []
+
+    from org_parser.document._document import Document
+
+    source = f"{fragment}\n".encode()
+    tree = PARSER.parse(source)
+    parsed_document = Document.from_tree(tree, "", source)
+    paragraph = _find_first_node_by_type(tree.root_node, PARAGRAPH)
+    if paragraph is None:
+        return [PlainText(fragment)]
+
+    parts = _parse_inline_nodes(paragraph.named_children, parsed_document)
+    if parts and isinstance(parts[-1], PlainText) and parts[-1].text == "\n":
+        return parts[:-1]
+    return parts
+
+
+def _find_first_node_by_type(
+    root: tree_sitter.Node,
+    node_type: str,
+) -> tree_sitter.Node | None:
+    """Find the first node in *root* with matching type.
+
+    Args:
+        root: Root tree-sitter node to search.
+        node_type: Target node type to locate.
+
+    Returns:
+        First matching node, or ``None`` when no such node exists.
+    """
+    stack: list[tree_sitter.Node] = [root]
+    while stack:
+        node = stack.pop()
+        if node.type == node_type:
+            return node
+        stack.extend(reversed(node.children))
+    return None

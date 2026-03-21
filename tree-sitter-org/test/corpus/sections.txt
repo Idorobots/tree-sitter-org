@@ -477,6 +477,9 @@ Escaped closing bracket stays plain text
     (paragraph
       (entity)
       (plain_text)
+      (superscript
+        body: (script_text))
+      (plain_text)
       (entity)
       (plain_text)
       (entity)
