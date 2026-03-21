@@ -229,6 +229,32 @@ Result: call_double(n=2) is the answer.
       (newline))))
 
 ================
+Inline babel prefix without call syntax
+================
+call_partial[header] just text
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (plain_text)
+      (newline))))
+
+================
+Inline src prefix without src syntax
+================
+src_python[header] just text
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (plain_text)
+      (newline))))
+
+================
 Macro — no arguments
 ================
 {{{name}}}

@@ -4442,6 +4442,31 @@ Please update the grammar to handle tableel tables correctly - the entire block 
 This example should parse as a single table.el table, and not extract any structure.
 Please add support for these degenerate tables in the Python wrapper. Split the Table.el semantic node into a separate class and make the current =Table= only handle proper org tables.
 
+** DONE Code review comments
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-22 Sun 00:43]
+:END:
+Fix the following issues:
+
+- **High:** =tableel_table= regex in =tree-sitter-org/grammar.js= can over-consume following =+ ...= lines (e.g., list items) into the table node.
+
+  - **Medium:** scanner prefix detection for inline =call_...= / =src_...= in =tree-sitter-org/src/scanner.c= can emit start tokens too early, causing parse errors for plain text that only starts with those prefixes but does not have valid inline syntax.
+
+** DONE Indent parse regression
+It seems that a recent fix introduced a regression:
+#+begin_example
+  :LOGBOOK:
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-22 Sun 01:03]
+:END:
+  - State "CANCELLED"  from "TODO"       [2025-03-14 pią 13:11] \\
+    Misse dit.
+  :END:
+  
+#+end_example
+
+Note the trailing line with spaces in it - the removal of this whitespace makes the parser work properly. This case should be handled and the blank line should be treated as part of the indent block.
+
 * Semantic nodes dev experience
 ** Convenience fields
 Add extra fields for convevience:

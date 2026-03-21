@@ -242,10 +242,12 @@ module.exports = grammar({
     block: $ => prec.right(seq(
       field('indent', alias($._BLOCK_BEGIN, $.indent)),
       field('body', choice(
+        $.blank_line,
         $.block,
         $._section_element_no_block,
       )),
       repeat(field('body', choice(
+        $.blank_line,
         $.block,
         seq($._INDENT, $._section_element_no_block),
       ))),
@@ -647,7 +649,7 @@ module.exports = grammar({
     ),
 
     tableel_table: _ => token(prec(1,
-      /[ \t]*\+-[^\n]*\n(?:[ \t]*[|+][^\n]*\n)+/
+      /[ \t]*\+-[^\n]*\n(?:[ \t]*\|[^\n]*\n|[ \t]*\+-[^\n]*\n)+/
     )),
 
     // §7 Lesser Elements

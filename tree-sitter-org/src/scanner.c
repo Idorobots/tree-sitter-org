@@ -1310,6 +1310,104 @@ static bool is_angle_email_char(int32_t ch) {
          ch == '{' || ch == '|' || ch == '}' || ch == '~' || ch == '-';
 }
 
+static bool is_inline_babel_name_char(int32_t ch) {
+  return ch != ' ' && ch != '\t' && ch != '\n' &&
+         ch != '[' && ch != ']' && ch != '(' && ch != ')' &&
+         ch != 0;
+}
+
+static bool is_inline_src_lang_char(int32_t ch) {
+  return ch != ' ' && ch != '\t' && ch != '\n' &&
+         ch != '[' && ch != '{' && ch != 0;
+}
+
+static bool consume_bracket_group_on_line(TSLexer *lexer, int32_t *last_consumed) {
+  if (lookahead(lexer) != '[') return false;
+  *last_consumed = '[';
+  advance(lexer);
+
+  while (!eof(lexer) && lookahead(lexer) != '\n') {
+    int32_t ch = lookahead(lexer);
+    *last_consumed = ch;
+    advance(lexer);
+    if (ch == ']') return true;
+  }
+
+  return false;
+}
+
+static bool consume_paren_group_on_line(TSLexer *lexer, int32_t *last_consumed) {
+  if (lookahead(lexer) != '(') return false;
+  *last_consumed = '(';
+  advance(lexer);
+
+  while (!eof(lexer) && lookahead(lexer) != '\n') {
+    int32_t ch = lookahead(lexer);
+    *last_consumed = ch;
+    advance(lexer);
+    if (ch == ')') return true;
+  }
+
+  return false;
+}
+
+static bool consume_brace_group_on_line(TSLexer *lexer, int32_t *last_consumed) {
+  if (lookahead(lexer) != '{') return false;
+  *last_consumed = '{';
+  advance(lexer);
+
+  while (!eof(lexer) && lookahead(lexer) != '\n') {
+    int32_t ch = lookahead(lexer);
+    *last_consumed = ch;
+    advance(lexer);
+    if (ch == '}') return true;
+  }
+
+  return false;
+}
+
+static bool probe_inline_babel_after_prefix(TSLexer *lexer, int32_t *last_consumed) {
+  int32_t ch = lookahead(lexer);
+  if (!is_inline_babel_name_char(ch)) return false;
+
+  while (is_inline_babel_name_char(lookahead(lexer))) {
+    ch = lookahead(lexer);
+    *last_consumed = ch;
+    advance(lexer);
+  }
+
+  if (lookahead(lexer) == '[') {
+    if (!consume_bracket_group_on_line(lexer, last_consumed)) return false;
+  }
+
+  if (!consume_paren_group_on_line(lexer, last_consumed)) return false;
+
+  if (lookahead(lexer) == '[') {
+    if (!consume_bracket_group_on_line(lexer, last_consumed)) return false;
+  }
+
+  return true;
+}
+
+static bool probe_inline_src_after_prefix(TSLexer *lexer, int32_t *last_consumed) {
+  int32_t ch = lookahead(lexer);
+  if (!is_inline_src_lang_char(ch)) return false;
+
+  while (is_inline_src_lang_char(lookahead(lexer))) {
+    ch = lookahead(lexer);
+    *last_consumed = ch;
+    advance(lexer);
+  }
+
+  if (lookahead(lexer) == '[') {
+    if (!consume_bracket_group_on_line(lexer, last_consumed)) return false;
+  }
+
+  if (!consume_brace_group_on_line(lexer, last_consumed)) return false;
+
+  return true;
+}
+
 static bool probe_date_like_then_closing(TSLexer *lexer, int32_t closing) {
   for (int i = 0; i < 4; i++) {
     if (!is_ascii_digit(lookahead(lexer))) return false;
@@ -1541,22 +1639,27 @@ static bool probe_markup_close_in_rest_of_line(
 // ---------------------------------------------------------------------------
 static bool scan_inline_babel_start(Scanner *s, TSLexer *lexer) {
   if (lookahead(lexer) != 'c') return false;
+  int32_t last_consumed = 'c';
   advance(lexer);
-  if (lookahead(lexer) != 'a') { s->prev_char = 'c'; return false; }
+  if (lookahead(lexer) != 'a') { s->prev_char = last_consumed; return false; }
+  last_consumed = 'a';
   advance(lexer);
-  if (lookahead(lexer) != 'l') { s->prev_char = 'a'; return false; }
+  if (lookahead(lexer) != 'l') { s->prev_char = last_consumed; return false; }
+  last_consumed = 'l';
   advance(lexer);
-  if (lookahead(lexer) != 'l') { s->prev_char = 'l'; return false; }
+  if (lookahead(lexer) != 'l') { s->prev_char = last_consumed; return false; }
   advance(lexer);
-  if (lookahead(lexer) != '_') { s->prev_char = 'l'; return false; }
+  if (lookahead(lexer) != '_') { s->prev_char = last_consumed; return false; }
+  last_consumed = '_';
   advance(lexer);
-  int32_t next = lookahead(lexer);
-  if (next == ' ' || next == '\t' || next == '\n' ||
-      next == '[' || next == ']' || next == '(' || next == ')' || eof(lexer)) {
-    s->prev_char = '_';
+
+  mark_end(lexer);
+
+  if (!probe_inline_babel_after_prefix(lexer, &last_consumed)) {
+    s->prev_char = last_consumed;
     return false;
   }
-  mark_end(lexer);
+
   lexer->result_symbol = TOKEN_INLINE_BABEL_START;
   return true;
 }
@@ -1570,20 +1673,25 @@ static bool scan_inline_babel_start(Scanner *s, TSLexer *lexer) {
 // ---------------------------------------------------------------------------
 static bool scan_inline_src_start(Scanner *s, TSLexer *lexer) {
   if (lookahead(lexer) != 's') return false;
+  int32_t last_consumed = 's';
   advance(lexer);
-  if (lookahead(lexer) != 'r') { s->prev_char = 's'; return false; }
+  if (lookahead(lexer) != 'r') { s->prev_char = last_consumed; return false; }
+  last_consumed = 'r';
   advance(lexer);
-  if (lookahead(lexer) != 'c') { s->prev_char = 'r'; return false; }
+  if (lookahead(lexer) != 'c') { s->prev_char = last_consumed; return false; }
+  last_consumed = 'c';
   advance(lexer);
-  if (lookahead(lexer) != '_') { s->prev_char = 'c'; return false; }
+  if (lookahead(lexer) != '_') { s->prev_char = last_consumed; return false; }
+  last_consumed = '_';
   advance(lexer);
-  int32_t next = lookahead(lexer);
-  if (next == ' ' || next == '\t' || next == '\n' ||
-      next == '[' || next == '{' || eof(lexer)) {
-    s->prev_char = '_';
+
+  mark_end(lexer);
+
+  if (!probe_inline_src_after_prefix(lexer, &last_consumed)) {
+    s->prev_char = last_consumed;
     return false;
   }
-  mark_end(lexer);
+
   lexer->result_symbol = TOKEN_INLINE_SRC_START;
   return true;
 }
@@ -2681,7 +2789,8 @@ static int scan_block_end(Scanner *s, TSLexer *lexer, const bool *valid_symbols)
   int32_t ch = lookahead(lexer);
   uint16_t current = s->section_block_indents[s->section_block_depth - 1];
 
-  if (indent_col > current && !eof(lexer) && valid_symbols[TOKEN_BLOCK_BEGIN]) {
+  if (indent_col > current && !eof(lexer) && ch != '\n' &&
+      valid_symbols[TOKEN_BLOCK_BEGIN]) {
     if (s->section_block_depth >= MAX_LIST_DEPTH) return -1;
     s->section_block_indents[s->section_block_depth] = (uint16_t)indent_col;
     s->section_block_depth++;

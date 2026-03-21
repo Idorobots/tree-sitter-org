@@ -648,6 +648,44 @@ Unindented LOGBOOK drawer with continuation note
             (newline)))))))
 
 ================
+Indented LOGBOOK note with indented blank line
+================
+* H
+  :LOGBOOK:
+  - State "CANCELLED"  from "TODO"       [2025-03-14 pią 13:11] \\
+    Misse dit.
+    
+  :END:
+
+---
+
+(document
+  (heading
+    stars: (stars)
+    title: (plain_text)
+    body: (section
+      (block
+        indent: (indent)
+        body: (logbook_drawer
+          body: (list_item
+            bullet: (unordered_bullet)
+            first_line: (plain_text)
+            first_line: (timestamp
+              year: (ts_year)
+              month: (ts_month)
+              day: (ts_day)
+              dayname: (ts_dayname)
+              time: (ts_time))
+            first_line: (plain_text)
+            first_line: (line_break))
+          body: (block
+            indent: (indent)
+            body: (paragraph
+              (plain_text)
+              (newline))
+            body: (blank_line)))))))
+
+================
 LOGBOOK drawer start line with inline text and unindented list
 ================
 *** DONE Test
