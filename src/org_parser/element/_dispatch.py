@@ -17,6 +17,7 @@ from functools import lru_cache
 from typing import TYPE_CHECKING
 
 from org_parser._nodes import (
+    BABEL_CALL,
     BLANK_LINE,
     CAPTION_KEYWORD,
     CENTER_BLOCK,
@@ -72,6 +73,7 @@ def body_element_factories() -> dict[str, Callable[..., Element]]:
     # (_block imports _drawer lazily; _drawer imports _block at module level;
     #  _dispatch is imported by all three at module level, so it must not
     #  import any of them at module level itself.)
+    from org_parser.element._babel import BabelCall
     from org_parser.element._block import (
         CenterBlock,
         CommentBlock,
@@ -98,6 +100,7 @@ def body_element_factories() -> dict[str, Callable[..., Element]]:
     from org_parser.time import Clock
 
     return {
+        BABEL_CALL: BabelCall.from_node,
         PARAGRAPH: Paragraph.from_node,
         ORG_TABLE: Table.from_node,
         TABLEEL_TABLE: Table.from_node,

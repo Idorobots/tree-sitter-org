@@ -14,6 +14,7 @@ from __future__ import annotations
 __all__ = [
     "ANGLE_LINK",
     "AUTHOR",
+    "BABEL_CALL",
     "BLANK_LINE",
     "BLOCK",
     "BOLD",
@@ -38,6 +39,7 @@ __all__ = [
     "FOOTNOTE_REFERENCE",
     "HEADING",
     "HORIZONTAL_RULE",
+    "INLINE_BABEL_CALL",
     "INLINE_HEADERS",
     "INLINE_SOURCE_BLOCK",
     "ITALIC",
@@ -152,6 +154,7 @@ PROPERTY_DRAWER = "property_drawer"
 # Element types
 # ---------------------------------------------------------------------------
 
+BABEL_CALL = "babel_call"
 BLANK_LINE = "blank_line"
 BLOCK = "block"
 CAPTION_KEYWORD = "caption_keyword"
@@ -195,6 +198,7 @@ CITATION = "citation"
 CODE = "code"
 EXPORT_SNIPPET = "export_snippet"
 FOOTNOTE_REFERENCE = "footnote_reference"
+INLINE_BABEL_CALL = "inline_babel_call"
 INLINE_HEADERS = "inline_headers"
 INLINE_SOURCE_BLOCK = "inline_source_block"
 ITALIC = "italic"

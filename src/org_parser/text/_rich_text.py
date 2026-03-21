@@ -17,6 +17,7 @@ from org_parser._nodes import (
     COMPLETION_COUNTER,
     EXPORT_SNIPPET,
     FOOTNOTE_REFERENCE,
+    INLINE_BABEL_CALL,
     INLINE_HEADERS,
     INLINE_SOURCE_BLOCK,
     ITALIC,
@@ -41,6 +42,7 @@ from org_parser.text._inline import (
     CompletionCounter,
     ExportSnippet,
     FootnoteReference,
+    InlineBabelCall,
     InlineObject,
     InlineSourceBlock,
     Italic,
@@ -358,6 +360,24 @@ def _parse_inline_node(  # noqa: PLR0911,PLR0912,PLR0915
             name=node_source(name_node, document),
             arguments=node_source(args_node, document)
             if args_node is not None
+            else None,
+        )
+
+    if node_type == INLINE_BABEL_CALL:
+        name_node = node.child_by_field_name("name")
+        args_node = node.child_by_field_name("arguments")
+        inside_node = node.child_by_field_name("inside_header")
+        outside_node = node.child_by_field_name("outside_header")
+        return InlineBabelCall(
+            name=node_source(name_node, document),
+            arguments=node_source(args_node, document)
+            if args_node is not None
+            else None,
+            inside_header=node_source(inside_node, document)
+            if inside_node is not None
+            else None,
+            outside_header=node_source(outside_node, document)
+            if outside_node is not None
             else None,
         )
 

@@ -19,6 +19,7 @@ __all__ = [
     "CompletionCounter",
     "ExportSnippet",
     "FootnoteReference",
+    "InlineBabelCall",
     "InlineObject",
     "InlineSourceBlock",
     "Italic",
@@ -238,6 +239,33 @@ class Macro(_InlineBase):
         if self.arguments is not None:
             return "{{{" + self.name + "(" + self.arguments + ")}}}"
         return "{{{" + self.name + "}}}"
+
+
+@dataclass(frozen=True, slots=True)
+class InlineBabelCall(_InlineBase):
+    """Inline babel call object, e.g. ``call_double[:exports none](n=4)``.
+
+    Represents the inline form of an Org babel call that can appear inside
+    paragraph text and heading titles.
+
+    Args:
+        name: The called function name.
+        arguments: Optional argument string inside ``(…)``.
+        inside_header: Optional header string inside the first ``[…]``.
+        outside_header: Optional header string inside the second ``[…]``.
+    """
+
+    name: str
+    arguments: str | None = None
+    inside_header: str | None = None
+    outside_header: str | None = None
+
+    def __str__(self) -> str:
+        """Render inline babel call."""
+        inside = f"[{self.inside_header}]" if self.inside_header is not None else ""
+        args = self.arguments if self.arguments is not None else ""
+        outside = f"[{self.outside_header}]" if self.outside_header is not None else ""
+        return f"call_{self.name}{inside}({args}){outside}"
 
 
 @dataclass(frozen=True, slots=True)

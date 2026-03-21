@@ -10,6 +10,7 @@ known Org element node types; unknown or error nodes are recovered as a
 :class:`Paragraph` wrapping the verbatim source text.
 """
 
+from org_parser.element._babel import BabelCall
 from org_parser.element._block import (
     CenterBlock,
     CommentBlock,
@@ -42,6 +43,7 @@ from org_parser.element._structure import (
 from org_parser.element._table import Table, TableCell, TableRow, TableRuleRow
 
 __all__ = [
+    "BabelCall",
     "BlankLine",
     "CaptionKeyword",
     "CenterBlock",
