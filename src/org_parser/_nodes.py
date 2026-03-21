@@ -32,6 +32,7 @@ __all__ = [
     "DESCRIPTION",
     "DRAWER",
     "DYNAMIC_BLOCK",
+    "ENTITY",
     "EXAMPLE_BLOCK",
     "EXPORT_BLOCK",
     "EXPORT_SNIPPET",
@@ -194,6 +195,7 @@ TBLFM_LINE = "tblfm_line"
 
 ANGLE_LINK = "angle_link"
 BOLD = "bold"
+ENTITY = "entity"
 CITATION = "citation"
 CODE = "code"
 EXPORT_SNIPPET = "export_snippet"

@@ -15,6 +15,7 @@ from org_parser._nodes import (
     CITATION,
     CODE,
     COMPLETION_COUNTER,
+    ENTITY,
     EXPORT_SNIPPET,
     FOOTNOTE_REFERENCE,
     INLINE_BABEL_CALL,
@@ -43,6 +44,7 @@ from org_parser.text._inline import (
     ExportSnippet,
     FootnoteReference,
     InlineBabelCall,
+    InlineEntity,
     InlineObject,
     InlineSourceBlock,
     Italic,
@@ -417,6 +419,18 @@ def _parse_inline_node(  # noqa: PLR0911,PLR0912,PLR0915
 
     if node_type == TIMESTAMP:
         return Timestamp.from_node(node, document)
+
+    if node_type == ENTITY:
+        source_text = document.source_for(node).decode()
+        if source_text.startswith("\\_"):
+            # Non-breaking-space form: \_<spaces>
+            return InlineEntity(name="_")
+        has_braces = source_text.endswith("{}")
+        name = source_text[1:-2] if has_braces else source_text[1:]
+        return InlineEntity(
+            name=name,
+            has_braces=has_braces,
+        )
 
     # Any remaining node that the grammar could not parse cleanly falls back to
     # PlainText.  Error and missing nodes are additionally reported so the

@@ -2127,6 +2127,30 @@ static bool scan_plain_text(Scanner *s, TSLexer *lexer, const bool *valid_symbol
           continue;
         }
 
+        // Stop before \ALPHA — entity rule fires (e.g. \alpha, \Rightarrow).
+        if (is_ascii_alpha(lookahead(lexer))) {
+          if (!found_any) return false;
+          break;
+        }
+
+        // Stop before \_SPACES — non-breaking-space entity (e.g. "\_ text").
+        // Only stop when '_' is actually followed by whitespace; otherwise
+        // consume '\' + '_' as plain text so "\_word" stays in plain text.
+        if (lookahead(lexer) == '_') {
+          advance(lexer);  // consume '_'
+          int32_t after_us = lookahead(lexer);
+          if (after_us == ' ' || after_us == '\t') {
+            // Looks like \_ SPACES entity — stop so grammar rule fires.
+            if (!found_any) return false;
+            break;
+          }
+          // Not an entity — include '\' + '_' in the current plain-text run.
+          s->prev_char = '_';
+          mark_end(lexer);
+          found_any = true;
+          continue;
+        }
+
         s->prev_char = ch;
         mark_end(lexer);
         found_any = true;

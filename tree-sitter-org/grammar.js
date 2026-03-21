@@ -1315,7 +1315,24 @@ module.exports = grammar({
 
     _code_body: _ => /[^\n~]+( ~ [^\n~]+|~~+[^\n~]*|~[^ \t\n~\-.,;:!?')}\["\\|*\/_+=][^\n~]*)*/,
 
-    // --- 8.11 Plain Text ---
+    // --- 8.11 Entities ---
+    // §11.1 (now promoted to supported): \NAME POST  |  \NAME{}  |  \_SPACES
+    // Two forms:
+    //   named:   \NAME  where NAME is [A-Za-z]+, optionally followed by {}
+    //   nbsp:    \_     followed by one or more spaces (non-breaking space)
+    // Name validation against org-entities is a @semantic post-processing step.
+    //
+    // Implemented as a single atomic token so that the {} suffix is matched
+    // before the external _PLAIN_TEXT scanner can consume it as plain text.
+    // The name (and has_braces flag) are extracted from the source slice by
+    // the Python layer rather than being named children of the node.
+    entity: _ => token(choice(
+      /\\[A-Za-z]+\{\}/,
+      /\\[A-Za-z]+/,
+      /\\_[ \t]+/,
+    )),
+
+    // --- 8.12 Plain Text ---
     // Plain text is handled by the external scanner to keep prev_char
     // tracking coherent for markup PRE/POST constraints.
     plain_text: $ => $._PLAIN_TEXT,
@@ -1327,6 +1344,7 @@ module.exports = grammar({
       $.regular_link, $.angle_link, $.plain_link,
       $.target, $.radio_target, $.timestamp,
       $.completion_counter,
+      $.entity,
       $.bold, $.italic, $.underline, $.strike_through,
       $.verbatim, $.code, $.plain_text,
     ),
@@ -1337,6 +1355,7 @@ module.exports = grammar({
       $.regular_link, $.angle_link, $.plain_link,
       $.target, $.radio_target, $.timestamp,
       $.completion_counter,
+      $.entity,
       $.bold, $.italic, $.underline, $.strike_through,
       $.verbatim, $.code, $.plain_text,
     ),
@@ -1347,6 +1366,7 @@ module.exports = grammar({
       $.regular_link, $.angle_link, $.plain_link,
       $.target, $.radio_target, $.timestamp,
       $.completion_counter,
+      $.entity,
       $.bold, $.italic, $.underline, $.strike_through,
       $.verbatim, $.code, $.plain_text,
     ),
@@ -1356,6 +1376,7 @@ module.exports = grammar({
       $.regular_link, $.angle_link, $.plain_link,
       $.target, $.radio_target, $.timestamp,
       $.completion_counter,
+      $.entity,
       $.bold, $.italic, $.underline, $.strike_through,
       $.verbatim, $.code, $.plain_text,
     ),
@@ -1366,6 +1387,7 @@ module.exports = grammar({
       $.regular_link, $.angle_link, $.plain_link,
       $.target, $.radio_target, $.timestamp,
       $.completion_counter,
+      $.entity,
       $.bold, $.italic, $.underline, $.strike_through,
       $.verbatim, $.code, $.plain_text,
     ),

@@ -451,8 +451,12 @@ next line
     title: (plain_text)
     body: (section
       (paragraph
-        (plain_text)
+        (entity)
         (newline)
+        (plain_text)
+        (entity)
+        (plain_text)
+        (entity)
         (plain_text)
         (newline)
         (plain_text)
@@ -471,5 +475,10 @@ Escaped closing bracket stays plain text
 (document
   (zeroth_section
     (paragraph
+      (entity)
+      (plain_text)
+      (entity)
+      (plain_text)
+      (entity)
       (plain_text)
       (newline))))

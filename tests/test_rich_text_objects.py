@@ -14,6 +14,7 @@ from org_parser.text import (
     CompletionCounter,
     ExportSnippet,
     FootnoteReference,
+    InlineEntity,
     InlineSourceBlock,
     Italic,
     LineBreak,
@@ -356,3 +357,104 @@ def test_macro_parsed_from_loads(tmp_path: Path) -> None:
     assert len(macro_parts) == 1
     assert macro_parts[0].name == "name"
     assert macro_parts[0].arguments is None
+
+
+# ---------------------------------------------------------------------------
+# InlineEntity tests
+# ---------------------------------------------------------------------------
+
+
+def test_entity_named_parsed_from_paragraph(tmp_path: Path) -> None:
+    """Named entity \\NAME is parsed as InlineEntity with correct name."""
+    content = "\\alpha text\n"
+    path = tmp_path / "entity-named.org"
+    path.write_text(content, encoding="utf-8")
+    document = loads(content)
+    tree = load_raw(path)
+    paragraph = _find_first_node_with_type(tree.root_node, "paragraph")
+    rich_text = RichText.from_node(paragraph, document=document)
+    entity_parts = [p for p in rich_text.parts if isinstance(p, InlineEntity)]
+    assert len(entity_parts) == 1
+    assert entity_parts[0].name == "alpha"
+    assert entity_parts[0].has_braces is False
+
+
+def test_entity_named_with_braces_parsed(tmp_path: Path) -> None:
+    """Entity \\NAME{} sets has_braces=True."""
+    content = "\\alpha{} text\n"
+    path = tmp_path / "entity-braces.org"
+    path.write_text(content, encoding="utf-8")
+    document = loads(content)
+    tree = load_raw(path)
+    paragraph = _find_first_node_with_type(tree.root_node, "paragraph")
+    rich_text = RichText.from_node(paragraph, document=document)
+    entity_parts = [p for p in rich_text.parts if isinstance(p, InlineEntity)]
+    assert len(entity_parts) == 1
+    assert entity_parts[0].name == "alpha"
+    assert entity_parts[0].has_braces is True
+
+
+def test_entity_nbsp_form_parsed(tmp_path: Path) -> None:
+    """Non-breaking-space entity \\_ is parsed as InlineEntity with name='_'."""
+    content = "\\_ text\n"
+    path = tmp_path / "entity-nbsp.org"
+    path.write_text(content, encoding="utf-8")
+    document = loads(content)
+    tree = load_raw(path)
+    paragraph = _find_first_node_with_type(tree.root_node, "paragraph")
+    rich_text = RichText.from_node(paragraph, document=document)
+    entity_parts = [p for p in rich_text.parts if isinstance(p, InlineEntity)]
+    assert len(entity_parts) == 1
+    assert entity_parts[0].name == "_"
+
+
+def test_entity_at_eol_parsed(tmp_path: Path) -> None:
+    """Entity at end of line (no post character) is parsed correctly."""
+    content = "\\alpha\n"
+    path = tmp_path / "entity-eol.org"
+    path.write_text(content, encoding="utf-8")
+    document = loads(content)
+    tree = load_raw(path)
+    paragraph = _find_first_node_with_type(tree.root_node, "paragraph")
+    rich_text = RichText.from_node(paragraph, document=document)
+    entity_parts = [p for p in rich_text.parts if isinstance(p, InlineEntity)]
+    assert len(entity_parts) == 1
+    assert entity_parts[0].name == "alpha"
+
+
+def test_entity_backslash_digit_stays_plain_text(tmp_path: Path) -> None:
+    """Backslash followed by a digit is not an entity — stays plain text."""
+    content = "\\1 not-entity\n"
+    path = tmp_path / "entity-digit.org"
+    path.write_text(content, encoding="utf-8")
+    document = loads(content)
+    tree = load_raw(path)
+    paragraph = _find_first_node_with_type(tree.root_node, "paragraph")
+    rich_text = RichText.from_node(paragraph, document=document)
+    entity_parts = [p for p in rich_text.parts if isinstance(p, InlineEntity)]
+    assert len(entity_parts) == 0
+
+
+def test_entity_str_roundtrip_without_braces() -> None:
+    """InlineEntity.__str__ renders \\NAME without braces."""
+    assert str(InlineEntity(name="alpha")) == "\\alpha"
+    assert str(InlineEntity(name="Rightarrow")) == "\\Rightarrow"
+
+
+def test_entity_str_roundtrip_with_braces() -> None:
+    """InlineEntity.__str__ renders \\NAME{} with braces."""
+    assert str(InlineEntity(name="alpha", has_braces=True)) == "\\alpha{}"
+
+
+def test_entity_nbsp_str() -> None:
+    """InlineEntity(name='_').__str__ renders the non-breaking-space form."""
+    assert str(InlineEntity(name="_")) == "\\_ "
+
+
+def test_entity_included_in_programmatic_richtext() -> None:
+    """InlineEntity instances can be added to RichText programmatically."""
+    rt = RichText(
+        [InlineEntity(name="alpha"), PlainText(" and "), InlineEntity(name="_")]
+    )
+    assert "\\alpha" in str(rt)
+    assert "\\_ " in str(rt)

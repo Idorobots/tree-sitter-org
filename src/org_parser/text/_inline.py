@@ -20,6 +20,7 @@ __all__ = [
     "ExportSnippet",
     "FootnoteReference",
     "InlineBabelCall",
+    "InlineEntity",
     "InlineObject",
     "InlineSourceBlock",
     "Italic",
@@ -87,6 +88,39 @@ class LineBreak(_InlineBase):
     def __str__(self) -> str:
         """Render a hard line break token."""
         return f"\\\\{self.trailing}"
+
+
+@dataclass(frozen=True, slots=True)
+class InlineEntity(_InlineBase):
+    r"""Org entity inline object.
+
+    Represents named entities (e.g. ``\alpha``, ``\Rightarrow``) and the
+    non-breaking-space form ``\_ `` (backslash-underscore followed by one or
+    more spaces).
+
+    For named entities ``has_braces`` indicates whether the ``{}`` suffix was
+    written (``\alpha{}``), which prevents the entity name from merging with
+    adjacent text in some export backends.
+
+    The ``\_ `` form is represented with ``name="_"``.  Its ``__str__``
+    always emits a single trailing space; round-trip fidelity for multiple
+    trailing spaces relies on the parse-tree-backed source slice in
+    :class:`~org_parser.text.RichText`.
+
+    Args:
+        name: Entity name (e.g. ``"alpha"``) or ``"_"`` for the ``\_ `` form.
+        has_braces: Whether the ``{}`` suffix was written (named entities only).
+    """
+
+    name: str
+    has_braces: bool = False
+
+    def __str__(self) -> str:
+        """Render entity to Org syntax."""
+        if self.name == "_":
+            return "\\_ "
+        suffix = "{}" if self.has_braces else ""
+        return f"\\{self.name}{suffix}"
 
 
 @dataclass(frozen=True, slots=True)
