@@ -96,14 +96,14 @@ def body_element_factories() -> dict[str, Callable[..., Element]]:
     from org_parser.element._list import ListItem
     from org_parser.element._paragraph import Paragraph
     from org_parser.element._structure import BlankLine, Comment, HorizontalRule
-    from org_parser.element._table import Table
+    from org_parser.element._table import Table, TableEl
     from org_parser.time import Clock
 
     return {
         BABEL_CALL: BabelCall.from_node,
         PARAGRAPH: Paragraph.from_node,
         ORG_TABLE: Table.from_node,
-        TABLEEL_TABLE: Table.from_node,
+        TABLEEL_TABLE: TableEl.from_node,
         CLOCK: Clock.from_node,
         DRAWER: Drawer.from_node,
         LOGBOOK_DRAWER: Logbook.from_node,

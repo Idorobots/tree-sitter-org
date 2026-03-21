@@ -40,7 +40,7 @@ from org_parser.element._structure import (
     HorizontalRule,
     IndentBlock,
 )
-from org_parser.element._table import Table, TableCell, TableRow, TableRuleRow
+from org_parser.element._table import Table, TableCell, TableEl, TableRow, TableRuleRow
 
 __all__ = [
     "BabelCall",
@@ -71,6 +71,7 @@ __all__ = [
     "SpecialBlock",
     "Table",
     "TableCell",
+    "TableEl",
     "TableRow",
     "TableRuleRow",
     "TblnameKeyword",

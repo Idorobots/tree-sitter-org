@@ -646,23 +646,9 @@ module.exports = grammar({
       $._NL,
     ),
 
-    tableel_table: $ => prec.left(1, seq(
-      $._tableel_first_line,
-      repeat($._tableel_cont_line),
+    tableel_table: _ => token(prec(1,
+      /[ \t]*\+-[^\n]*\n(?:[ \t]*[|+][^\n]*\n)+/
     )),
-
-    _tableel_first_line: $ => seq(
-      '+',
-      '-',
-      /[^\n]*/,
-      $._NL,
-    ),
-
-    _tableel_cont_line: $ => seq(
-      choice('|', '+'),
-      /[^\n]*/,
-      $._NL,
-    ),
 
     // §7 Lesser Elements
 

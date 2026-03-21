@@ -1,7 +1,7 @@
 """Implementation of table semantic abstractions.
 
-This module provides :class:`Table` and dedicated row/cell abstractions for
-both Org tables and Table.el tables.
+This module provides :class:`Table` for Org tables, :class:`TableEl` for
+Table.el grids, and dedicated row/cell abstractions for Org table rows.
 """
 
 from __future__ import annotations
@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 
 from org_parser._node import node_source
 from org_parser._nodes import (
+    ORG_TABLE,
     TABLE_CELL,
     TABLE_ROW,
     TABLE_RULE,
@@ -25,7 +26,7 @@ if TYPE_CHECKING:
     from org_parser.document._document import Document
     from org_parser.document._heading import Heading
 
-__all__ = ["Table", "TableCell", "TableRow", "TableRuleRow"]
+__all__ = ["Table", "TableCell", "TableEl", "TableRow", "TableRuleRow"]
 
 
 class TableCell:
@@ -137,12 +138,11 @@ class TableRuleRow:
 
 
 class Table(Element):
-    """Org/Table.el table semantic element.
+    """Org table semantic element.
 
     Args:
         rows: Mutable table rows (data rows and rule rows).
         formulas: Table formulas without ``#+TBLFM:`` prefix.
-        is_tableel: Whether source was parsed as a Table.el table.
         parent: Optional parent owner object.
     """
 
@@ -151,13 +151,11 @@ class Table(Element):
         *,
         rows: list[TableRow | TableRuleRow],
         formulas: list[str] | None = None,
-        is_tableel: bool = False,
         parent: Document | Heading | Element | None = None,
     ) -> None:
         super().__init__(parent=parent)
         self._rows = rows
         self._formulas = formulas if formulas is not None else []
-        self._is_tableel = is_tableel
         self._adopt_rows()
 
     @classmethod
@@ -168,29 +166,16 @@ class Table(Element):
         *,
         parent: Document | Heading | Element | None = None,
     ) -> Table:
-        """Create a :class:`Table` from an ``org_table`` or ``tableel_table`` node."""
-        source_text = document.source_for(node).decode()
-        if node.type == TABLEEL_TABLE:
-            parsed_rows = _parse_tableel_rows(source_text)
-            table = cls(
-                rows=parsed_rows,
-                formulas=[],
-                is_tableel=True,
-                parent=parent,
-            )
-            table._node = node
-            table._document = document
-            table._adopt_rows()
-            return table
-
+        """Create a :class:`Table` from an ``org_table`` node."""
+        if node.type != ORG_TABLE:
+            msg = f"Expected {ORG_TABLE!r} node, got {node.type!r}"
+            raise ValueError(msg)
         table = cls(
             rows=[],
             formulas=[],
-            is_tableel=False,
             parent=parent,
         )
-        table._node = node
-        table._document = document
+        table.attach_source(node, document)
 
         rows: list[TableRow | TableRuleRow] = []
         formulas: list[str] = []
@@ -228,11 +213,6 @@ class Table(Element):
         self._formulas = value
         self._mark_dirty()
 
-    @property
-    def is_tableel(self) -> bool:
-        """Whether source table syntax was Table.el."""
-        return self._is_tableel
-
     def _adopt_rows(self) -> None:
         """Assign this table as owner for all rows and cells."""
         for row in self._rows:
@@ -254,8 +234,37 @@ class Table(Element):
             "Table",
             rows=self._rows,
             formulas=self._formulas,
-            is_tableel=self._is_tableel,
         )
+
+
+class TableEl(Element):
+    """Opaque Table.el grid semantic element."""
+
+    @classmethod
+    def from_node(
+        cls,
+        node: tree_sitter.Node,
+        document: Document,
+        *,
+        parent: Document | Heading | Element | None = None,
+    ) -> TableEl:
+        """Create a :class:`TableEl` from a ``tableel_table`` node."""
+        if node.type != TABLEEL_TABLE:
+            msg = f"Expected {TABLEEL_TABLE!r} node, got {node.type!r}"
+            raise ValueError(msg)
+        tableel = cls(parent=parent)
+        tableel.attach_source(node, document)
+        return tableel
+
+    def __str__(self) -> str:
+        """Render the original Table.el grid text."""
+        if self._node is None or self._document is None:
+            return ""
+        return node_source(self._node, self._document)
+
+    def __repr__(self) -> str:
+        """Return a tree-oriented representation for debugging."""
+        return build_semantic_repr("TableEl")
 
 
 def _parse_org_table_row(
@@ -289,26 +298,6 @@ def _extract_tblfm_formula(
     if line.upper().startswith(prefix.upper()):
         return line[len(prefix) :].strip()
     return line.strip()
-
-
-def _parse_tableel_rows(source_text: str) -> list[TableRow | TableRuleRow]:
-    """Parse Table.el grid text into row abstractions."""
-    rows: list[TableRow | TableRuleRow] = []
-    dummy_table = Table(rows=[], formulas=[], is_tableel=True)
-    for raw_line in source_text.splitlines():
-        stripped = raw_line.lstrip()
-        if stripped.startswith("+"):
-            rows.append(TableRuleRow(raw=stripped.rstrip(), table=dummy_table))
-            continue
-        if not stripped.startswith("|"):
-            continue
-        pieces = stripped.strip("|").split("|")
-        cells = [
-            TableCell(value=RichText(piece.strip()), table=dummy_table)
-            for piece in pieces
-        ]
-        rows.append(TableRow(cells=cells, table=dummy_table))
-    return rows
 
 
 def _render_org_table(rows: list[TableRow | TableRuleRow], formulas: list[str]) -> str:

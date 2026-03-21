@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from org_parser import loads
-from org_parser.element import Table, TableRow, TableRuleRow
+from org_parser.element import Table, TableEl, TableRow, TableRuleRow
 from org_parser.text import RichText
 
 
@@ -13,7 +13,6 @@ def test_org_table_parses_rows_cells_and_formulas() -> None:
 
     assert isinstance(document.body[0], Table)
     table = document.body[0]
-    assert table.is_tableel is False
     assert len(table.rows) == 3
     assert isinstance(table.rows[0], TableRow)
     assert isinstance(table.rows[1], TableRuleRow)
@@ -30,16 +29,17 @@ def test_org_table_parses_rows_cells_and_formulas() -> None:
 
 
 def test_tableel_table_is_supported_in_body() -> None:
-    """Table.el fragments are represented as table elements."""
-    document = loads(
+    """Table.el fragments are represented as opaque table elements."""
+    source = (
         "+----------+----------+\n"
         "| Column A | Column B |\n"
         "+----------+----------+\n"
     )
+    document = loads(source)
 
-    assert any(
-        isinstance(element, Table) and element.is_tableel for element in document.body
-    )
+    assert isinstance(document.body[0], TableEl)
+    tableel = document.body[0]
+    assert str(tableel) == source
 
 
 def test_dirty_table_renders_as_aligned_org_table() -> None:
@@ -54,6 +54,17 @@ def test_dirty_table_renders_as_aligned_org_table() -> None:
 
     assert table.dirty is True
     assert str(table) == "| Name  | Age |\n|-------+-----|\n| Alice | 9   |\n"
+
+
+def test_degenerate_tableel_grid_stays_opaque() -> None:
+    """Degenerate Table.el grids do not expose synthetic row/cell structure."""
+    source = (
+        "+-----+-----+\n| foo | bar |\n+-----+-----+\n| faz | baz |\n+-----+-----+\n"
+    )
+    document = loads(source)
+    assert isinstance(document.body[0], TableEl)
+    tableel = document.body[0]
+    assert str(tableel) == source
 
 
 def test_table_row_mutation_marks_table_dirty() -> None:
