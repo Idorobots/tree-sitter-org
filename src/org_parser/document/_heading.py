@@ -445,9 +445,18 @@ class Heading:
 
     @children.setter
     def children(self, value: list[Heading]) -> None:
-        """Set direct sub-headings and mark this heading as dirty."""
+        """Set direct sub-headings, adjust levels, and mark this heading dirty.
+
+        Each supplied child heading is adopted (parent set to ``self``) and
+        then checked: if its :attr:`level` is not strictly greater than
+        ``self.level`` it is shifted — along with its entire descendant
+        subtree — so that the invariant ``child.level > self.level`` holds.
+        Only headings whose level is actually changed are marked dirty.
+        """
         self._children = value
         self._adopt_elements(self._children)
+        for child in self._children:
+            _ensure_child_heading_level(child, parent_level=self._level)
         self._mark_dirty()
 
     @property
@@ -759,6 +768,45 @@ def _find_first_subheading(node: tree_sitter.Node) -> tree_sitter.Node | None:
         if child.type == HEADING:
             return child
     return None
+
+
+def _ensure_child_heading_level(child: Heading, *, parent_level: int) -> None:
+    """Adjust *child* level to be strictly greater than *parent_level*.
+
+    When ``child.level > parent_level`` the heading is already valid and this
+    function is a no-op (the heading is **not** marked dirty).  When
+    ``child.level <= parent_level`` the entire subtree rooted at *child* is
+    shifted up by ``parent_level + 1 - child.level`` so that relative level
+    differences within the subtree are preserved.  Each heading whose level
+    changes is marked dirty.
+
+    Args:
+        child: The heading being attached to a parent.
+        parent_level: The level of the new parent heading (or 0 for a
+            document, which enforces a minimum child level of 1).
+    """
+    min_level = parent_level + 1
+    if child._level >= min_level:
+        return
+    delta = min_level - child._level
+    _shift_heading_subtree(child, delta=delta)
+
+
+def _shift_heading_subtree(heading: Heading, *, delta: int) -> None:
+    """Add *delta* to *heading* level and all its descendants', marking each dirty.
+
+    The parent chain of *heading* must already be set correctly before calling
+    this function so that :meth:`Heading._mark_dirty` propagates through the
+    right owners.
+
+    Args:
+        heading: Root of the subtree to shift.
+        delta: Positive integer amount to add to every level in the subtree.
+    """
+    heading._level += delta
+    heading._mark_dirty()
+    for child in heading._children:
+        _shift_heading_subtree(child, delta=delta)
 
 
 def _render_heading_dirty(heading: Heading) -> str:

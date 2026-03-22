@@ -355,9 +355,21 @@ class Document:
 
     @children.setter
     def children(self, value: list[Heading]) -> None:
-        """Set top-level headings and mark the document as dirty."""
+        """Set top-level headings, enforce minimum level, and mark dirty.
+
+        Each heading is adopted (parent set to this document) and then checked:
+        if its :attr:`~org_parser.document._heading.Heading.level` is zero or
+        negative it is shifted — along with its entire descendant subtree — to
+        level 1.  Only headings whose level is actually changed are marked
+        dirty.
+        """
+        # Lazy import avoids the circular dependency with _heading.py.
+        from org_parser.document._heading import _ensure_child_heading_level
+
         self._children = value
         self._adopt_elements(self._children)
+        for child in self._children:
+            _ensure_child_heading_level(child, parent_level=0)
         self._mark_dirty()
 
     def source_for(self, node: tree_sitter.Node) -> bytes:
