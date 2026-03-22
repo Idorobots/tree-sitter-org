@@ -190,8 +190,8 @@ call_myfunc()[:results value]
   (zeroth_section
     (paragraph
       (inline_babel_call
-        (call_name))
-      (plain_text)
+        (call_name)
+        (call_outside_header))
       (newline))))
 
 ================
@@ -207,8 +207,8 @@ call_double[:exports none](n=4)[:results value]
       (inline_babel_call
         (call_name)
         (call_inside_header)
-        (call_arguments))
-      (plain_text)
+        (call_arguments)
+        (call_outside_header))
       (newline))))
 
 ================

@@ -65,6 +65,7 @@ enum TokenType {
   TOKEN_FIXED_WIDTH_COLON, // consumes optional indent + ':' only at BOL context
   TOKEN_INLINE_BABEL_START, // consumes 'call_' when followed by a valid name-start char
   TOKEN_INLINE_SRC_START,   // consumes 'src_' when followed by a valid lang-start char
+  TOKEN_INLINE_BABEL_OUTSIDE_HEADER_START, // consumes '[' before inline babel outside header
 };
 
 // ---------------------------------------------------------------------------
@@ -1693,6 +1694,21 @@ static bool scan_inline_src_start(Scanner *s, TSLexer *lexer) {
   }
 
   lexer->result_symbol = TOKEN_INLINE_SRC_START;
+  return true;
+}
+
+// ---------------------------------------------------------------------------
+// _INLINE_BABEL_OUTSIDE_HEADER_START: consume '[' when the parser is in the
+// optional inline babel outside-header suffix slot.
+//
+// This token exists only to beat TOKEN_PLAIN_TEXT at the `)[` boundary, so
+// inline_babel_call can capture the trailing call_outside_header field.
+// ---------------------------------------------------------------------------
+static bool scan_inline_babel_outside_header_start(TSLexer *lexer) {
+  if (lookahead(lexer) != '[') return false;
+  advance(lexer);
+  mark_end(lexer);
+  lexer->result_symbol = TOKEN_INLINE_BABEL_OUTSIDE_HEADER_START;
   return true;
 }
 
@@ -3359,7 +3375,7 @@ bool tree_sitter_org_external_scanner_scan(
     if (result == -1) return false;
   }
 
-  // --- INLINE_BABEL_START / INLINE_SRC_START / PLAIN_TEXT ---
+  // --- INLINE_BABEL_START / INLINE_SRC_START / INLINE_BABEL_OUTSIDE_HEADER_START / PLAIN_TEXT ---
   // scan_inline_babel_start and scan_inline_src_start are checked first.  If
   // either one returns false after having called advance() (i.e. consumed one
   // or more characters), the lexer is left past those characters.  We detect
@@ -3379,6 +3395,10 @@ bool tree_sitter_org_external_scanner_scan(
       if (scan_inline_src_start(s, lexer)) return true;
       if (!prev_scanner_advanced)
         prev_scanner_advanced = (get_column(lexer) > col_before);
+    }
+
+    if (valid_symbols[TOKEN_INLINE_BABEL_OUTSIDE_HEADER_START]) {
+      if (scan_inline_babel_outside_header_start(lexer)) return true;
     }
 
     if (valid_symbols[TOKEN_PLAIN_TEXT]) {

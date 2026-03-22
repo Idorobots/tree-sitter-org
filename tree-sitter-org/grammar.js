@@ -68,6 +68,7 @@ module.exports = grammar({
     $._FIXED_WIDTH_COLON, // Consumes optional indent + ':' only at BOL context
     $._INLINE_BABEL_START, // Consumes 'call_' when followed by a valid function-name start
     $._INLINE_SRC_START,   // Consumes 'src_' when followed by a valid language-name start
+    $._INLINE_BABEL_OUTSIDE_HEADER_START, // Consumes '[' in inline call suffix context
   ],
 
   extras: _ => [],
@@ -940,6 +941,7 @@ module.exports = grammar({
     _BABEL_CALL_NAME: _ => /[^ \t\n\[\]()]+/,
     _BABEL_ARGS: _ => /[^)\n]+/,
     _BABEL_HEADER: _ => /[^\]\n]+/,
+    _BABEL_INLINE_HEADER: _ => /[^\]\n]*/,
 
     _babel_inside_header: $ => seq(
       '[',
@@ -950,6 +952,12 @@ module.exports = grammar({
     _babel_outside_header: $ => seq(
       '[',
       field('outside_header', alias($._BABEL_HEADER, $.call_outside_header)),
+      ']',
+    ),
+
+    _babel_outside_header_inline: $ => seq(
+      $._INLINE_BABEL_OUTSIDE_HEADER_START,
+      field('outside_header', alias($._BABEL_INLINE_HEADER, $.call_outside_header)),
       ']',
     ),
 
@@ -1084,6 +1092,8 @@ module.exports = grammar({
     // _INLINE_BABEL_START is an external token that consumes 'call_' only when
     // followed by a valid function-name start character, giving the scanner
     // priority over TOKEN_PLAIN_TEXT so the GLR parser can recognise the rule.
+    // _INLINE_BABEL_OUTSIDE_HEADER_START keeps a trailing '[...]' suffix from
+    // being consumed as plain_text after the argument list closes.
     // prec.right resolves the optional-outside-header shift/reduce conflict.
     inline_babel_call: $ => prec.right(seq(
         $._INLINE_BABEL_START,
@@ -1092,7 +1102,7 @@ module.exports = grammar({
         '(',
         field('arguments', optional(alias($._BABEL_ARGS, $.call_arguments))),
         ')',
-        optional($._babel_outside_header),
+        optional($._babel_outside_header_inline),
     )),
 
     // --- 8.5c Macros ---

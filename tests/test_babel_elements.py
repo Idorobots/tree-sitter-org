@@ -323,6 +323,24 @@ class TestInlineBabelCallParsing:
         assert ibc.inside_header == ":exports none"
         assert ibc.arguments is None
 
+    def test_with_outside_header(self) -> None:
+        """call_myfunc()[:results value] captures outside_header."""
+        ibc = _first_inline_babel_call("call_myfunc()[:results value]\n")
+        assert ibc.name == "myfunc"
+        assert ibc.arguments is None
+        assert ibc.inside_header is None
+        assert ibc.outside_header == ":results value"
+
+    def test_full_form(self) -> None:
+        """call_double[:exports none](n=4)[:results value] captures all fields."""
+        ibc = _first_inline_babel_call(
+            "call_double[:exports none](n=4)[:results value]\n"
+        )
+        assert ibc.name == "double"
+        assert ibc.inside_header == ":exports none"
+        assert ibc.arguments == "n=4"
+        assert ibc.outside_header == ":results value"
+
     def test_embedded_in_paragraph(self) -> None:
         """InlineBabelCall is recognized mid-paragraph alongside plain text."""
         doc = loads("Result: call_double(n=2) is the answer.\n")
