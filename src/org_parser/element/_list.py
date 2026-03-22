@@ -160,17 +160,17 @@ class ListItem(Element):
         """Mutable body elements for this list item."""
         return self._body
 
-    @property
-    def body_text(self) -> str:
-        """Stringified text of all list-item body elements."""
-        return "".join(str(element) for element in self._body)
-
     @body.setter
     def body(self, value: list[Element]) -> None:
         """Set body elements and mark item dirty."""
         self._body = value
         self._adopt_body(self._body)
         self._mark_dirty()
+
+    @property
+    def body_text(self) -> str:
+        """Stringified text of all list body elements."""
+        return "".join(str(element) for element in self._body)
 
     def append_body(self, element: Element, *, mark_dirty: bool = True) -> None:
         """Append one body element with optional dirty propagation."""
@@ -626,3 +626,13 @@ def _parse_repeat_first_line(
         timestamp_part,
         has_remainder,
     )
+
+
+def _normalize_optional_text(value: str | None) -> str | None:
+    """Return stripped text value, or ``None`` when empty."""
+    if value is None:
+        return None
+    normalized = value.strip()
+    if normalized == "":
+        return None
+    return normalized

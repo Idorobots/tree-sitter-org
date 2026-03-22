@@ -997,12 +997,16 @@ class TestDocumentConvenienceFields:
 
     def test_todo_state_groups_support_done_only_definition(self) -> None:
         """TODO definitions can declare only done states after ``|``."""
-        doc = Document(filename="x.org", todo=RichText("| CANCELLED(c@/!) REWORKED(r@/!)"))
+        doc = Document(
+            filename="x.org", todo=RichText("| CANCELLED(c@/!) REWORKED(r@/!)")
+        )
         assert doc.todo_states == []
         assert doc.done_states == ["CANCELLED", "REWORKED"]
         assert doc.all_states == ["CANCELLED", "REWORKED"]
 
-    def test_todo_state_groups_across_multiple_todo_keywords(self, tmp_path: Path) -> None:
+    def test_todo_state_groups_across_multiple_todo_keywords(
+        self, tmp_path: Path
+    ) -> None:
         """State groups aggregate across multiple ``#+TODO:`` keywords."""
         path = tmp_path / "multi-todo.org"
         path.write_bytes(
@@ -1114,7 +1118,9 @@ class TestHeadingConvenienceFields:
             closed=closed,
             deadline=deadline,
             logbook=Logbook(
-                repeats=[Repeat(after="DONE", before="TODO", timestamp=repeat_timestamp)],
+                repeats=[
+                    Repeat(after="DONE", before="TODO", timestamp=repeat_timestamp)
+                ],
                 clock_entries=[Clock(timestamp=clock_timestamp)],
             ),
         )

@@ -510,9 +510,11 @@ class Heading:
     def timestamps(self) -> list[Timestamp]:
         """All timestamps attached to this heading's planning and logbook data."""
         collected: list[Timestamp] = []
-        for planning in (self._scheduled, self._closed, self._deadline):
-            if planning is not None:
-                collected.append(planning)
+        collected.extend(
+            planning
+            for planning in (self._scheduled, self._closed, self._deadline)
+            if planning is not None
+        )
         collected.extend(repeat.timestamp for repeat in self._repeated_tasks)
         collected.extend(
             clock.timestamp

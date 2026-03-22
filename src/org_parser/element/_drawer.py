@@ -99,17 +99,17 @@ class Drawer(Element):
         """Mutable list of drawer body elements."""
         return self._body
 
-    @property
-    def body_text(self) -> str:
-        """Stringified text of all drawer body elements."""
-        return "".join(str(element) for element in self._body)
-
     @body.setter
     def body(self, value: list[Element]) -> None:
         """Set drawer body and mark the drawer as dirty."""
         self._body = value
         self._adopt_body(self._body)
         self._mark_dirty()
+
+    @property
+    def body_text(self) -> str:
+        """Stringified text of all drawer body elements."""
+        return "".join(str(element) for element in self._body)
 
     def _adopt_body(self, body: Sequence[Element]) -> None:
         """Assign this drawer as parent for all body elements."""
