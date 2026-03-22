@@ -70,9 +70,9 @@ def test_document_str_dirty_rebuilds_from_fields(
 ) -> None:
     """Dirty Document.__str__ is reconstructed from semantic fields."""
     document = load(str(example_file("nested-headings-basic.org")))
-    document.keywords = {"LANGUAGE": Keyword(key="LANGUAGE", value=RichText("en"))}
-    document.title = Keyword(key="TITLE", value=RichText("Mutated Title"))
-    document.author = Keyword(key="AUTHOR", value=RichText("Mutated Author"))
+    document.keywords = [Keyword(key="LANGUAGE", value=RichText("en"))]
+    document.title = RichText("Mutated Title")
+    document.author = RichText("Mutated Author")
 
     rendered = str(document)
     assert rendered.startswith("#+TITLE: Mutated Title\n#+AUTHOR: Mutated Author\n")

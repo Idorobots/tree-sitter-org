@@ -4518,7 +4518,10 @@ In file src/org_parser/document/_heading.py around line 323, near the ~class Hea
 
 It might be easier to just fetch the =parent.tags= and deduplicate making sure that the parent tags come first.
 
-** TODO Keyword refactor
+** DONE Keyword refactor
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-22 Sun 16:04]
+:END:
 Update the =Document.keywords= field to be a list instead of a map.
 
 All the fields that return a =Keyword= should instead return the value of the keyword. They still should have setters that allow setting the specific keyword value. The updated value should be reflected in the list returned by =keywords=.

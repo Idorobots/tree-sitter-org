@@ -25,6 +25,11 @@ def _load_document(path: Path) -> Document:
     return Document.from_tree(tree, path.name, source)
 
 
+def _find_kw(doc: Document, key: str) -> Keyword | None:
+    """Return the first keyword in *doc.keywords* with *key*, or *None*."""
+    return next((kw for kw in doc.keywords if kw.key == key), None)
+
+
 # ===================================================================
 # RichText stub
 # ===================================================================
@@ -131,37 +136,39 @@ class TestDocumentManual:
         assert doc.category is None
         assert doc.description is None
         assert doc.todo is None
-        assert doc.keywords == {}
+        assert doc.keywords == []
         assert doc.body == []
         assert doc.children == []
 
     def test_full_construction(self) -> None:
         doc = Document(
             filename="full.org",
-            title=Keyword(key="TITLE", value=RichText("My Title")),
-            author=Keyword(key="AUTHOR", value=RichText("An Author")),
-            category=Keyword(key="CATEGORY", value=RichText("work")),
-            description=Keyword(key="DESCRIPTION", value=RichText("A description.")),
-            todo=Keyword(key="TODO", value=RichText("TODO | DONE")),
-            keywords={"LANGUAGE": Keyword(key="LANGUAGE", value=RichText("en"))},
+            title=RichText("My Title"),
+            author=RichText("An Author"),
+            category=RichText("work"),
+            description=RichText("A description."),
+            todo=RichText("TODO | DONE"),
+            keywords=[Keyword(key="LANGUAGE", value=RichText("en"))],
             body=[Paragraph(body=RichText("Hello.\n"))],
         )
         assert doc.title is not None
-        assert str(doc.title.value) == "My Title"
+        assert str(doc.title) == "My Title"
         assert doc.author is not None
-        assert str(doc.author.value) == "An Author"
+        assert str(doc.author) == "An Author"
         assert doc.category is not None
-        assert str(doc.category.value) == "work"
+        assert str(doc.category) == "work"
         assert doc.description is not None
-        assert str(doc.description.value) == "A description."
+        assert str(doc.description) == "A description."
         assert doc.todo is not None
-        assert str(doc.todo.value) == "TODO | DONE"
-        assert str(doc.keywords["LANGUAGE"].value) == "en"
-        assert "TITLE" in doc.keywords
-        assert "AUTHOR" in doc.keywords
-        assert "CATEGORY" in doc.keywords
-        assert "DESCRIPTION" in doc.keywords
-        assert "TODO" in doc.keywords
+        assert str(doc.todo) == "TODO | DONE"
+        lang_kw = _find_kw(doc, "LANGUAGE")
+        assert lang_kw is not None
+        assert str(lang_kw.value) == "en"
+        assert any(kw.key == "TITLE" for kw in doc.keywords)
+        assert any(kw.key == "AUTHOR" for kw in doc.keywords)
+        assert any(kw.key == "CATEGORY" for kw in doc.keywords)
+        assert any(kw.key == "DESCRIPTION" for kw in doc.keywords)
+        assert any(kw.key == "TODO" for kw in doc.keywords)
         assert len(doc.body) == 1
 
     def test_repr(self) -> None:
@@ -251,49 +258,57 @@ class TestDocumentFromTreeKeywords:
         doc = _load_document(example_file("special-keywords-basic.org"))
 
         assert doc.title is not None
-        assert isinstance(doc.title, Keyword)
-        assert str(doc.title.value) == "Document Title"
+        assert isinstance(doc.title, RichText)
+        assert str(doc.title) == "Document Title"
 
         assert doc.author is not None
-        assert isinstance(doc.author, Keyword)
-        assert str(doc.author.value) == "Qrux Bimble"
+        assert isinstance(doc.author, RichText)
+        assert str(doc.author) == "Qrux Bimble"
 
         assert doc.category is not None
-        assert isinstance(doc.category, Keyword)
-        assert str(doc.category.value) == "test"
-        assert doc.title.parent is doc
-        assert doc.title.value.parent is doc.title
-        assert doc.author.parent is doc
-        assert doc.author.value.parent is doc.author
-        assert doc.category.parent is doc
-        assert doc.category.value.parent is doc.category
-        assert "TITLE" in doc.keywords
-        assert "AUTHOR" in doc.keywords
-        assert "CATEGORY" in doc.keywords
+        assert isinstance(doc.category, RichText)
+        assert str(doc.category) == "test"
+
+        title_kw = _find_kw(doc, "TITLE")
+        assert title_kw is not None
+        assert title_kw.parent is doc
+        assert title_kw.value.parent is title_kw
+        author_kw = _find_kw(doc, "AUTHOR")
+        assert author_kw is not None
+        assert author_kw.parent is doc
+        assert author_kw.value.parent is author_kw
+        category_kw = _find_kw(doc, "CATEGORY")
+        assert category_kw is not None
+        assert category_kw.parent is doc
+        assert category_kw.value.parent is category_kw
+        assert any(kw.key == "TITLE" for kw in doc.keywords)
+        assert any(kw.key == "AUTHOR" for kw in doc.keywords)
+        assert any(kw.key == "CATEGORY" for kw in doc.keywords)
 
     def test_todo_keyword(self, example_file: Callable[[str], Path]) -> None:
         """The #+TODO keyword is extracted as a dedicated property."""
         doc = _load_document(example_file("special-keywords-basic.org"))
         assert doc.todo is not None
-        assert "TODO" in str(doc.todo.value)
-        assert "DONE" in str(doc.todo.value)
+        assert "TODO" in str(doc.todo)
+        assert "DONE" in str(doc.todo)
 
     def test_non_dedicated_keywords_in_dict(
         self, example_file: Callable[[str], Path]
     ) -> None:
-        """Non-dedicated keywords land in the keywords dict."""
+        """Non-dedicated keywords land in the keywords list."""
         doc = _load_document(example_file("special-keywords-basic.org"))
         # DATE and LANGUAGE are not dedicated properties
-        assert "DATE" in doc.keywords
-        assert "LANGUAGE" in doc.keywords
-        assert isinstance(doc.keywords["LANGUAGE"], Keyword)
-        assert str(doc.keywords["LANGUAGE"].value) == "en"
+        assert any(kw.key == "DATE" for kw in doc.keywords)
+        assert any(kw.key == "LANGUAGE" for kw in doc.keywords)
+        lang_kw = _find_kw(doc, "LANGUAGE")
+        assert isinstance(lang_kw, Keyword)
+        assert str(lang_kw.value) == "en"
 
     def test_description_keyword(self, example_file: Callable[[str], Path]) -> None:
         """#+DESCRIPTION is extracted as a dedicated property."""
         doc = _load_document(example_file("zeroth-section.org"))
         assert doc.description is not None
-        assert "production tracking" in str(doc.description.value)
+        assert "production tracking" in str(doc.description)
 
     def test_zeroth_section_body(self, example_file: Callable[[str], Path]) -> None:
         """Non-keyword elements in the zeroth section appear in body."""
@@ -497,7 +512,7 @@ class TestEdgeCases:
         assert doc.children == []
         assert doc.body == []
         assert doc.title is None
-        assert doc.keywords == {}
+        assert doc.keywords == []
 
     def test_heading_levels_file(self, example_file: Callable[[str], Path]) -> None:
         """heading-levels.org has a single chain of nested headings."""
@@ -540,17 +555,19 @@ class TestDocumentFiletags:
         assert doc.tags == []
         doc.tags = ["alpha", "beta"]
         assert doc.tags == ["alpha", "beta"]
-        assert "FILETAGS" in doc.keywords
-        assert str(doc.keywords["FILETAGS"].value) == ":alpha:beta:"
+        assert any(kw.key == "FILETAGS" for kw in doc.keywords)
+        filetags_kw = _find_kw(doc, "FILETAGS")
+        assert filetags_kw is not None
+        assert str(filetags_kw.value) == ":alpha:beta:"
 
     def test_tags_setter_empty_removes_keyword(self) -> None:
         """Setting Document.tags to [] removes the FILETAGS keyword entirely."""
         doc = Document(filename="test.org")
         doc.tags = ["alpha"]
-        assert "FILETAGS" in doc.keywords
+        assert any(kw.key == "FILETAGS" for kw in doc.keywords)
         doc.tags = []
         assert doc.tags == []
-        assert "FILETAGS" not in doc.keywords
+        assert not any(kw.key == "FILETAGS" for kw in doc.keywords)
 
     def test_tags_setter_overwrites_existing(self) -> None:
         """Setting Document.tags twice replaces the previous value."""
@@ -558,7 +575,9 @@ class TestDocumentFiletags:
         doc.tags = ["old"]
         doc.tags = ["new1", "new2"]
         assert doc.tags == ["new1", "new2"]
-        assert str(doc.keywords["FILETAGS"].value) == ":new1:new2:"
+        filetags_kw = _find_kw(doc, "FILETAGS")
+        assert filetags_kw is not None
+        assert str(filetags_kw.value) == ":new1:new2:"
 
     def test_tags_setter_marks_dirty(self) -> None:
         """Setting Document.tags marks the document dirty."""

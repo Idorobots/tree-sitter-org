@@ -63,12 +63,12 @@ def test_document_setters_mark_dirty() -> None:
     document = Document(filename="x.org")
     assert document.dirty is False
 
-    title = Keyword(key="TITLE", value=RichText("Title"))
-    author = Keyword(key="AUTHOR", value=RichText("Author"))
-    category = Keyword(key="CATEGORY", value=RichText("work"))
-    description = Keyword(key="DESCRIPTION", value=RichText("desc"))
-    todo = Keyword(key="TODO", value=RichText("TODO | DONE"))
-    keywords = {"LANG": Keyword(key="LANG", value=RichText("en"))}
+    title = RichText("Title")
+    author = RichText("Author")
+    category = RichText("work")
+    description = RichText("desc")
+    todo = RichText("TODO | DONE")
+    keywords = [Keyword(key="LANG", value=RichText("en"))]
     body: list[Element] = [Paragraph(body=RichText("Body\n"))]
     child = Heading(level=1, document=document, parent=document)
 
@@ -89,11 +89,6 @@ def test_document_setters_mark_dirty() -> None:
     assert document.description is description
     assert document.todo is todo
     assert document.keywords is keywords
-    assert document.keywords["TITLE"] is title
-    assert document.keywords["AUTHOR"] is author
-    assert document.keywords["CATEGORY"] is category
-    assert document.keywords["DESCRIPTION"] is description
-    assert document.keywords["TODO"] is todo
     assert document.body is body
     assert document.children == [child]
     assert document.dirty is True
@@ -103,13 +98,13 @@ def test_keyword_value_mutation_bubbles_to_document() -> None:
     """Mutating keyword value marks keyword and document dirty."""
     document = Document(
         filename="x.org",
-        title=Keyword(key="TITLE", value=RichText("Initial")),
+        title=RichText("Initial"),
     )
     assert document.title is not None
     assert document.dirty is False
     assert document.title.dirty is False
 
-    document.title.value.text = "Changed"
+    document.title.text = "Changed"
 
     assert document.title.dirty is True
     assert document.dirty is True
@@ -229,7 +224,7 @@ def test_document_tags_setter_marks_dirty() -> None:
     document.tags = ["work", "project"]
     assert document.dirty is True
     assert document.tags == ["work", "project"]
-    assert "FILETAGS" in document.keywords
+    assert any(kw.key == "FILETAGS" for kw in document.keywords)
 
 
 def test_heading_tags_property_is_read_only() -> None:
