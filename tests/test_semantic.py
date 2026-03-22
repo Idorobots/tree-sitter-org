@@ -133,7 +133,9 @@ class TestDocumentManual:
         assert doc.filename == "test.org"
         assert doc.title is None
         assert doc.author is None
-        assert doc.category is None
+        # No #+CATEGORY: keyword → falls back to filename stem.
+        assert doc.category is not None
+        assert str(doc.category) == "test"
         assert doc.description is None
         assert doc.todo is None
         assert doc.keywords == []
@@ -701,3 +703,244 @@ class TestTagInheritance:
         h = Heading(level=1, document=doc, parent=doc, heading_tags=["work", "next"])
         assert h.heading_tags == ["work", "next"]
         assert h.tags == ["work", "next"]
+
+
+# ===================================================================
+# Document category — keyword vs filename-stem fallback
+# ===================================================================
+
+
+class TestDocumentCategory:
+    """Tests for ``Document.category`` keyword and filename-stem fallback."""
+
+    def test_no_keyword_returns_filename_stem(self) -> None:
+        """Without #+CATEGORY:, category is derived from the filename stem."""
+        doc = Document(filename="myproject.org")
+        assert doc.category is not None
+        assert str(doc.category) == "myproject"
+
+    def test_keyword_takes_priority_over_stem(self) -> None:
+        """#+CATEGORY: overrides the filename-stem fallback."""
+        doc = Document(filename="myproject.org", category=RichText("work"))
+        assert doc.category is not None
+        assert str(doc.category) == "work"
+
+    def test_empty_filename_returns_none(self) -> None:
+        """An empty filename yields no category fallback."""
+        doc = Document(filename="")
+        assert doc.category is None
+
+    def test_stem_strips_extension_only(self) -> None:
+        """Only the final extension is stripped; the rest of the name is kept."""
+        doc = Document(filename="my.project.notes.org")
+        assert doc.category is not None
+        assert str(doc.category) == "my.project.notes"
+
+    def test_nested_path_uses_basename_stem(self) -> None:
+        """The stem is computed from the basename, not the full path."""
+        doc = Document(filename="a/b/c/report.org")
+        assert doc.category is not None
+        assert str(doc.category) == "report"
+
+    def test_keyword_removed_exposes_stem_fallback(self) -> None:
+        """Removing the #+CATEGORY: keyword re-exposes the filename-stem fallback."""
+        doc = Document(filename="tasks.org", category=RichText("work"))
+        assert str(doc.category) == "work"
+        doc.category = None
+        assert doc.category is not None
+        assert str(doc.category) == "tasks"
+
+    def test_category_parsed_from_file(self, tmp_path: Path) -> None:
+        """#+CATEGORY: in the zeroth section is parsed into Document.category."""
+        path = tmp_path / "report.org"
+        path.write_bytes(b"#+CATEGORY: quarterly\n")
+        doc = _load_document(path)
+        assert doc.category is not None
+        assert str(doc.category) == "quarterly"
+
+    def test_category_falls_back_to_stem_when_no_keyword(self, tmp_path: Path) -> None:
+        """A file without #+CATEGORY: uses its own stem as the category."""
+        path = tmp_path / "sprint.org"
+        path.write_bytes(b"#+TITLE: Sprint\n")
+        doc = _load_document(path)
+        assert doc.category is not None
+        assert str(doc.category) == "sprint"
+
+
+# ===================================================================
+# Heading.heading_category and Heading.category — inheritance
+# ===================================================================
+
+
+class TestHeadingCategory:
+    """Tests for ``Heading.heading_category`` and ``Heading.category``."""
+
+    # -- heading_category (own drawer value) ---------------------------------
+
+    def test_heading_category_none_without_properties(self) -> None:
+        """heading_category is None when the heading has no properties drawer."""
+        doc = Document(filename="t.org")
+        h = Heading(level=1, document=doc, parent=doc)
+        assert h.heading_category is None
+
+    def test_heading_category_none_without_category_key(self) -> None:
+        """heading_category is None when the drawer exists but lacks CATEGORY."""
+        from org_parser.element import Properties
+
+        doc = Document(filename="t.org")
+        h = Heading(
+            level=1,
+            document=doc,
+            parent=doc,
+            properties=Properties(properties={"ID": RichText("abc")}, parent=None),
+        )
+        assert h.heading_category is None
+
+    def test_heading_category_returns_drawer_value(self, tmp_path: Path) -> None:
+        """heading_category returns the CATEGORY value from the properties drawer."""
+        path = tmp_path / "h.org"
+        path.write_bytes(b"* My Heading\n:PROPERTIES:\n:CATEGORY: project\n:END:\n")
+        doc = _load_document(path)
+        h = doc.children[0]
+        assert h.heading_category is not None
+        assert str(h.heading_category) == "project"
+
+    # -- heading_category setter ---------------------------------------------
+
+    def test_setter_creates_properties_drawer(self) -> None:
+        """Setting heading_category creates a properties drawer when absent."""
+        doc = Document(filename="t.org")
+        h = Heading(level=1, document=doc, parent=doc)
+        assert h.properties is None
+        h.heading_category = RichText("archive")
+        assert h.properties is not None
+        assert "CATEGORY" in h.properties
+        assert str(h.properties["CATEGORY"]) == "archive"
+
+    def test_setter_updates_existing_drawer(self, tmp_path: Path) -> None:
+        """Setting heading_category updates an existing properties drawer."""
+        path = tmp_path / "h.org"
+        path.write_bytes(b"* My Heading\n:PROPERTIES:\n:CATEGORY: old\n:END:\n")
+        doc = _load_document(path)
+        h = doc.children[0]
+        h.heading_category = RichText("new")
+        assert str(h.heading_category) == "new"
+
+    def test_setter_none_removes_category_key(self, tmp_path: Path) -> None:
+        """Setting heading_category to None removes the CATEGORY key."""
+        path = tmp_path / "h.org"
+        path.write_bytes(b"* My Heading\n:PROPERTIES:\n:CATEGORY: project\n:END:\n")
+        doc = _load_document(path)
+        h = doc.children[0]
+        assert h.heading_category is not None
+        h.heading_category = None
+        assert h.heading_category is None
+        assert h.properties is not None
+        assert "CATEGORY" not in h.properties
+
+    def test_setter_none_noop_when_key_absent(self) -> None:
+        """Setting heading_category to None is a no-op when key is already absent."""
+        doc = Document(filename="t.org")
+        h = Heading(level=1, document=doc, parent=doc)
+        h.heading_category = None  # must not raise, must not mark dirty
+        assert h.dirty is False
+        assert doc.dirty is False
+
+    def test_setter_marks_dirty(self) -> None:
+        """Setting heading_category marks the heading and document dirty."""
+        doc = Document(filename="t.org")
+        h = Heading(level=1, document=doc, parent=doc)
+        assert h.dirty is False
+        assert doc.dirty is False
+        h.heading_category = RichText("sprint")
+        assert h.dirty is True
+        assert doc.dirty is True
+
+    def test_setter_none_existing_marks_dirty(self, tmp_path: Path) -> None:
+        """Removing an existing CATEGORY key marks the heading and document dirty."""
+        path = tmp_path / "h.org"
+        path.write_bytes(b"* My Heading\n:PROPERTIES:\n:CATEGORY: x\n:END:\n")
+        doc = _load_document(path)
+        h = doc.children[0]
+        assert h.dirty is False
+        assert doc.dirty is False
+        h.heading_category = None
+        assert h.dirty is True
+        assert doc.dirty is True
+
+    # -- category (read-only, inherited) -------------------------------------
+
+    def test_category_returns_own_when_set(self, tmp_path: Path) -> None:
+        """category returns the heading's own CATEGORY when present."""
+        path = tmp_path / "h.org"
+        path.write_bytes(b"* My Heading\n:PROPERTIES:\n:CATEGORY: mine\n:END:\n")
+        doc = _load_document(path)
+        h = doc.children[0]
+        assert h.category is not None
+        assert str(h.category) == "mine"
+
+    def test_category_inherits_from_document(self) -> None:
+        """Top-level heading with no drawer inherits the document category."""
+        doc = Document(filename="tasks.org", category=RichText("work"))
+        h = Heading(level=1, document=doc, parent=doc)
+        assert h.heading_category is None
+        assert h.category is not None
+        assert str(h.category) == "work"
+
+    def test_category_inherits_document_filename_stem(self) -> None:
+        """Heading inherits the document's filename-stem category when no keyword."""
+        doc = Document(filename="journal.org")
+        h = Heading(level=1, document=doc, parent=doc)
+        assert h.category is not None
+        assert str(h.category) == "journal"
+
+    def test_category_inherits_from_parent_heading(self, tmp_path: Path) -> None:
+        """Child heading inherits CATEGORY from its parent heading's drawer."""
+        path = tmp_path / "h.org"
+        path.write_bytes(
+            b"* Parent\n:PROPERTIES:\n:CATEGORY: parent-cat\n:END:\n** Child\n"
+        )
+        doc = _load_document(path)
+        parent = doc.children[0]
+        child = parent.children[0]
+        assert child.heading_category is None
+        assert child.category is not None
+        assert str(child.category) == "parent-cat"
+
+    def test_category_own_overrides_parent(self, tmp_path: Path) -> None:
+        """Child with own CATEGORY overrides the parent's value."""
+        path = tmp_path / "h.org"
+        path.write_bytes(
+            b"* Parent\n:PROPERTIES:\n:CATEGORY: parent-cat\n:END:\n"
+            b"** Child\n:PROPERTIES:\n:CATEGORY: child-cat\n:END:\n"
+        )
+        doc = _load_document(path)
+        parent = doc.children[0]
+        child = parent.children[0]
+        assert str(parent.category) == "parent-cat"
+        assert str(child.category) == "child-cat"
+
+    def test_category_full_chain(self, tmp_path: Path) -> None:
+        """Full chain: grandchild inherits through parent to document."""
+        path = tmp_path / "h.org"
+        path.write_bytes(
+            b"#+CATEGORY: doc-cat\n" b"* Parent\n" b"** Child\n" b"*** Grandchild\n"
+        )
+        doc = _load_document(path)
+        parent = doc.children[0]
+        child = parent.children[0]
+        grandchild = child.children[0]
+        assert str(doc.category) == "doc-cat"
+        assert str(parent.category) == "doc-cat"
+        assert str(child.category) == "doc-cat"
+        assert str(grandchild.category) == "doc-cat"
+
+    def test_category_is_readonly(self) -> None:
+        """Heading.category is read-only; assignment raises AttributeError."""
+        doc = Document(filename="t.org")
+        h = Heading(level=1, document=doc, parent=doc)
+        try:
+            h.category = RichText("x")  # type: ignore[misc]
+            assert False, "Expected AttributeError"  # noqa: B011
+        except AttributeError:
+            pass

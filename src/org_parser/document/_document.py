@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from org_parser._node import is_error_node
@@ -225,9 +226,18 @@ class Document:
 
     @property
     def category(self) -> RichText | None:
-        """The ``#+CATEGORY:`` value, or *None*."""
+        """The effective category for this document.
+
+        Returns the ``#+CATEGORY:`` keyword value when present.  Otherwise
+        falls back to the stem of :attr:`filename` (the basename without its
+        file extension), which matches Org Mode's own default-category
+        behaviour.  Returns *None* when no filename is known (empty string).
+        """
         kw = self._find_keyword(CATEGORY)
-        return kw.value if kw is not None else None
+        if kw is not None:
+            return kw.value
+        stem = Path(self._filename).stem if self._filename else None
+        return RichText(stem) if stem else None
 
     @category.setter
     def category(self, value: RichText | None) -> None:

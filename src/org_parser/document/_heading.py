@@ -292,6 +292,53 @@ class Heading:
         return [*inherited, *own]
 
     @property
+    def heading_category(self) -> RichText | None:
+        """The ``CATEGORY`` value from this heading's own ``PROPERTIES`` drawer.
+
+        Returns the :class:`RichText` value of the ``CATEGORY`` node property
+        when the heading has a ``PROPERTIES`` drawer containing that key, or
+        *None* otherwise.  Use :attr:`category` to get the fully-inherited
+        effective category.
+        """
+        if self._properties is not None and "CATEGORY" in self._properties:
+            return self._properties["CATEGORY"]
+        return None
+
+    @heading_category.setter
+    def heading_category(self, value: RichText | None) -> None:
+        """Set or clear the ``CATEGORY`` property in this heading's ``PROPERTIES``.
+
+        When *value* is not *None* the ``CATEGORY`` key is created or updated
+        inside the heading's ``PROPERTIES`` drawer, creating the drawer when it
+        does not yet exist.  When *value* is *None* the key is removed from the
+        drawer; if the key was absent the call is a no-op and does **not** mark
+        the heading dirty.
+        """
+        if value is None:
+            if self._properties is not None and "CATEGORY" in self._properties:
+                del self._properties["CATEGORY"]
+                self._mark_dirty()
+            return
+        if self._properties is None:
+            self._properties = Properties(parent=self)
+        self._properties["CATEGORY"] = value
+        self._mark_dirty()
+
+    @property
+    def category(self) -> RichText | None:
+        """The effective category for this heading.
+
+        Returns :attr:`heading_category` when it is set on this heading's own
+        ``PROPERTIES`` drawer.  Otherwise the value is inherited from the
+        parent :class:`Heading` or :class:`Document`, walking up the tree
+        until a category is found or the document level is reached.
+        """
+        own = self.heading_category
+        if own is not None:
+            return own
+        return self._parent.category
+
+    @property
     def scheduled(self) -> Timestamp | None:
         """The ``SCHEDULED`` planning timestamp, or *None*."""
         return self._scheduled

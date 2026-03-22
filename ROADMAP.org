@@ -4526,9 +4526,13 @@ Update the =Document.keywords= field to be a list instead of a map.
 
 All the fields that return a =Keyword= should instead return the value of the keyword. They still should have setters that allow setting the specific keyword value. The updated value should be reflected in the list returned by =keywords=.
 
-** TODO Recover inherited categories
-Add a mutable field called =category= to the =Heading= class that returns the heading category computed as the value of the =CATEGORY= property from the =PROPERTIES= drawer (if available).
-If the category property is unavailable, =Heading= should "inherit" the =category= from the document they are a part of.
+** DONE Recover inherited categories
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-22 Sun 16:23]
+:END:
+Add a mutable field called =heading_category= to the =Heading= class that returns the heading category computed as the value of the =CATEGORY= property from the =PROPERTIES= drawer (if available). When set, the relevant property should be added to the properties of this heading.
+
+Add a read-only field called =category= to the =Heading= class that returns either the =heading_category= or an inherited =parent.category= if heading category is not available.
 
 The document's own category should be extracted from the =#+CATEGORY= keyword (as done currently), or from the basename of the file the document was created from if no category is specified. If there's no file, there should be no category (=None=).
 
