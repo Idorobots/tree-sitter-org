@@ -1,0 +1,15 @@
+#+TITLE: Macro Examples
+
+* Simple macros
+
+A bare name macro: {{{version}}}
+
+A macro with a format argument: {{{date(%Y-%m-%d)}}}
+
+Multiple macros on one line: {{{author}}} wrote this on {{{date}}}.
+
+* Non-macro braces
+
+Single braces {like this} and double braces {{like this}} stay as plain text.
+
+A triple-brace not followed by a letter: {{{123}}} also stays as plain text.

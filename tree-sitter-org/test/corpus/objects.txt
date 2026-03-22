@@ -134,3 +134,209 @@ Erlang binary syntax with targets and brackets
           (target_text))
         (plain_text)
         (newline)))))
+
+================
+Inline babel call — bare
+================
+call_myfunc()
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (inline_babel_call
+        (call_name))
+      (newline))))
+
+================
+Inline babel call — with arguments
+================
+call_double(n=4)
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (inline_babel_call
+        (call_name)
+        (call_arguments))
+      (newline))))
+
+================
+Inline babel call — with inside header
+================
+call_myfunc[:exports none]()
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (inline_babel_call
+        (call_name)
+        (call_inside_header))
+      (newline))))
+
+================
+Inline babel call — with outside header
+================
+call_myfunc()[:results value]
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (inline_babel_call
+        (call_name)
+        (call_outside_header))
+      (newline))))
+
+================
+Inline babel call — full form
+================
+call_double[:exports none](n=4)[:results value]
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (inline_babel_call
+        (call_name)
+        (call_inside_header)
+        (call_arguments)
+        (call_outside_header))
+      (newline))))
+
+================
+Inline babel call — embedded in paragraph
+================
+Result: call_double(n=2) is the answer.
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (plain_text)
+      (inline_babel_call
+        (call_name)
+        (call_arguments))
+      (plain_text)
+      (newline))))
+
+================
+Inline babel prefix without call syntax
+================
+call_partial[header] just text
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (plain_text)
+      (newline))))
+
+================
+Inline src prefix without src syntax
+================
+src_python[header] just text
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (plain_text)
+      (newline))))
+
+================
+Macro — no arguments
+================
+{{{name}}}
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (macro
+        name: (macro_name))
+      (newline))))
+
+================
+Macro — empty argument list
+================
+{{{name()}}}
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (macro
+        name: (macro_name))
+      (newline))))
+
+================
+Macro — with arguments
+================
+{{{date(%Y-%m-%d)}}}
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (macro
+        name: (macro_name)
+        arguments: (macro_arguments))
+      (newline))))
+
+================
+Macro — embedded in paragraph
+================
+Today is {{{date}}} and done.
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (plain_text)
+      (macro
+        name: (macro_name))
+      (plain_text)
+      (newline))))
+
+================
+Macro — braces that are not a macro remain plain text
+================
+x{y}z and {{double}} and {{{123not}}}
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (plain_text)
+      (newline))))
+
+================
+Macro — in heading title
+================
+* Title {{{version}}} here
+
+---
+
+(document
+  (heading
+    stars: (stars)
+    title: (plain_text)
+    title: (macro
+      name: (macro_name))
+    title: (plain_text)))

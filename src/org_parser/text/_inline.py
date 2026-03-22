@@ -19,15 +19,20 @@ __all__ = [
     "CompletionCounter",
     "ExportSnippet",
     "FootnoteReference",
+    "InlineBabelCall",
+    "InlineEntity",
     "InlineObject",
     "InlineSourceBlock",
     "Italic",
     "LineBreak",
+    "Macro",
     "PlainLink",
     "PlainText",
     "RadioTarget",
     "RegularLink",
     "StrikeThrough",
+    "Subscript",
+    "Superscript",
     "Target",
     "Timestamp",
     "Underline",
@@ -88,6 +93,39 @@ class LineBreak(_InlineBase):
 
 
 @dataclass(frozen=True, slots=True)
+class InlineEntity(_InlineBase):
+    r"""Org entity inline object.
+
+    Represents named entities (e.g. ``\alpha``, ``\Rightarrow``) and the
+    non-breaking-space form ``\_ `` (backslash-underscore followed by one or
+    more spaces).
+
+    For named entities ``has_braces`` indicates whether the ``{}`` suffix was
+    written (``\alpha{}``), which prevents the entity name from merging with
+    adjacent text in some export backends.
+
+    The ``\_ `` form is represented with ``name="_"``.  Its ``__str__``
+    always emits a single trailing space; round-trip fidelity for multiple
+    trailing spaces relies on the parse-tree-backed source slice in
+    :class:`~org_parser.text.RichText`.
+
+    Args:
+        name: Entity name (e.g. ``"alpha"``) or ``"_"`` for the ``\_ `` form.
+        has_braces: Whether the ``{}`` suffix was written (named entities only).
+    """
+
+    name: str
+    has_braces: bool = False
+
+    def __str__(self) -> str:
+        """Render entity to Org syntax."""
+        if self.name == "_":
+            return "\\_ "
+        suffix = "{}" if self.has_braces else ""
+        return f"\\{self.name}{suffix}"
+
+
+@dataclass(frozen=True, slots=True)
 class CompletionCounter(_InlineBase):
     """Completion counter object, e.g. ``[1/3]`` or ``[50%]``."""
 
@@ -140,6 +178,38 @@ class StrikeThrough(_InlineBase):
     def __str__(self) -> str:
         """Render strike-through markup."""
         return f"+{_render_parts(self.body)}+"
+
+
+@dataclass(frozen=True, slots=True)
+class Subscript(_InlineBase):
+    """Subscript inline object."""
+
+    body: list[InlineObject]
+    form: str = "{}"
+
+    def __str__(self) -> str:
+        """Render subscript markup."""
+        if self.form == "*":
+            return "_*"
+        if self.form == "()":
+            return f"_({_render_parts(self.body)})"
+        return f"_{{{_render_parts(self.body)}}}"
+
+
+@dataclass(frozen=True, slots=True)
+class Superscript(_InlineBase):
+    """Superscript inline object."""
+
+    body: list[InlineObject]
+    form: str = "{}"
+
+    def __str__(self) -> str:
+        """Render superscript markup."""
+        if self.form == "*":
+            return "^*"
+        if self.form == "()":
+            return f"^({_render_parts(self.body)})"
+        return f"^{{{_render_parts(self.body)}}}"
 
 
 @dataclass(frozen=True, slots=True)
@@ -223,6 +293,47 @@ class InlineSourceBlock(_InlineBase):
         headers = f"[{self.headers}]" if self.headers is not None else ""
         body = self.body if self.body is not None else ""
         return f"src_{self.language}{headers}{{{body}}}"
+
+
+@dataclass(frozen=True, slots=True)
+class Macro(_InlineBase):
+    """Macro call object, e.g. ``{{{name}}}`` or ``{{{name(args)}}}``."""
+
+    name: str
+    arguments: str | None = None
+
+    def __str__(self) -> str:
+        """Render macro call."""
+        if self.arguments is not None:
+            return "{{{" + self.name + "(" + self.arguments + ")}}}"
+        return "{{{" + self.name + "}}}"
+
+
+@dataclass(frozen=True, slots=True)
+class InlineBabelCall(_InlineBase):
+    """Inline babel call object, e.g. ``call_double[:exports none](n=4)``.
+
+    Represents the inline form of an Org babel call that can appear inside
+    paragraph text and heading titles.
+
+    Args:
+        name: The called function name.
+        arguments: Optional argument string inside ``(…)``.
+        inside_header: Optional header string inside the first ``[…]``.
+        outside_header: Optional header string inside the second ``[…]``.
+    """
+
+    name: str
+    arguments: str | None = None
+    inside_header: str | None = None
+    outside_header: str | None = None
+
+    def __str__(self) -> str:
+        """Render inline babel call."""
+        inside = f"[{self.inside_header}]" if self.inside_header is not None else ""
+        args = self.arguments if self.arguments is not None else ""
+        outside = f"[{self.outside_header}]" if self.outside_header is not None else ""
+        return f"call_{self.name}{inside}({args}){outside}"
 
 
 @dataclass(frozen=True, slots=True)

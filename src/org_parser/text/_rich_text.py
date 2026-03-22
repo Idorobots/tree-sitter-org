@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from org_parser._lang import PARSER
 from org_parser._node import is_error_node, node_source
 from org_parser._nodes import (
     ANGLE_LINK,
@@ -15,18 +16,23 @@ from org_parser._nodes import (
     CITATION,
     CODE,
     COMPLETION_COUNTER,
+    ENTITY,
     EXPORT_SNIPPET,
     FOOTNOTE_REFERENCE,
+    INLINE_BABEL_CALL,
     INLINE_HEADERS,
     INLINE_SOURCE_BLOCK,
     ITALIC,
     LINE_BREAK,
+    MACRO,
     PARAGRAPH,
     PLAIN_LINK,
     PLAIN_TEXT,
     RADIO_TARGET,
     REGULAR_LINK,
     STRIKE_THROUGH,
+    SUBSCRIPT,
+    SUPERSCRIPT,
     TARGET,
     TIMESTAMP,
     UNDERLINE,
@@ -40,15 +46,20 @@ from org_parser.text._inline import (
     CompletionCounter,
     ExportSnippet,
     FootnoteReference,
+    InlineBabelCall,
+    InlineEntity,
     InlineObject,
     InlineSourceBlock,
     Italic,
     LineBreak,
+    Macro,
     PlainLink,
     PlainText,
     RadioTarget,
     RegularLink,
     StrikeThrough,
+    Subscript,
+    Superscript,
     Target,
     Underline,
     Verbatim,
@@ -344,6 +355,39 @@ def _parse_inline_node(  # noqa: PLR0911,PLR0912,PLR0915
             body=body,
         )
 
+    if node_type == MACRO:
+        name_node = node.child_by_field_name("name")
+        args_node = node.child_by_field_name("arguments")
+        # args_node is the macro_arguments child; None when the macro has no
+        # argument list (either {{{name}}} or {{{name()}}}).  We distinguish
+        # the two via grammar structure: an empty () produces no macro_arguments
+        # child, so both cases yield arguments=None here, which is correct —
+        # the user-visible API does not distinguish them.
+        return Macro(
+            name=node_source(name_node, document),
+            arguments=node_source(args_node, document)
+            if args_node is not None
+            else None,
+        )
+
+    if node_type == INLINE_BABEL_CALL:
+        name_node = node.child_by_field_name("name")
+        args_node = node.child_by_field_name("arguments")
+        inside_node = node.child_by_field_name("inside_header")
+        outside_node = node.child_by_field_name("outside_header")
+        return InlineBabelCall(
+            name=node_source(name_node, document),
+            arguments=node_source(args_node, document)
+            if args_node is not None
+            else None,
+            inside_header=node_source(inside_node, document)
+            if inside_node is not None
+            else None,
+            outside_header=node_source(outside_node, document)
+            if outside_node is not None
+            else None,
+        )
+
     if node_type == PLAIN_LINK:
         link_type_node = node.child_by_field_name("type")
         path_node = node.child_by_field_name("path")
@@ -381,6 +425,42 @@ def _parse_inline_node(  # noqa: PLR0911,PLR0912,PLR0915
     if node_type == TIMESTAMP:
         return Timestamp.from_node(node, document)
 
+    if node_type == SUBSCRIPT:
+        source_text = document.source_for(node).decode()
+        if source_text.startswith("_*"):
+            return Subscript(body=[PlainText("*")], form="*")
+        if source_text.startswith("_{") and source_text.endswith("}"):
+            return Subscript(body=_parse_inline_fragment(source_text[2:-1]), form="{}")
+        if source_text.startswith("_(") and source_text.endswith(")"):
+            return Subscript(body=_parse_inline_fragment(source_text[2:-1]), form="()")
+        return PlainText(source_text)
+
+    if node_type == SUPERSCRIPT:
+        source_text = document.source_for(node).decode()
+        if source_text.startswith("^*"):
+            return Superscript(body=[PlainText("*")], form="*")
+        if source_text.startswith("^{") and source_text.endswith("}"):
+            return Superscript(
+                body=_parse_inline_fragment(source_text[2:-1]), form="{}"
+            )
+        if source_text.startswith("^(") and source_text.endswith(")"):
+            return Superscript(
+                body=_parse_inline_fragment(source_text[2:-1]), form="()"
+            )
+        return PlainText(source_text)
+
+    if node_type == ENTITY:
+        source_text = document.source_for(node).decode()
+        if source_text.startswith("\\_"):
+            # Non-breaking-space form: \_<spaces>
+            return InlineEntity(name="_")
+        has_braces = source_text.endswith("{}")
+        name = source_text[1:-2] if has_braces else source_text[1:]
+        return InlineEntity(
+            name=name,
+            has_braces=has_braces,
+        )
+
     # Any remaining node that the grammar could not parse cleanly falls back to
     # PlainText.  Error and missing nodes are additionally reported so the
     # owning Document can accumulate them.
@@ -397,3 +477,52 @@ def _extract_citation_style(text: str) -> str | None:
     if not prefix.startswith("[cite/"):
         return None
     return prefix[len("[cite/") :]
+
+
+def _parse_inline_fragment(fragment: str) -> list[InlineObject]:
+    """Parse an inline fragment string into inline objects.
+
+    Args:
+        fragment: Fragment text that may contain inline Org objects.
+
+    Returns:
+        Parsed inline objects for *fragment*.
+    """
+    if fragment == "":
+        return []
+
+    from org_parser.document._document import Document
+
+    source = f"{fragment}\n".encode()
+    tree = PARSER.parse(source)
+    parsed_document = Document.from_tree(tree, "", source)
+    paragraph = _find_first_node_by_type(tree.root_node, PARAGRAPH)
+    if paragraph is None:
+        return [PlainText(fragment)]
+
+    parts = _parse_inline_nodes(paragraph.named_children, parsed_document)
+    if parts and isinstance(parts[-1], PlainText) and parts[-1].text == "\n":
+        return parts[:-1]
+    return parts
+
+
+def _find_first_node_by_type(
+    root: tree_sitter.Node,
+    node_type: str,
+) -> tree_sitter.Node | None:
+    """Find the first node in *root* with matching type.
+
+    Args:
+        root: Root tree-sitter node to search.
+        node_type: Target node type to locate.
+
+    Returns:
+        First matching node, or ``None`` when no such node exists.
+    """
+    stack: list[tree_sitter.Node] = [root]
+    while stack:
+        node = stack.pop()
+        if node.type == node_type:
+            return node
+        stack.extend(reversed(node.children))
+    return None

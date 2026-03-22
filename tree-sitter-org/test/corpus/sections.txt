@@ -123,6 +123,7 @@ Indented paragraphs under heading and list item
           (newline)))
       (blank_line)
       (list_item
+        bullet: (unordered_bullet)
         first_line: (plain_text))
       (block
         indent: (indent)
@@ -450,8 +451,12 @@ next line
     title: (plain_text)
     body: (section
       (paragraph
-        (plain_text)
+        (entity)
         (newline)
+        (plain_text)
+        (entity)
+        (plain_text)
+        (entity)
         (plain_text)
         (newline)
         (plain_text)
@@ -470,5 +475,13 @@ Escaped closing bracket stays plain text
 (document
   (zeroth_section
     (paragraph
+      (entity)
+      (plain_text)
+      (superscript
+        body: (script_text))
+      (plain_text)
+      (entity)
+      (plain_text)
+      (entity)
       (plain_text)
       (newline))))

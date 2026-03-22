@@ -281,61 +281,6 @@ Table.el grid table
 
 (document
   (zeroth_section
-    (tableel_table)
-    (org_table
-      (table_row
-        (table_cell
-          (plain_text))
-        (table_cell
-          (plain_text))
-        (table_cell
-          (plain_text))))
-    (tableel_table)
-    (org_table
-      (table_row
-        (table_cell
-          (plain_text))
-        (table_cell
-          (plain_text))
-        (table_cell
-          (plain_text)))
-      (table_row
-        (table_cell
-          (plain_text))
-        (table_cell
-          (plain_text))
-        (table_cell
-          (plain_text)))
-      (table_row
-        (table_cell
-          (plain_text))
-        (table_cell
-          (plain_text))
-        (table_cell
-          (plain_text)))
-      (table_row
-        (table_cell
-          (plain_text))
-        (table_cell
-          (plain_text))
-        (table_cell
-          (plain_text))))
-    (tableel_table)
-    (org_table
-      (table_row
-        (table_cell
-          (plain_text))
-        (table_cell
-          (plain_text))
-        (table_cell
-          (plain_text)))
-      (table_row
-        (table_cell
-          (plain_text))
-        (table_cell
-          (plain_text))
-        (table_cell
-          (plain_text))))
     (tableel_table)))
 
 ================
@@ -349,14 +294,41 @@ Table.el header only
 
 (document
   (zeroth_section
-    (tableel_table)
-    (org_table
-      (table_row
-        (table_cell
-          (plain_text))
-        (table_cell
-          (plain_text))))
     (tableel_table)))
+
+================
+Indented table.el grid table
+================
+  +-----+-----+
+  | foo | bar |
+  +-----+-----+
+  | faz | baz |
+  +-----+-----+
+
+---
+
+(document
+  (zeroth_section
+    (block
+      (indent)
+      (tableel_table))))
+
+================
+Table.el followed by plus list item
+================
++-----+-----+
+| foo | bar |
++-----+-----+
++ list item
+
+---
+
+(document
+  (zeroth_section
+    (tableel_table)
+    (list_item
+      bullet: (unordered_bullet)
+      first_line: (plain_text))))
 
 ================
 Affiliated keywords between tables

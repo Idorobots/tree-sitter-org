@@ -14,15 +14,19 @@ from org_parser.text import (
     CompletionCounter,
     ExportSnippet,
     FootnoteReference,
+    InlineEntity,
     InlineSourceBlock,
     Italic,
     LineBreak,
+    Macro,
     PlainLink,
     PlainText,
     RadioTarget,
     RegularLink,
     RichText,
     StrikeThrough,
+    Subscript,
+    Superscript,
     Target,
     Underline,
     Verbatim,
@@ -216,6 +220,10 @@ def test_programmatic_rich_text_construction_uses_public_objects() -> None:
             PlainText(" "),
             ExportSnippet("html", "<b>"),
             PlainText(" "),
+            Macro("version"),
+            PlainText(" "),
+            Macro("date", "%Y-%m-%d"),
+            PlainText(" "),
             LineBreak(),
         ]
     )
@@ -223,7 +231,7 @@ def test_programmatic_rich_text_construction_uses_public_objects() -> None:
         "A *bold* /italic/ _under_ +gone+ =raw= ~x()~ [2/5] https://example.org "
         "<https://example.org> [[id:abc][desc]] <<anchor>> <<<radio>>> "
         "<2025-01-01 Wed> [fn:a:d] [cite/t:@k] src_python[:results]{1+1} "
-        "@@html:<b>@@ \\\\"
+        "@@html:<b>@@ {{{version}}} {{{date(%Y-%m-%d)}}} \\\\"
     )
     assert str(rich_text) == expected
 
@@ -274,3 +282,259 @@ def test_timestamp_from_node_with_range_has_end(
     ranged = Timestamp.from_node(range_timestamp_node, document)
     assert ranged.end is not None
     assert ranged.end >= ranged.start
+
+
+def test_macro_str_no_arguments() -> None:
+    """Macro without arguments renders as {{{name}}}."""
+    macro = Macro("version")
+    assert str(macro) == "{{{version}}}"
+
+
+def test_macro_str_with_arguments() -> None:
+    """Macro with arguments renders as {{{name(args)}}}."""
+    macro = Macro("date", "%Y-%m-%d")
+    assert str(macro) == "{{{date(%Y-%m-%d)}}}"
+
+
+def test_macro_from_node_no_arguments(
+    example_file: Callable[[str], Path],
+) -> None:
+    """Macro with no arguments parses name correctly and arguments is None."""
+    path = example_file("macro-basic.org")
+    source = path.read_bytes()
+    tree = load_raw(path)
+    document = Document.from_tree(tree, path.name, source)
+    macro_node = _find_first_node_with_type(tree.root_node, "macro")
+
+    rt = RichText.from_node(macro_node, document=document)
+
+    assert len(rt.parts) == 1
+    macro = rt.parts[0]
+    assert isinstance(macro, Macro)
+    assert macro.name == "version"
+    assert macro.arguments is None
+
+
+def test_macro_from_node_with_arguments(
+    example_file: Callable[[str], Path],
+) -> None:
+    """Macro with arguments parses name and argument string correctly."""
+    path = example_file("macro-basic.org")
+    source = path.read_bytes()
+    tree = load_raw(path)
+    document = Document.from_tree(tree, path.name, source)
+
+    # Find the macro node that carries arguments — it is the second macro in
+    # the document (the first one after the heading with {{{date(%Y-%m-%d)}}}).
+    macro_nodes: list[tree_sitter.Node] = []
+    stack: list[tree_sitter.Node] = [tree.root_node]
+    while stack:
+        node = stack.pop()
+        if node.type == "macro":
+            macro_nodes.append(node)
+        stack.extend(reversed(node.children))
+
+    args_macro_node = next(
+        n for n in macro_nodes if n.child_by_field_name("arguments") is not None
+    )
+    rt = RichText.from_node(args_macro_node, document=document)
+
+    assert len(rt.parts) == 1
+    macro = rt.parts[0]
+    assert isinstance(macro, Macro)
+    assert macro.name == "date"
+    assert macro.arguments == "%Y-%m-%d"
+
+
+def test_macro_parsed_from_loads(tmp_path: Path) -> None:
+    """loads() surfaces Macro objects from inline macro call syntax."""
+    content = "{{{name}}}\n"
+    path = tmp_path / "macro-inline.org"
+    path.write_text(content, encoding="utf-8")
+    tree = load_raw(path)
+    document = loads(content)
+    paragraph = _find_first_node_with_type(tree.root_node, "paragraph")
+    rich_text = RichText.from_node(paragraph, document=document)
+    macro_parts = [p for p in rich_text.parts if isinstance(p, Macro)]
+    assert len(macro_parts) == 1
+    assert macro_parts[0].name == "name"
+    assert macro_parts[0].arguments is None
+
+
+# ---------------------------------------------------------------------------
+# InlineEntity tests
+# ---------------------------------------------------------------------------
+
+
+def test_entity_named_parsed_from_paragraph(tmp_path: Path) -> None:
+    """Named entity \\NAME is parsed as InlineEntity with correct name."""
+    content = "\\alpha text\n"
+    path = tmp_path / "entity-named.org"
+    path.write_text(content, encoding="utf-8")
+    document = loads(content)
+    tree = load_raw(path)
+    paragraph = _find_first_node_with_type(tree.root_node, "paragraph")
+    rich_text = RichText.from_node(paragraph, document=document)
+    entity_parts = [p for p in rich_text.parts if isinstance(p, InlineEntity)]
+    assert len(entity_parts) == 1
+    assert entity_parts[0].name == "alpha"
+    assert entity_parts[0].has_braces is False
+
+
+def test_entity_named_with_braces_parsed(tmp_path: Path) -> None:
+    """Entity \\NAME{} sets has_braces=True."""
+    content = "\\alpha{} text\n"
+    path = tmp_path / "entity-braces.org"
+    path.write_text(content, encoding="utf-8")
+    document = loads(content)
+    tree = load_raw(path)
+    paragraph = _find_first_node_with_type(tree.root_node, "paragraph")
+    rich_text = RichText.from_node(paragraph, document=document)
+    entity_parts = [p for p in rich_text.parts if isinstance(p, InlineEntity)]
+    assert len(entity_parts) == 1
+    assert entity_parts[0].name == "alpha"
+    assert entity_parts[0].has_braces is True
+
+
+def test_entity_nbsp_form_parsed(tmp_path: Path) -> None:
+    """Non-breaking-space entity \\_ is parsed as InlineEntity with name='_'."""
+    content = "\\_ text\n"
+    path = tmp_path / "entity-nbsp.org"
+    path.write_text(content, encoding="utf-8")
+    document = loads(content)
+    tree = load_raw(path)
+    paragraph = _find_first_node_with_type(tree.root_node, "paragraph")
+    rich_text = RichText.from_node(paragraph, document=document)
+    entity_parts = [p for p in rich_text.parts if isinstance(p, InlineEntity)]
+    assert len(entity_parts) == 1
+    assert entity_parts[0].name == "_"
+
+
+def test_entity_at_eol_parsed(tmp_path: Path) -> None:
+    """Entity at end of line (no post character) is parsed correctly."""
+    content = "\\alpha\n"
+    path = tmp_path / "entity-eol.org"
+    path.write_text(content, encoding="utf-8")
+    document = loads(content)
+    tree = load_raw(path)
+    paragraph = _find_first_node_with_type(tree.root_node, "paragraph")
+    rich_text = RichText.from_node(paragraph, document=document)
+    entity_parts = [p for p in rich_text.parts if isinstance(p, InlineEntity)]
+    assert len(entity_parts) == 1
+    assert entity_parts[0].name == "alpha"
+
+
+def test_entity_backslash_digit_stays_plain_text(tmp_path: Path) -> None:
+    """Backslash followed by a digit is not an entity — stays plain text."""
+    content = "\\1 not-entity\n"
+    path = tmp_path / "entity-digit.org"
+    path.write_text(content, encoding="utf-8")
+    document = loads(content)
+    tree = load_raw(path)
+    paragraph = _find_first_node_with_type(tree.root_node, "paragraph")
+    rich_text = RichText.from_node(paragraph, document=document)
+    entity_parts = [p for p in rich_text.parts if isinstance(p, InlineEntity)]
+    assert len(entity_parts) == 0
+
+
+def test_entity_str_roundtrip_without_braces() -> None:
+    """InlineEntity.__str__ renders \\NAME without braces."""
+    assert str(InlineEntity(name="alpha")) == "\\alpha"
+    assert str(InlineEntity(name="Rightarrow")) == "\\Rightarrow"
+
+
+def test_entity_str_roundtrip_with_braces() -> None:
+    """InlineEntity.__str__ renders \\NAME{} with braces."""
+    assert str(InlineEntity(name="alpha", has_braces=True)) == "\\alpha{}"
+
+
+def test_entity_nbsp_str() -> None:
+    """InlineEntity(name='_').__str__ renders the non-breaking-space form."""
+    assert str(InlineEntity(name="_")) == "\\_ "
+
+
+def test_entity_included_in_programmatic_richtext() -> None:
+    """InlineEntity instances can be added to RichText programmatically."""
+    rt = RichText(
+        [InlineEntity(name="alpha"), PlainText(" and "), InlineEntity(name="_")]
+    )
+    assert "\\alpha" in str(rt)
+    assert "\\_ " in str(rt)
+
+
+def test_subscript_brace_form_parsed(tmp_path: Path) -> None:
+    """Subscript brace form parses into Subscript with inline body."""
+    content = "x_{i+1}\n"
+    path = tmp_path / "subscript-brace.org"
+    path.write_text(content, encoding="utf-8")
+    document = loads(content)
+    tree = load_raw(path)
+    paragraph = _find_first_node_with_type(tree.root_node, "paragraph")
+    rich_text = RichText.from_node(paragraph, document=document)
+
+    subscript_parts = [p for p in rich_text.parts if isinstance(p, Subscript)]
+    assert len(subscript_parts) == 1
+    assert subscript_parts[0].form == "{}"
+    assert str(subscript_parts[0]) == "_{i+1}"
+
+
+def test_superscript_paren_form_parsed(tmp_path: Path) -> None:
+    """Superscript paren form parses into Superscript with inline body."""
+    content = "x^(n-1)\n"
+    path = tmp_path / "superscript-paren.org"
+    path.write_text(content, encoding="utf-8")
+    document = loads(content)
+    tree = load_raw(path)
+    paragraph = _find_first_node_with_type(tree.root_node, "paragraph")
+    rich_text = RichText.from_node(paragraph, document=document)
+
+    superscript_parts = [p for p in rich_text.parts if isinstance(p, Superscript)]
+    assert len(superscript_parts) == 1
+    assert superscript_parts[0].form == "()"
+    assert str(superscript_parts[0]) == "^(n-1)"
+
+
+def test_script_star_forms_parse(tmp_path: Path) -> None:
+    """Star forms ``_*`` and ``^*`` parse as script objects."""
+    content = "x_* and y^*\n"
+    path = tmp_path / "script-star.org"
+    path.write_text(content, encoding="utf-8")
+    document = loads(content)
+    tree = load_raw(path)
+    paragraph = _find_first_node_with_type(tree.root_node, "paragraph")
+    rich_text = RichText.from_node(paragraph, document=document)
+
+    assert any(
+        isinstance(part, Subscript) and part.form == "*" for part in rich_text.parts
+    )
+    assert any(
+        isinstance(part, Superscript) and part.form == "*" for part in rich_text.parts
+    )
+
+
+def test_caret_non_script_stays_plain_text(tmp_path: Path) -> None:
+    """Caret not followed by script form remains plain text."""
+    content = "foo^bar\n"
+    path = tmp_path / "script-caret-plain.org"
+    path.write_text(content, encoding="utf-8")
+    document = loads(content)
+    tree = load_raw(path)
+    paragraph = _find_first_node_with_type(tree.root_node, "paragraph")
+    rich_text = RichText.from_node(paragraph, document=document)
+
+    assert not any(isinstance(part, Superscript) for part in rich_text.parts)
+    assert str(rich_text) == content
+
+
+def test_underscore_word_non_script_stays_plain_text(tmp_path: Path) -> None:
+    """Underscore words are not interpreted as subscript."""
+    content = "Fixed_Width stays text\n"
+    path = tmp_path / "script-underscore-plain.org"
+    path.write_text(content, encoding="utf-8")
+    document = loads(content)
+    tree = load_raw(path)
+    paragraph = _find_first_node_with_type(tree.root_node, "paragraph")
+    rich_text = RichText.from_node(paragraph, document=document)
+
+    assert not any(isinstance(part, Subscript) for part in rich_text.parts)
+    assert str(rich_text) == content

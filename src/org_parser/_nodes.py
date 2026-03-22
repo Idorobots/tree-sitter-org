@@ -14,6 +14,7 @@ from __future__ import annotations
 __all__ = [
     "ANGLE_LINK",
     "AUTHOR",
+    "BABEL_CALL",
     "BLANK_LINE",
     "BLOCK",
     "BOLD",
@@ -31,6 +32,7 @@ __all__ = [
     "DESCRIPTION",
     "DRAWER",
     "DYNAMIC_BLOCK",
+    "ENTITY",
     "EXAMPLE_BLOCK",
     "EXPORT_BLOCK",
     "EXPORT_SNIPPET",
@@ -38,12 +40,16 @@ __all__ = [
     "FOOTNOTE_REFERENCE",
     "HEADING",
     "HORIZONTAL_RULE",
+    "INLINE_BABEL_CALL",
     "INLINE_HEADERS",
     "INLINE_SOURCE_BLOCK",
     "ITALIC",
     "LINE_BREAK",
     "LIST_ITEM",
     "LOGBOOK_DRAWER",
+    "MACRO",
+    "MACRO_ARGUMENTS",
+    "MACRO_NAME",
     "NODE_PROPERTY",
     "ORG_TABLE",
     "PARAGRAPH",
@@ -62,6 +68,8 @@ __all__ = [
     "SPECIAL_KEYWORD",
     "SRC_BLOCK",
     "STRIKE_THROUGH",
+    "SUBSCRIPT",
+    "SUPERSCRIPT",
     "TABLEEL_TABLE",
     "TABLE_CELL",
     "TABLE_ROW",
@@ -149,6 +157,7 @@ PROPERTY_DRAWER = "property_drawer"
 # Element types
 # ---------------------------------------------------------------------------
 
+BABEL_CALL = "babel_call"
 BLANK_LINE = "blank_line"
 BLOCK = "block"
 CAPTION_KEYWORD = "caption_keyword"
@@ -188,19 +197,26 @@ TBLFM_LINE = "tblfm_line"
 
 ANGLE_LINK = "angle_link"
 BOLD = "bold"
+ENTITY = "entity"
 CITATION = "citation"
 CODE = "code"
 EXPORT_SNIPPET = "export_snippet"
 FOOTNOTE_REFERENCE = "footnote_reference"
+INLINE_BABEL_CALL = "inline_babel_call"
 INLINE_HEADERS = "inline_headers"
 INLINE_SOURCE_BLOCK = "inline_source_block"
 ITALIC = "italic"
 LINE_BREAK = "line_break"
+MACRO = "macro"
+MACRO_ARGUMENTS = "macro_arguments"
+MACRO_NAME = "macro_name"
 PLAIN_LINK = "plain_link"
 PLAIN_TEXT = "plain_text"
 RADIO_TARGET = "radio_target"
 REGULAR_LINK = "regular_link"
 STRIKE_THROUGH = "strike_through"
+SUBSCRIPT = "subscript"
+SUPERSCRIPT = "superscript"
 TARGET = "target"
 UNDERLINE = "underline"
 VERBATIM = "verbatim"
