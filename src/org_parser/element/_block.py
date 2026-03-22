@@ -706,9 +706,14 @@ def _extract_container_contents(
         for child in node.children_by_field_name("body")
         if child.is_named
     ]
-    from org_parser.element._list_recovery import recover_lists
+    from org_parser.element._structure_recovery import (
+        attach_affiliated_keywords,
+        recover_lists,
+    )
 
-    return recover_lists(elements, parent=None)
+    result = recover_lists(elements, parent=None)
+    attach_affiliated_keywords(result)
+    return result
 
 
 def _extract_nested_element(

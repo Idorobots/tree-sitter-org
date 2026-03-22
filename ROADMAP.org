@@ -4536,7 +4536,10 @@ Add a read-only field called =category= to the =Heading= class that returns eith
 
 The document's own category should be extracted from the =#+CATEGORY= keyword (as done currently), or from the basename of the file the document was created from if no category is specified. If there's no file, there should be no category (=None=).
 
-** TODO Attach CAPTION, TBLNAME, PLOT and RESULTS to the following element
+** DONE Attach CAPTION, TBLNAME, PLOT and RESULTS to the following element
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-22 Sun 16:49]
+:END:
 Add an optional =keywords: list[Keyword] | None= field to the =Element= class that will be used to attach keywords to a an element. Add a read-only attribute =keywords= that returns the list.
 
 Add a method called =attach_keyword= to the =Element= class - the metod should add a keyword to the internal keyword list. It should not mark the element as dirty.

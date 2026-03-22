@@ -596,7 +596,10 @@ def _parse_zeroth_section(
         merge_logbook_drawers,
         merge_properties_drawers,
     )
-    from org_parser.element._list_recovery import recover_lists
+    from org_parser.element._structure_recovery import (
+        attach_affiliated_keywords,
+        recover_lists,
+    )
 
     keywords: list[Keyword] = []
     property_drawers: list[Properties] = []
@@ -622,11 +625,13 @@ def _parse_zeroth_section(
                     )
             break  # only one zeroth section
 
+    recovered_body = recover_lists(body, parent=parent)
+    attach_affiliated_keywords(recovered_body)
     return (
         keywords,
         merge_properties_drawers(property_drawers, parent=parent),
         merge_logbook_drawers(logbook_drawers, parent=parent),
-        recover_lists(body, parent=parent),
+        recovered_body,
     )
 
 

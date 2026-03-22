@@ -15,8 +15,11 @@ from org_parser.element._element import (
     node_source,
 )
 from org_parser.element._list import List, ListItem, Repeat
-from org_parser.element._list_recovery import recover_lists
 from org_parser.element._structure import IndentBlock
+from org_parser.element._structure_recovery import (
+    attach_affiliated_keywords,
+    recover_lists,
+)
 from org_parser.text._rich_text import RichText
 from org_parser.time import Clock
 
@@ -63,15 +66,17 @@ class Drawer(Element):
         """Create a :class:`Drawer` from a tree-sitter ``drawer`` node."""
         name_node = node.child_by_field_name("name")
         name = "" if name_node is None else document.source_for(name_node).decode()
+        drawer_body = recover_lists(
+            [
+                _extract_drawer_body_element(child, document)
+                for child in node.children_by_field_name("body")
+            ],
+            parent=parent,
+        )
+        attach_affiliated_keywords(drawer_body)
         drawer = cls(
             name=name,
-            body=recover_lists(
-                [
-                    _extract_drawer_body_element(child, document)
-                    for child in node.children_by_field_name("body")
-                ],
-                parent=parent,
-            ),
+            body=drawer_body,
             parent=parent,
         )
         drawer._node = node
@@ -163,6 +168,7 @@ class Logbook(Drawer):
             ],
             parent=parent,
         )
+        attach_affiliated_keywords(body)
         repeats = _extract_logbook_repeats(body, document)
         clock_entries = [element for element in body if isinstance(element, Clock)]
         logbook = cls(

@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 
     from org_parser.document._document import Document
     from org_parser.document._heading import Heading
+    from org_parser.element._keyword import AffiliatedKeyword
 
 __all__ = ["Element", "node_source"]
 
@@ -52,6 +53,7 @@ class Element:
         self._node: tree_sitter.Node | None = None
         self._document: Document | None = None
         self._dirty = False
+        self._keywords: list[AffiliatedKeyword] | None = None
 
     # -- public read-only properties -----------------------------------------
 
@@ -69,6 +71,35 @@ class Element:
     def dirty(self) -> bool:
         """Whether this element has been mutated after creation."""
         return self._dirty
+
+    @property
+    def keywords(self) -> list[AffiliatedKeyword]:
+        """Affiliated keywords attached to this element, in document order.
+
+        Affiliated keywords (``#+CAPTION:``, ``#+TBLNAME:``, ``#+PLOT:``,
+        ``#+RESULTS:``) that immediately precede this element in the document
+        body are linked here during parsing.  The list is empty when no
+        affiliated keywords precede this element.
+
+        The keywords remain as independent elements in the containing body
+        list and are not duplicated in the serialised output of this element.
+        """
+        return self._keywords if self._keywords is not None else []
+
+    def attach_keyword(self, keyword: AffiliatedKeyword) -> None:
+        """Attach an affiliated keyword to this element without marking it dirty.
+
+        This method is called during body post-processing to link affiliated
+        keywords (``#+CAPTION:``, ``#+TBLNAME:``, ``#+PLOT:``,
+        ``#+RESULTS:``) to the element that immediately follows them.  The
+        keyword is appended to :attr:`keywords` in document order.
+
+        Args:
+            keyword: The affiliated keyword to attach.
+        """
+        if self._keywords is None:
+            self._keywords = []
+        self._keywords.append(keyword)
 
     def _mark_dirty(self) -> None:
         """Mark this element dirty and bubble to parent objects."""

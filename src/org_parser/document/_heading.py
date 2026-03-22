@@ -34,7 +34,10 @@ from org_parser.element._element import (
     Element,
     element_from_error_or_unknown,
 )
-from org_parser.element._list_recovery import recover_lists
+from org_parser.element._structure_recovery import (
+    attach_affiliated_keywords,
+    recover_lists,
+)
 from org_parser.text._inline import CompletionCounter
 from org_parser.text._rich_text import RichText
 from org_parser.time import Timestamp
@@ -709,10 +712,12 @@ def _extract_body(
         else:
             body.append(extract_body_element(child, parent=parent, document=document))
 
+    recovered_body = recover_lists(body, parent=parent)
+    attach_affiliated_keywords(recovered_body)
     return (
         merge_properties_drawers(properties_drawers, parent=parent),
         merge_logbook_drawers(logbook_drawers, parent=parent),
-        recover_lists(body, parent=parent),
+        recovered_body,
     )
 
 
