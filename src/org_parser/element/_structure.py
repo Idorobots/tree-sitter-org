@@ -6,7 +6,7 @@ body but carry no textual content of their own:
 * :class:`BlankLine` — an empty separator line (``blank_line`` node).
 * :class:`Comment` — a single-line ``#`` comment.
 * :class:`HorizontalRule` — a ``-----`` horizontal rule line.
-* :class:`IndentBlock` — a contiguous indented chunk (``block`` node).
+* :class:`Indent` — a contiguous indented chunk (``indent`` node).
 """
 
 from __future__ import annotations
@@ -32,7 +32,7 @@ __all__ = [
     "BlankLine",
     "Comment",
     "HorizontalRule",
-    "IndentBlock",
+    "Indent",
 ]
 
 
@@ -180,10 +180,10 @@ class HorizontalRule(Element):
         return build_semantic_repr("HorizontalRule", rule=self._rule)
 
 
-class IndentBlock(Element):
+class Indent(Element):
     """Indentation wrapper node with nested body elements.
 
-    Grammar ``block`` nodes represent one contiguous indented chunk.
+    Grammar ``indent`` nodes represent one contiguous indented chunk.
     """
 
     def __init__(
@@ -249,7 +249,7 @@ class IndentBlock(Element):
 
     def __repr__(self) -> str:
         """Return a tree-oriented representation for debugging."""
-        return build_semantic_repr("IndentBlock", body=self._body, indent=self._indent)
+        return build_semantic_repr("Indent", body=self._body, indent=self._indent)
 
     def __iter__(self) -> Iterator[Element]:
         """Iterate over body elements."""

@@ -39,7 +39,7 @@ from org_parser.element._structure import (
     BlankLine,
     Comment,
     HorizontalRule,
-    IndentBlock,
+    Indent,
 )
 from org_parser.element._table import Table, TableCell, TableEl, TableRow, TableRuleRow
 
@@ -58,7 +58,7 @@ __all__ = [
     "ExportBlock",
     "FixedWidthBlock",
     "HorizontalRule",
-    "IndentBlock",
+    "Indent",
     "Keyword",
     "List",
     "ListItem",

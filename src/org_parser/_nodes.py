@@ -16,7 +16,6 @@ __all__ = [
     "AUTHOR",
     "BABEL_CALL",
     "BLANK_LINE",
-    "BLOCK",
     "BOLD",
     "CAPTION_KEYWORD",
     "CATEGORY",
@@ -40,11 +39,13 @@ __all__ = [
     "FOOTNOTE_REFERENCE",
     "HEADING",
     "HORIZONTAL_RULE",
+    "INDENT",
     "INLINE_BABEL_CALL",
     "INLINE_HEADERS",
     "INLINE_SOURCE_BLOCK",
     "ITALIC",
     "LINE_BREAK",
+    "LIST",
     "LIST_ITEM",
     "LOGBOOK_DRAWER",
     "MACRO",
@@ -160,7 +161,6 @@ PROPERTY_DRAWER = "property_drawer"
 
 BABEL_CALL = "babel_call"
 BLANK_LINE = "blank_line"
-BLOCK = "block"
 CAPTION_KEYWORD = "caption_keyword"
 CENTER_BLOCK = "center_block"
 CLOCK = "clock"
@@ -171,6 +171,8 @@ EXAMPLE_BLOCK = "example_block"
 EXPORT_BLOCK = "export_block"
 FIXED_WIDTH = "fixed_width"
 HORIZONTAL_RULE = "horizontal_rule"
+INDENT = "indent"
+LIST = "list"
 LIST_ITEM = "list_item"
 ORG_TABLE = "org_table"
 PARAGRAPH = "paragraph"

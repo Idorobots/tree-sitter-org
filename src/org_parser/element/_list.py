@@ -5,19 +5,22 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING
 
-from org_parser._node import node_source
-from org_parser._nodes import LIST_ITEM
+from org_parser._node import is_error_node, node_source
+from org_parser._nodes import INDENT, LIST_ITEM
+from org_parser.element._dispatch import body_element_factories
 from org_parser.element._element import (
     Element,
     build_semantic_repr,
+    element_from_error_or_unknown,
     ensure_trailing_newline,
 )
+from org_parser.element._structure import Indent
 from org_parser.text._inline import LineBreak, PlainText
 from org_parser.text._rich_text import RichText
 from org_parser.time import Timestamp
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator, Sequence
+    from collections.abc import Callable, Iterator, Sequence
 
     import tree_sitter
 
@@ -78,7 +81,11 @@ class ListItem(Element):
             checkbox=_extract_checkbox(node, document),
             item_tag=_extract_item_tag(node, document),
             first_line=_extract_first_line(node, document),
-            body=[],
+            body=[
+                _extract_list_body_element(child, document, parent=None)
+                for child in node.children_by_field_name("body")
+                if child.is_named
+            ],
             parent=parent,
         )
         item._node = node
@@ -443,9 +450,9 @@ class List(Element):
         *,
         parent: Document | Heading | Element | None = None,
     ) -> List:
-        """Create a :class:`List` from a ``plain_list`` node."""
+        """Create a :class:`List` from a ``list`` node."""
         items = [
-            ListItem.from_node(child, document)
+            ListItem.from_node(child, document, parent=None)
             for child in node.named_children
             if child.type == LIST_ITEM
         ]
@@ -660,3 +667,44 @@ def _normalize_optional_text(value: str | None) -> str | None:
     if normalized == "":
         return None
     return normalized
+
+
+def _extract_list_body_element(
+    node: tree_sitter.Node,
+    document: Document,
+    *,
+    parent: Document | Heading | Element | None = None,
+) -> Element:
+    """Build one semantic element object for a list-item body child node."""
+    if is_error_node(node):
+        return element_from_error_or_unknown(node, document, parent=parent)
+    if node.type == INDENT:
+        return _extract_indent(node, document, parent=parent)
+
+    dispatch: dict[str, Callable[..., Element]] = body_element_factories()
+    factory = dispatch.get(node.type)
+    if factory is None:
+        return element_from_error_or_unknown(node, document, parent=parent)
+    return factory(node, document, parent=parent)
+
+
+def _extract_indent(
+    node: tree_sitter.Node,
+    document: Document,
+    *,
+    parent: Document | Heading | Element | None = None,
+) -> Indent:
+    """Build one :class:`Indent` for a list-item body ``indent`` node."""
+    indent_node = node.child_by_field_name("indent")
+    indent_text = node_source(indent_node, document)
+    indent = indent_text if indent_text != "" else None
+    block = Indent(
+        body=[
+            _extract_list_body_element(child, document, parent=parent)
+            for child in node.children_by_field_name("body")
+            if child.is_named
+        ],
+        indent=indent,
+    )
+    block.attach_source(node, document)
+    return block

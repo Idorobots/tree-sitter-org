@@ -9,11 +9,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from org_parser._node import is_error_node, node_source
-from org_parser._nodes import BLOCK
+from org_parser._nodes import INDENT
 from org_parser.element import Logbook, Properties, Repeat
 from org_parser.element._dispatch import body_element_factories
 from org_parser.element._element import Element, element_from_error_or_unknown
-from org_parser.element._structure import IndentBlock
+from org_parser.element._structure import Indent
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 
 __all__ = [
     "extract_body_element",
-    "extract_indent_block",
+    "extract_indent",
     "merge_logbook_drawers",
     "merge_properties_drawers",
 ]
@@ -117,7 +117,7 @@ def extract_body_element(
         return element_from_error_or_unknown(node, document, parent=parent)
     dispatch: dict[str, Callable[..., Element]] = {
         **body_element_factories(),
-        BLOCK: extract_indent_block,
+        INDENT: extract_indent,
     }
     factory = dispatch.get(node.type)
     if factory is None:
@@ -125,26 +125,26 @@ def extract_body_element(
     return factory(node, document, parent=parent)
 
 
-def extract_indent_block(
+def extract_indent(
     node: tree_sitter.Node,
     document: Document,
     *,
     parent: Heading | Document,
-) -> IndentBlock:
-    """Build one :class:`IndentBlock` with recursively parsed body nodes.
+) -> Indent:
+    """Build one :class:`Indent` with recursively parsed body nodes.
 
     Args:
-        node: A tree-sitter ``block`` node.
+        node: A tree-sitter ``indent`` node.
         document: The owning :class:`Document`.
         parent: Owner heading or document.
 
     Returns:
-        An :class:`IndentBlock` whose body elements are recursively parsed.
+        An :class:`Indent` whose body elements are recursively parsed.
     """
     indent_node = node.child_by_field_name("indent")
     indent_text = node_source(indent_node, document)
     indent = indent_text if indent_text != "" else None
-    block = IndentBlock(
+    block = Indent(
         body=[
             extract_body_element(child, parent=parent, document=document)
             for child in node.children_by_field_name("body")

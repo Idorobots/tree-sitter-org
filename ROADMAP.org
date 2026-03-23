@@ -5003,7 +5003,10 @@ When a list body contains a paragraph that spans multiple lines, it causes the l
 :END:
 Rename the =block= node to =indent= as it's more descriptive.
 
-** TODO Indentation edge cases
+** DONE Indentation edge cases
+:LOGBOOK:
+    - State "DONE"       from "TODO"       [2026-03-24 Tue 00:32]
+:END:
 There's a small edge case when a drawer list item has a note and is misaligned:
 
 #+begin_example

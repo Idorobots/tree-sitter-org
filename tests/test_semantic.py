@@ -5,7 +5,15 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from org_parser.document import Document, Heading, load_raw
-from org_parser.element import Drawer, Element, Keyword, Logbook, Paragraph, Repeat
+from org_parser.element import (
+    Drawer,
+    Element,
+    Indent,
+    Keyword,
+    Logbook,
+    Paragraph,
+    Repeat,
+)
 from org_parser.text import CompletionCounter, RichText
 from org_parser.time import Clock, Timestamp
 
@@ -112,13 +120,14 @@ class TestParagraph:
         path.write_text("    continuation\n")
         doc = _load_document(path)
 
-        paragraph = next(
-            (element for element in doc.body if isinstance(element, Paragraph)),
-            None,
+        indent = next(
+            (element for element in doc.body if isinstance(element, Indent)), None
         )
 
-        assert paragraph is not None
-        assert paragraph.indent is None
+        assert indent is not None
+        assert len(indent.body) == 1
+        assert isinstance(indent.body[0], Paragraph)
+        assert indent.body[0].indent is None
 
 
 # ===================================================================

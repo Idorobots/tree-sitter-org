@@ -3,7 +3,15 @@
 from __future__ import annotations
 
 from org_parser import loads
-from org_parser.element import BlankLine, Drawer, List, ListItem, Paragraph, QuoteBlock
+from org_parser.element import (
+    BlankLine,
+    Drawer,
+    Indent,
+    List,
+    ListItem,
+    Paragraph,
+    QuoteBlock,
+)
 from org_parser.text import RichText
 
 
@@ -133,17 +141,18 @@ def test_mixed_indent_paragraph_attaches_block_line_and_keeps_tail() -> None:
     assert str(document.body[1]) == "plain tail\n"
 
 
-def test_single_blank_line_keeps_continuation_ownership() -> None:
-    """A single blank line does not break continuation attachment."""
+def test_single_blank_line_preserves_top_level_indent_nodes() -> None:
+    """A blank line between list items preserves explicit indent wrappers."""
     document = loads("- one\n\n  continued\n- two\n")
 
     assert isinstance(document.body[0], List)
-    parsed = document.body[0]
-    assert len(parsed.items) == 2
-    assert len(parsed.items[0].body) == 2
-    assert isinstance(parsed.items[0].body[0], BlankLine)
-    assert isinstance(parsed.items[0].body[1], Paragraph)
-    assert str(parsed.items[0].body[1]) == "continued\n"
+    assert isinstance(document.body[1], BlankLine)
+    assert isinstance(document.body[2], Indent)
+    assert isinstance(document.body[3], List)
+    indent = document.body[2]
+    assert len(indent.body) == 1
+    assert isinstance(indent.body[0], Paragraph)
+    assert str(indent.body[0]) == "continued\n"
 
 
 def test_dirty_document_preserves_blank_line_between_list_and_paragraph() -> None:
@@ -173,9 +182,11 @@ def test_lone_end_after_indented_list_item_recovers_as_paragraph() -> None:
     )
 
     heading = document.children[0]
-    assert isinstance(heading.body[0], List)
-    assert isinstance(heading.body[1], Paragraph)
-    assert str(heading.body[1]) == ":END:\n"
+    assert isinstance(heading.body[0], Indent)
+    indent = heading.body[0]
+    assert isinstance(indent.body[0], List)
+    assert isinstance(indent.body[1], Paragraph)
+    assert str(indent.body[1]) == ":END:\n"
     assert document.errors == []
 
 
@@ -192,17 +203,19 @@ def test_block_body_breaks_recovered_lists_on_non_list_nodes() -> None:
 
 
 def test_consecutive_blocks_of_same_indent_stay_separate() -> None:
-    """Recovery does not merge paragraph runs across sibling blocks."""
+    """Consecutive indented runs remain explicit top-level structures."""
     document = loads("- one\n  first\n\n  second\n")
 
     assert isinstance(document.body[0], List)
     item = document.body[0].items[0]
-    assert len(item.body) == 3
+    assert len(item.body) == 1
     assert isinstance(item.body[0], Paragraph)
-    assert isinstance(item.body[1], BlankLine)
-    assert isinstance(item.body[2], Paragraph)
+    assert isinstance(document.body[1], BlankLine)
+    assert isinstance(document.body[2], Indent)
+    second = document.body[2]
+    assert isinstance(second.body[0], Paragraph)
     assert str(item.body[0]) == "first\n"
-    assert str(item.body[2]) == "second\n"
+    assert str(second.body[0]) == "second\n"
 
 
 def test_dirty_nested_list_rendering_uses_item_driven_indentation() -> None:
@@ -259,27 +272,23 @@ def test_unordered_bullet_property_returns_correct_character() -> None:
     document = loads("- dash\n+ plus\n")
 
     assert isinstance(document.body[0], List)
-    assert isinstance(document.body[1], List)
     assert document.body[0].items[0].bullet == "-"
-    assert document.body[1].items[0].bullet == "+"
+    assert document.body[0].items[1].bullet == "+"
 
 
-def test_different_unordered_bullets_create_separate_lists() -> None:
-    """Consecutive items with different bullet chars form separate List objects."""
+def test_different_unordered_bullets_stay_in_one_parse_list() -> None:
+    """Consecutive bullets are preserved as one parse-level list node."""
     document = loads("- Foo\n- Bar\n+ Baz\n+ Faz\n")
 
-    assert len(document.body) == 2
-    dash_list, plus_list = document.body[0], document.body[1]
-    assert isinstance(dash_list, List)
-    assert isinstance(plus_list, List)
-    assert len(dash_list.items) == 2
-    assert len(plus_list.items) == 2
-    assert all(item.bullet == "-" for item in dash_list.items)
-    assert all(item.bullet == "+" for item in plus_list.items)
+    assert len(document.body) == 1
+    parsed = document.body[0]
+    assert isinstance(parsed, List)
+    assert len(parsed.items) == 4
+    assert [item.bullet for item in parsed.items] == ["-", "-", "+", "+"]
 
 
-def test_full_multi_bullet_example_recovers_correct_structure() -> None:
-    """The canonical mixed-bullet example produces two top-level lists.
+def test_full_multi_bullet_example_preserves_parse_list_boundaries() -> None:
+    """The canonical mixed-bullet example remains one top-level parse list.
 
     Input::
 
@@ -296,17 +305,8 @@ def test_full_multi_bullet_example_recovers_correct_structure() -> None:
          - Back
          - To dashes
 
-    Expected structure:
-
-    * Top-level ``-`` list: ``- Foo``, ``- Bar``
-
-      * ``- Bar``'s body contains two nested lists:
-        ``1.``/``2.`` (terminator ``"."``) and ``a)``/``b)`` (terminator ``")"``).
-
-    * Top-level ``+`` list: ``+ Baz``, ``+ Faz``
-
-      * ``+ Faz``'s body contains two nested lists:
-        ``* Hurr``/``* Durr`` and ``- Back``/``- To dashes``.
+    The parser keeps source-level list boundaries and does not split list nodes
+    by bullet/terminator type.
     """
     document = loads(
         "- Foo\n"
@@ -323,51 +323,20 @@ def test_full_multi_bullet_example_recovers_correct_structure() -> None:
         " - To dashes\n"
     )
 
-    # Two top-level lists: dash list and plus list.
-    assert len(document.body) == 2
-    dash_list = document.body[0]
-    plus_list = document.body[1]
-    assert isinstance(dash_list, List)
-    assert isinstance(plus_list, List)
-    assert len(dash_list.items) == 2
-    assert len(plus_list.items) == 2
+    assert len(document.body) == 1
+    top = document.body[0]
+    assert isinstance(top, List)
+    assert len(top.items) == 4
+    assert [item.bullet for item in top.items] == ["-", "-", "+", "+"]
 
-    # First top-level dash list.
-    assert dash_list.items[0].bullet == "-"
-    assert str(dash_list.items[0].first_line) == "Foo"
-    assert dash_list.items[1].bullet == "-"
-    assert str(dash_list.items[1].first_line) == "Bar"
-
-    # "- Bar" body: two nested ordered lists split by terminator.
-    bar_body = dash_list.items[1].body
-    assert len(bar_body) == 2
+    bar_body = top.items[1].body
+    assert len(bar_body) == 1
     assert isinstance(bar_body[0], List)
-    assert isinstance(bar_body[1], List)
-    period_list = bar_body[0]
-    paren_list = bar_body[1]
-    assert len(period_list.items) == 2
-    assert len(paren_list.items) == 2
-    assert period_list.items[0].bullet == "."
-    assert period_list.items[1].bullet == "."
-    assert paren_list.items[0].bullet == ")"
-    assert paren_list.items[1].bullet == ")"
+    nested_ordered = bar_body[0]
+    assert [item.bullet for item in nested_ordered.items] == [".", ".", ")", ")"]
 
-    # Second top-level plus list.
-    assert plus_list.items[0].bullet == "+"
-    assert str(plus_list.items[0].first_line) == "Baz"
-    assert plus_list.items[1].bullet == "+"
-    assert str(plus_list.items[1].first_line) == "Faz"
-
-    # "+ Faz" body: two nested unordered lists split by bullet char.
-    faz_body = plus_list.items[1].body
-    assert len(faz_body) == 2
+    faz_body = top.items[3].body
+    assert len(faz_body) == 1
     assert isinstance(faz_body[0], List)
-    assert isinstance(faz_body[1], List)
-    star_list = faz_body[0]
-    back_dash_list = faz_body[1]
-    assert len(star_list.items) == 2
-    assert len(back_dash_list.items) == 2
-    assert star_list.items[0].bullet == "*"
-    assert star_list.items[1].bullet == "*"
-    assert back_dash_list.items[0].bullet == "-"
-    assert back_dash_list.items[1].bullet == "-"
+    nested_unordered = faz_body[0]
+    assert [item.bullet for item in nested_unordered.items] == ["*", "*", "-", "-"]
