@@ -488,42 +488,38 @@ LOGBOOK drawer with mis-aligned end in archive style
           day: (ts_day)
           dayname: (ts_dayname)
           time: (ts_time))
-        body: (block
-          indent: (indent)
-          body: (list_item
-            bullet: (unordered_bullet)
-            first_line: (plain_text)
-            first_line: (timestamp
-              year: (ts_year)
-              month: (ts_month)
-              day: (ts_day)
-              dayname: (ts_dayname)
-              time: (ts_time))
-            first_line: (plain_text)
-            first_line: (line_break)
-            body: (block
-              indent: (indent)
-              body: (paragraph
-                (plain_text)
-                (newline))))
-          body: (list_item
-            bullet: (unordered_bullet)
-            first_line: (plain_text)
-            first_line: (timestamp
-              year: (ts_year)
-              month: (ts_month)
-              day: (ts_day)
-              dayname: (ts_dayname)
-              time: (ts_time)))
-          body: (list_item
-            bullet: (unordered_bullet)
-            first_line: (plain_text)
-            first_line: (timestamp
-              year: (ts_year)
-              month: (ts_month)
-              day: (ts_day)
-              dayname: (ts_dayname)
-              time: (ts_time))))))))
+        body: (list_item
+          bullet: (unordered_bullet)
+          first_line: (plain_text)
+          first_line: (timestamp
+            year: (ts_year)
+            month: (ts_month)
+            day: (ts_day)
+            dayname: (ts_dayname)
+            time: (ts_time))
+          first_line: (plain_text)
+          first_line: (line_break)
+          body: (paragraph
+            (plain_text)
+            (newline)))
+        body: (list_item
+          bullet: (unordered_bullet)
+          first_line: (plain_text)
+          first_line: (timestamp
+            year: (ts_year)
+            month: (ts_month)
+            day: (ts_day)
+            dayname: (ts_dayname)
+            time: (ts_time)))
+        body: (list_item
+          bullet: (unordered_bullet)
+          first_line: (plain_text)
+          first_line: (timestamp
+            year: (ts_year)
+            month: (ts_month)
+            day: (ts_day)
+            dayname: (ts_dayname)
+            time: (ts_time)))))))
 
 ================
 Logbook drawer end with trailing angle text
@@ -607,11 +603,9 @@ Indented LOGBOOK drawer with note line
               time: (ts_time))
             first_line: (plain_text)
             first_line: (line_break)
-            body: (block
-              indent: (indent)
-              body: (paragraph
-                (plain_text)
-                (newline)))))))))
+            body: (paragraph
+              (plain_text)
+              (newline))))))))
 
 ================
 Unindented LOGBOOK drawer with continuation note
@@ -641,11 +635,9 @@ Unindented LOGBOOK drawer with continuation note
             time: (ts_time))
           first_line: (plain_text)
           first_line: (line_break)
-          body: (block
-            indent: (indent)
-            body: (paragraph
-              (plain_text)
-              (newline))))))))
+          body: (paragraph
+            (plain_text)
+            (newline)))))))
 
 ================
 Indented LOGBOOK note with indented blank line
@@ -678,12 +670,10 @@ Indented LOGBOOK note with indented blank line
               time: (ts_time))
             first_line: (plain_text)
             first_line: (line_break)
-            body: (block
-              indent: (indent)
-              body: (paragraph
-                (plain_text)
-                (newline))
-              body: (blank_line))))))))
+            body: (paragraph
+              (plain_text)
+              (newline))
+            body: (blank_line)))))))
 
 ================
 LOGBOOK drawer start line with inline text and unindented list

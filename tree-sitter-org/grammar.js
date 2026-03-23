@@ -242,6 +242,10 @@ module.exports = grammar({
 
     block: $ => prec.right(seq(
       field('indent', alias($._BLOCK_BEGIN, $.indent)),
+      $._block,
+    )),
+
+    _block: $ => seq(
       field('body', choice(
         $.blank_line,
         $.block,
@@ -253,7 +257,7 @@ module.exports = grammar({
         seq($._INDENT, $._section_element_no_block),
       ))),
       $._BLOCK_END,
-    )),
+    ),
 
     _affiliatable_no_block: $ => choice(
       $._greater_block,
@@ -486,8 +490,13 @@ module.exports = grammar({
         seq(field('tag', $.item_tag), $._NL),
         seq(optional(field('first_line', $._item_first_line)), optional($._TRAILING), $._NL),
       ),
-      optional(field('body', $.block)),
+      optional($._list_item_body),
     )),
+
+    _list_item_body: $ => seq(
+      $._BLOCK_BEGIN,
+      $._block,
+    ),
 
     _item_first_line: $ => repeat1($._object),
 
