@@ -290,13 +290,11 @@ Inline plus in indented list under heading
         body: (list
           item: (list_item
             bullet: (unordered_bullet)
-            first_line: (plain_text)))
-        body: (list
+            first_line: (plain_text))
           item: (list_item
             bullet: (unordered_bullet)
-            first_line: (plain_text)))
-        body: (list
-          item: (list_item
+            first_line: (plain_text))
+	  item: (list_item
             bullet: (unordered_bullet)
             first_line: (plain_text)))))))
 
@@ -707,8 +705,7 @@ List items with slash and percent completion counters
           item: (list_item
             bullet: (unordered_bullet)
             checkbox: (checkbox)
-            first_line: (plain_text)))
-        body: (list
+            first_line: (plain_text))
           item: (list_item
             bullet: (unordered_bullet)
             checkbox: (checkbox)
@@ -756,8 +753,7 @@ Nested plus checkbox list items stay list_item nodes
           item: (list_item
             bullet: (unordered_bullet)
             checkbox: (checkbox)
-            first_line: (plain_text)))
-        body: (list
+            first_line: (plain_text))
           item: (list_item
             bullet: (unordered_bullet)
             checkbox: (checkbox)
@@ -786,8 +782,84 @@ Nested list — flat with indent preserved
         body: (list
           item: (list_item
             bullet: (unordered_bullet)
-            first_line: (plain_text)))
+            first_line: (plain_text))
+          item: (list_item
+            bullet: (unordered_bullet)
+            first_line: (plain_text))))
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text)))))
+
+================
+Nested list with many consecutive children stays one list
+================
+- foo
+  - baz
+  - herp
+  - drep
+  - hurr
+  - durr
+- bar
+- baz
+
+---
+
+(document
+  (zeroth_section
+    (list
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text)
         body: (list
+          item: (list_item
+            bullet: (unordered_bullet)
+            first_line: (plain_text))
+          item: (list_item
+            bullet: (unordered_bullet)
+            first_line: (plain_text))
+          item: (list_item
+            bullet: (unordered_bullet)
+            first_line: (plain_text))
+          item: (list_item
+            bullet: (unordered_bullet)
+            first_line: (plain_text))
+          item: (list_item
+            bullet: (unordered_bullet)
+            first_line: (plain_text))))
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text))
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text)))))
+
+================
+Nested list item paragraph does not terminate nested list
+================
+- list
+  - sublist
+    bar
+    foo
+  - sublist
+- list
+
+---
+
+(document
+  (zeroth_section
+    (list
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text)
+        body: (list
+          item: (list_item
+            bullet: (unordered_bullet)
+            first_line: (plain_text)
+            body: (paragraph
+              (plain_text)
+              (newline)
+              (plain_text)
+              (newline)))
           item: (list_item
             bullet: (unordered_bullet)
             first_line: (plain_text))))
@@ -933,8 +1005,7 @@ List continuation lines parse indented timestamps and links
             day: (ts_day)
             dayname: (ts_dayname)
             time: (ts_time))
-          (newline))
-        body: (paragraph
+          (newline)
           (regular_link
             path: (link_path)
             description: (plain_text))

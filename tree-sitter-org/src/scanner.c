@@ -44,6 +44,9 @@ enum TokenType {
   TOKEN_MARKUP_OPEN_CODE,
   TOKEN_MARKUP_CLOSE_CODE,
   TOKEN_PARAGRAPH_CONTINUE,
+  TOKEN_BLOCK_PARAGRAPH_CONTINUE,
+  TOKEN_BLOCK_LIST_ITEM_CONTINUE,
+  TOKEN_BLOCK_CONTENT_CONTINUE,
   TOKEN_FNDEF_END,
   TOKEN_PLAIN_TEXT,
   TOKEN_ITEM_TAG_END,
@@ -2415,8 +2418,8 @@ static int scan_paragraph_continue(TSLexer *lexer) {
 
   // Reject obvious element starters so indented lines parse as dedicated
   // constructs rather than paragraph continuations.
-  if (ch == '*' || ch == '#' || ch == '|' ||
-      ch == '+' || ch == '-' || ch == '[' || ch == '%' ||
+  if (ch == '*' || ch == '#' || ch == '|' || ch == ':' ||
+      ch == '+' || ch == '-' || ch == '%' ||
       ch == 'C' || ch == 'D' || ch == 'S' ||
       ch == '\n' || (ch >= '0' && ch <= '9') || eof(lexer)) {
     return -1;
@@ -2424,6 +2427,141 @@ static int scan_paragraph_continue(TSLexer *lexer) {
 
   lexer->result_symbol = TOKEN_PARAGRAPH_CONTINUE;
   mark_end(lexer);
+  return 1;
+}
+
+// _BLOCK_PARAGRAPH_CONTINUE
+// Return values:
+//   1  -> TOKEN_BLOCK_PARAGRAPH_CONTINUE emitted
+//   0  -> no match, no advance performed
+//  -1  -> no match after consuming indentation; caller must immediately
+//         return false so tree-sitter rewinds before trying other tokens.
+static int scan_block_paragraph_continue(Scanner *s, TSLexer *lexer) {
+  if (s->section_block_depth == 0) return 0;
+  if (lookahead(lexer) != ' ' && lookahead(lexer) != '\t') return 0;
+
+  uint32_t indent_col = 0;
+  while (lookahead(lexer) == ' ' || lookahead(lexer) == '\t') {
+    indent_col++;
+    advance(lexer);
+  }
+
+  mark_end(lexer);
+
+  uint16_t current = s->section_block_indents[s->section_block_depth - 1];
+  if (indent_col < current) return -1;
+
+  int32_t ch = lookahead(lexer);
+  if (ch == '*' || ch == '#' || ch == '|' || ch == ':' ||
+      ch == '+' || ch == '-' || ch == '%' ||
+      ch == 'C' || ch == 'D' || ch == 'S' ||
+      ch == '\n' || (ch >= '0' && ch <= '9') || eof(lexer)) {
+    return -1;
+  }
+
+  lexer->result_symbol = TOKEN_BLOCK_PARAGRAPH_CONTINUE;
+  return 1;
+}
+
+static bool scan_block_list_bullet_start(TSLexer *lexer) {
+  int32_t ch = lookahead(lexer);
+
+  if (ch == '+' || ch == '-' || ch == '*') {
+    advance(lexer);
+    return lookahead(lexer) == ' ' || lookahead(lexer) == '\t';
+  }
+
+  if (ch >= '0' && ch <= '9') {
+    do {
+      advance(lexer);
+      ch = lookahead(lexer);
+    } while (ch >= '0' && ch <= '9');
+
+    if (ch != '.' && ch != ')') return false;
+    advance(lexer);
+    return lookahead(lexer) == ' ' || lookahead(lexer) == '\t';
+  }
+
+  if (ch >= 'a' && ch <= 'z') {
+    advance(lexer);
+    ch = lookahead(lexer);
+    if (ch != '.' && ch != ')') return false;
+    advance(lexer);
+    return lookahead(lexer) == ' ' || lookahead(lexer) == '\t';
+  }
+
+  return false;
+}
+
+static bool starts_with_end_marker(TSLexer *lexer) {
+  if (lookahead(lexer) != ':') return false;
+
+  advance(lexer);
+  int32_t c2 = lookahead(lexer);
+  if (c2 != 'e' && c2 != 'E') return false;
+
+  advance(lexer);
+  int32_t c3 = lookahead(lexer);
+  if (c3 != 'n' && c3 != 'N') return false;
+
+  advance(lexer);
+  int32_t c4 = lookahead(lexer);
+  if (c4 != 'd' && c4 != 'D') return false;
+
+  advance(lexer);
+  return lookahead(lexer) == ':';
+}
+
+// _BLOCK_CONTENT_CONTINUE fallback path for parser states where
+// TOKEN_BLOCK_END is not valid.
+static int scan_block_content_continue(Scanner *s, TSLexer *lexer,
+                                       const bool *valid_symbols) {
+  if (s->section_block_depth == 0) return 0;
+  if (lookahead(lexer) != ' ' && lookahead(lexer) != '\t') return 0;
+
+  uint32_t indent_col = 0;
+  while (lookahead(lexer) == ' ' || lookahead(lexer) == '\t') {
+    indent_col++;
+    advance(lexer);
+  }
+
+  mark_end(lexer);
+
+  uint16_t current = s->section_block_indents[s->section_block_depth - 1];
+  if (indent_col < current) return -1;
+
+  int32_t ch = lookahead(lexer);
+  if (ch == '\n' || eof(lexer)) return -1;
+
+  if (indent_col > current && valid_symbols[TOKEN_BLOCK_BEGIN]) return -1;
+
+  if (s->drawer_depth > 0 && indent_col == current && ch == ':') {
+    if (starts_with_end_marker(lexer)) return -1;
+  }
+
+  lexer->result_symbol = TOKEN_BLOCK_CONTENT_CONTINUE;
+  return 1;
+}
+
+// _BLOCK_LIST_ITEM_CONTINUE fallback path for parser states where
+// TOKEN_BLOCK_END is not valid.
+static int scan_block_list_item_continue(Scanner *s, TSLexer *lexer) {
+  if (s->section_block_depth == 0) return 0;
+  if (lookahead(lexer) != ' ' && lookahead(lexer) != '\t') return 0;
+
+  uint32_t indent_col = 0;
+  while (lookahead(lexer) == ' ' || lookahead(lexer) == '\t') {
+    indent_col++;
+    advance(lexer);
+  }
+
+  mark_end(lexer);
+
+  uint16_t current = s->section_block_indents[s->section_block_depth - 1];
+  if (indent_col != current) return -1;
+  if (!scan_block_list_bullet_start(lexer)) return -1;
+
+  lexer->result_symbol = TOKEN_BLOCK_LIST_ITEM_CONTINUE;
   return 1;
 }
 
@@ -2513,6 +2651,25 @@ static int scan_block_end(Scanner *s, TSLexer *lexer, const bool *valid_symbols)
   int32_t ch = lookahead(lexer);
   uint16_t current = s->section_block_indents[s->section_block_depth - 1];
 
+  if (indent_col == current && valid_symbols[TOKEN_BLOCK_LIST_ITEM_CONTINUE]) {
+    mark_end(lexer);
+    if (scan_block_list_bullet_start(lexer)) {
+      lexer->result_symbol = TOKEN_BLOCK_LIST_ITEM_CONTINUE;
+      return 1;
+    }
+  }
+
+  if (indent_col == current && valid_symbols[TOKEN_BLOCK_PARAGRAPH_CONTINUE]) {
+    if (ch != '*' && ch != '#' && ch != '|' && ch != ':' &&
+        ch != '+' && ch != '-' && ch != '%' &&
+        ch != 'C' && ch != 'D' && ch != 'S' &&
+        ch != '\n' && !(ch >= '0' && ch <= '9') && !eof(lexer)) {
+      mark_end(lexer);
+      lexer->result_symbol = TOKEN_BLOCK_PARAGRAPH_CONTINUE;
+      return 1;
+    }
+  }
+
   if (indent_col > current && !eof(lexer) && ch != '\n' &&
       valid_symbols[TOKEN_BLOCK_BEGIN]) {
     if (s->section_block_depth >= MAX_SECTION_BLOCK_DEPTH) return -1;
@@ -2539,27 +2696,22 @@ static int scan_block_end(Scanner *s, TSLexer *lexer, const bool *valid_symbols)
      * above, so these advances do not extend the zero-width token boundary.
      * This handles drawer :END: markers at the same indentation level as
      * the block content (e.g. mis-aligned archive-style logbooks). */
-    advance(lexer);
-    int32_t c2 = lookahead(lexer);
-    if (c2 == 'e' || c2 == 'E') {
-      advance(lexer);
-      int32_t c3 = lookahead(lexer);
-      if (c3 == 'n' || c3 == 'N') {
-        advance(lexer);
-        int32_t c4 = lookahead(lexer);
-        if (c4 == 'd' || c4 == 'D') {
-          advance(lexer);
-          int32_t c5 = lookahead(lexer);
-          if (c5 == ':') {
-            should_close = true;
-            close_on_end_marker = true;
-          }
-        }
-      }
+    if (starts_with_end_marker(lexer)) {
+      should_close = true;
+      close_on_end_marker = true;
     }
   }
 
-  if (!should_close) return -1;
+  if (!should_close) {
+    if (valid_symbols[TOKEN_BLOCK_CONTENT_CONTINUE] &&
+        indent_col >= current && !eof(lexer) && ch != '\n') {
+      mark_end(lexer);
+      lexer->result_symbol = TOKEN_BLOCK_CONTENT_CONTINUE;
+      return 1;
+    }
+
+    return -1;
+  }
 
   s->section_block_depth--;
   s->suppress_block_begin_on_end_line = close_on_end_marker;
@@ -2935,6 +3087,18 @@ bool tree_sitter_org_external_scanner_scan(
     if (scan_stars_or_heading_end(s, lexer, valid_symbols)) return true;
   }
 
+  // --- BLOCK_PARAGRAPH_CONTINUE ---
+  // Outside drawers, probe paragraph continuation before block delimiters.
+  // Inside drawers, probe block delimiters first so dedent/`:end:` handling
+  // can close nested list-item blocks before parsing the drawer terminator.
+  if (s->drawer_depth == 0 &&
+      valid_symbols[TOKEN_BLOCK_PARAGRAPH_CONTINUE] &&
+      !valid_symbols[TOKEN_BLOCK_END]) {
+    int result = scan_block_paragraph_continue(s, lexer);
+    if (result == 1) return true;
+    if (result == -1) return false;
+  }
+
   // --- Section indentation blocks ---
   // Block delimiters own indentation structure for all section elements.
   if (valid_symbols[TOKEN_BLOCK_END]) {
@@ -2945,6 +3109,26 @@ bool tree_sitter_org_external_scanner_scan(
 
   if (valid_symbols[TOKEN_BLOCK_BEGIN]) {
     int result = scan_block_begin(s, lexer, valid_symbols);
+    if (result == 1) return true;
+    if (result == -1) return false;
+  }
+
+  if (!valid_symbols[TOKEN_BLOCK_END] &&
+      valid_symbols[TOKEN_BLOCK_CONTENT_CONTINUE]) {
+    int result = scan_block_content_continue(s, lexer, valid_symbols);
+    if (result == 1) return true;
+    if (result == -1) return false;
+  }
+
+  if (!valid_symbols[TOKEN_BLOCK_END] &&
+      valid_symbols[TOKEN_BLOCK_LIST_ITEM_CONTINUE]) {
+    int result = scan_block_list_item_continue(s, lexer);
+    if (result == 1) return true;
+    if (result == -1) return false;
+  }
+
+  if (s->drawer_depth > 0 && valid_symbols[TOKEN_BLOCK_PARAGRAPH_CONTINUE]) {
+    int result = scan_block_paragraph_continue(s, lexer);
     if (result == 1) return true;
     if (result == -1) return false;
   }

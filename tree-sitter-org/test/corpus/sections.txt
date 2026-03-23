@@ -131,6 +131,27 @@ Indented paragraphs under heading and list item
             (newline)))))))
 
 ================
+Indented block paragraph spans consecutive lines
+================
+  Text
+  Text
+  Text
+
+---
+
+(document
+  (zeroth_section
+    (block
+      indent: (indent)
+      body: (paragraph
+        (plain_text)
+        (newline)
+        (plain_text)
+        (newline)
+        (plain_text)
+        (newline)))))
+
+================
 Indented hash comment inside heading body
 ================
 * Task
@@ -395,8 +416,7 @@ Indented timestamp and link lines in heading section
             day: (ts_day)
             dayname: (ts_dayname)
             time: (ts_time))
-          (newline))
-        body: (paragraph
+          (newline)
           (regular_link
             path: (link_path)
             description: (plain_text))

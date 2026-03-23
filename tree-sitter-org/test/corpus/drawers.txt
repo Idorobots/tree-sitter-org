@@ -507,8 +507,7 @@ LOGBOOK drawer with mis-aligned end in archive style
               first_line: (line_break)
               body: (paragraph
                 (plain_text)
-                (newline))))
-          body: (list
+                (newline)))
             item: (list_item
               bullet: (unordered_bullet)
               first_line: (plain_text)
@@ -517,8 +516,7 @@ LOGBOOK drawer with mis-aligned end in archive style
                 month: (ts_month)
                 day: (ts_day)
                 dayname: (ts_dayname)
-                time: (ts_time))))
-          body: (list
+                time: (ts_time)))
             item: (list_item
               bullet: (unordered_bullet)
               first_line: (plain_text)
