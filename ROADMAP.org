@@ -4944,7 +4944,10 @@ Make the list item body block node anonymous so that all the bits are attached t
 :END:
 Wrap multiple consecutive list items in a list node. The list node should accept multiple items that themselves can contain lists via the block bodies. The lists should expose the list items under the =item= property.
 
-** TODO Block handling of lists & paragraphs
+** DONE Block handling of lists & paragraphs
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-23 Mon 22:45]
+:END:
 When there are lists within a indent block, they are parsed as separate single-item lists. Lists should not be terminated on newlines within blocks.
 
 #+begin_example
@@ -4966,8 +4969,80 @@ Similarly, multiple text lines within a block currently parse as multiple separa
 
 In the above example, all three text lines should be a memeber of the same paragraph that itself is within a block.
 
+There's still an issue with list items within a block when there's more than two list items - each two items are grouped together, instead of grouping as a single list:
+
+#+begin_example
+- foo
+  - baz
+  - herp
+  - drep
+  - hurr
+  - durr
+- bar
+- baz
+#+end_example
+
+There are two lists here, one nested as the child of the first list item of the top-level list.
+
+There's an edge case:
+
+#+begin_example
+- list
+  - sublist
+    bar
+    foo
+  - sublist
+- list
+#+end_example
+
+When a list body contains a paragraph that spans multiple lines, it causes the list to terminate and the text encountered list item is wrapped in another list object.
+
+** DONE Rename block to indent
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-23 Mon 23:09]
+:END:
+Rename the =block= node to =indent= as it's more descriptive.
 ** TODO Python list recovery
-Update the Python wrapper not to have to recover list and paragraph structure but rather accept the Tree-Sitter node structure.
+Update the Python wrapper not to have to recover list and paragraph structure but rather accept the Tree-Sitter node structure as is currently.
+The =IndentBlock= should be renamed to just =Indent= and treated as a first-class citizen in the semantic tree.
+
+* Error recovery overhaul
+It would be nice to report parse errors for some of the obviously broken constructions.
+
+- [ ] unclosed markup should report a missing close on end of line
+- [ ] misaligned drawer start/end markers
+- [ ] trailing bits after drawer start/end markers
+- [ ] misaligned CLOCK
+- [ ] malformed CLOCK lines
+- [ ] misalign PLANNING
+- [ ] malformed PLANNING
+- [ ] malformed timestamps
+- [ ] misaligned block start/end markers
+- [ ] tailing bits after block start/end markers
+- [ ] malformed org tables
+- [ ] malformed special keyword values
+
+* Bugfixes
+** Comment headings
+COMMENT doesn't parse as an element of the heading line.
+
+#+begin_example
+,* TODO [#A] COMMENT Title :tag:a2%:
+,* TODO [#A] COMMENT Title
+,* TODO [#A] COMMENT
+,* TODO COMMENT
+,* COMMENT
+#+end_example
+
+** Tags on list items with counters/checkboxes
+#+begin_example
++ [-] tag :: item contents
+#+end_example
+
+** Lower-case CLOCK items.
+#+begin_example
+clock: [2024-10-12]
+#+end_example
 
 * Release
 ** DONE Supported syntax in the README.org
@@ -4989,5 +5064,6 @@ _This_ /parser/ *supports* =the= ~following~ +inline+ markup^{objects}.
 All of the above are supported in the Tree-Sitter grammar as well as in the Python wrapper.
 #+end_example
 
+** Tree-Sitter parser pulled into a separate repository
 ** Semantic node documentation
 ** Library release

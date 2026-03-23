@@ -172,8 +172,8 @@ Indented code span with bracketed type
 
 (document
   (zeroth_section
-    (block
-      (indent)
+    (indent
+      (whitespace)
       (paragraph
         (plain_text)
         (code

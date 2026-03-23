@@ -229,8 +229,8 @@ Heading title and body list keep plus text
     title: (plain_text)
     title: (plain_text)
     body: (section
-      (block
-        indent: (indent)
+      (indent
+        indent: (whitespace)
         body: (list
           item: (list_item
             bullet: (unordered_bullet)

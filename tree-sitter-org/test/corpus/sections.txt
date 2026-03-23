@@ -116,8 +116,8 @@ Indented paragraphs under heading and list item
     stars: (stars)
     title: (plain_text)
     body: (section
-      (block
-        indent: (indent)
+      (indent
+        indent: (whitespace)
         body: (paragraph
           (plain_text)
           (newline)))
@@ -141,8 +141,8 @@ Indented block paragraph spans consecutive lines
 
 (document
   (zeroth_section
-    (block
-      indent: (indent)
+    (indent
+      indent: (whitespace)
       body: (paragraph
         (plain_text)
         (newline)
@@ -169,8 +169,8 @@ Indented hash comment inside heading body
       (paragraph
         (plain_text)
         (newline))
-      (block
-        indent: (indent)
+      (indent
+        indent: (whitespace)
         body: (comment))
       (paragraph
         (plain_text)
@@ -342,8 +342,8 @@ Indented single dash line stays plain text
 
 (document
   (zeroth_section
-    (block
-      indent: (indent)
+    (indent
+      indent: (whitespace)
       body: (paragraph
         (plain_text)
         (newline)))))
@@ -407,8 +407,8 @@ Indented timestamp and link lines in heading section
     stars: (stars)
     title: (plain_text)
     body: (section
-      (block
-        indent: (indent)
+      (indent
+        indent: (whitespace)
         body: (paragraph
           (timestamp
             year: (ts_year)
@@ -433,8 +433,8 @@ Timestamp-prefixed paragraph lines in zeroth section
 
 (document
   (zeroth_section
-    (block
-      indent: (indent)
+    (indent
+      indent: (whitespace)
       body: (paragraph
         (timestamp
           year: (ts_year)

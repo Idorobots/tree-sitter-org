@@ -48,14 +48,14 @@ module.exports = grammar({
     $._MARKUP_OPEN_CODE,
     $._MARKUP_CLOSE_CODE,
     $._PARAGRAPH_CONTINUE,
-    $._BLOCK_PARAGRAPH_CONTINUE,
-    $._BLOCK_LIST_ITEM_CONTINUE,
-    $._BLOCK_CONTENT_CONTINUE,
+    $._INDENT_PARAGRAPH_CONTINUE,
+    $._INDENT_LIST_ITEM_CONTINUE,
+    $._INDENT_CONTENT_CONTINUE,
     $._FNDEF_END,
     $._PLAIN_TEXT,        // Scan to next object boundary
     $._ITEM_TAG_END,      // Rightmost ' :: '
-    $._BLOCK_BEGIN,
-    $._BLOCK_END,
+    $._INDENT_BEGIN,
+    $._INDENT_END,
     $._PLAN_KW_EXT,       // Planning keyword (DEADLINE/SCHEDULED/CLOSED)
     $._DYNBLOCK_SYNC,     // Zero-width sync point for dynamic-block boundaries
     $._TODO_SETUP_SYNC,   // Zero-width sync point to update TODO keyword set
@@ -168,12 +168,12 @@ module.exports = grammar({
     ))),
 
     _zs_content: $ => choice(
-      $.block,
+      $.indent,
       $._zs_element_no_block,
     ),
 
     _section_content: $ => choice(
-      $.block,
+      $.indent,
       $._section_element_no_block,
     ),
 
@@ -222,7 +222,7 @@ module.exports = grammar({
     ),
 
     _affiliatable: $ => choice(
-      $.block,
+      $.indent,
       $._greater_block,
       $.property_drawer,
       $.drawer,
@@ -240,24 +240,24 @@ module.exports = grammar({
       prec(-1, $.paragraph),
     ),
 
-    block: $ => prec.right(seq(
-      field('indent', alias($._BLOCK_BEGIN, $.indent)),
+    indent: $ => prec.right(seq(
+      field('indent', alias($._INDENT_BEGIN, $.whitespace)),
       $._block,
     )),
 
     _block: $ => seq(
       field('body', choice(
         $.blank_line,
-        $.block,
+        $.indent,
         $._block_section_element_no_block,
       )),
       repeat(field('body', choice(
         $.blank_line,
-        $.block,
+        $.indent,
         prec(-6, seq($._INDENT, $.property_drawer)),
-        prec(-5, seq($._BLOCK_CONTENT_CONTINUE, $._block_section_element_no_block)),
+        prec(-5, seq($._INDENT_CONTENT_CONTINUE, $._block_section_element_no_block)),
       ))),
-      $._BLOCK_END,
+      $._INDENT_END,
     ),
 
     _block_section_element_no_block: $ => choice(
@@ -433,7 +433,7 @@ module.exports = grammar({
 
     _drawer_body_line: $ => choice(
       $.blank_line,
-      $.block,
+      $.indent,
       seq(optional($._INDENT), choice(
         $.drawer_kv_line,
         $.drawer_double_colon_line,
@@ -443,7 +443,7 @@ module.exports = grammar({
 
     _logbook_drawer_body_line: $ => choice(
       $.blank_line,
-      $.block,
+      $.indent,
       seq(optional($._INDENT), choice(
         $.drawer_kv_line,
         $.drawer_double_colon_line,
@@ -543,7 +543,7 @@ module.exports = grammar({
 
     _block_list: $ => prec.right(5, seq(
       field('item', $.list_item),
-      repeat(seq($._BLOCK_LIST_ITEM_CONTINUE, field('item', $.list_item))),
+      repeat(seq($._INDENT_LIST_ITEM_CONTINUE, field('item', $.list_item))),
     )),
 
     list_item: $ => prec.right(seq(
@@ -558,7 +558,7 @@ module.exports = grammar({
     )),
 
     _list_item_body: $ => seq(
-      $._BLOCK_BEGIN,
+      $._INDENT_BEGIN,
       $._block,
     ),
 
@@ -1044,7 +1044,7 @@ module.exports = grammar({
     )),
 
     _block_paragraph_continuation_line: $ => seq(
-      $._BLOCK_PARAGRAPH_CONTINUE,
+      $._INDENT_PARAGRAPH_CONTINUE,
       repeat1($._object),
       $.newline,
     ),

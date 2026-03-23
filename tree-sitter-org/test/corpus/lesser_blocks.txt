@@ -169,30 +169,30 @@ Indented lesser blocks
 
 (document
   (zeroth_section
-    (block
-      (indent)
+    (indent
+      (whitespace)
       (comment_block))
     (blank_line)
-    (block
-      (indent)
+    (indent
+      (whitespace)
       (example_block
         (example_block_body
           (example_line))))
     (blank_line)
-    (block
-      (indent)
+    (indent
+      (whitespace)
       (export_block
         (export_backend)))
     (blank_line)
-    (block
-      (indent)
+    (indent
+      (whitespace)
       (src_block
         (language)
         (src_block_body
           (src_line))))
     (blank_line)
-    (block
-      (indent)
+    (indent
+      (whitespace)
       (verse_block
         (paragraph
           (plain_text)

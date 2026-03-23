@@ -11,7 +11,6 @@ keeping robust error recovery and useful parse trees for downstream processing.
 See [[#supported-features][here]] for a list of supported Org features.
 
 * Gotchas
-- Indented paragraphs parse slightly differently than non-indented ones.
 - Table.el tables parse as verbatim blocks of text. Their contents are inaccessible.
 - Malformed objects are usually treated as plaintext or recovered with generic
   parse-error nodes.

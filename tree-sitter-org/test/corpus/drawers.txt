@@ -151,8 +151,8 @@ Indented drawer
 
 (document
   (zeroth_section
-    (block
-      (indent)
+    (indent
+      (whitespace)
       (drawer
         (drawer_name)))))
 
@@ -171,8 +171,8 @@ Indented property drawer in heading
     stars: (stars)
     title: (plain_text)
     body: (section
-      (block
-        indent: (indent)
+      (indent
+        indent: (whitespace)
         body: (property_drawer
           (node_property
             name: (property_name)
@@ -285,8 +285,8 @@ Indented logbook then properties with multiline link
     stars: (stars)
     title: (plain_text)
     body: (section
-      (block
-        indent: (indent)
+      (indent
+        indent: (whitespace)
         body: (logbook_drawer
           body: (list
             item: (list_item
@@ -371,8 +371,8 @@ Malformed property link value does not break next heading drawer
     stars: (stars)
     title: (plain_text)
     body: (section
-      (block
-        indent: (indent)
+      (indent
+        indent: (whitespace)
         body: (property_drawer
           (node_property
             name: (property_name)
@@ -388,8 +388,8 @@ Malformed property link value does not break next heading drawer
     stars: (stars)
     title: (plain_text)
     body: (section
-      (block
-        indent: (indent)
+      (indent
+        indent: (whitespace)
         body: (logbook_drawer
           body: (list
             item: (list_item
@@ -456,8 +456,8 @@ Custom drawer with indented timestamp line
   (zeroth_section
     (drawer
       name: (drawer_name)
-      body: (block
-        indent: (indent)
+      body: (indent
+        indent: (whitespace)
         body: (paragraph
           (timestamp
             year: (ts_year)
@@ -567,8 +567,8 @@ Indented LOGBOOK drawer in heading
     stars: (stars)
     title: (plain_text)
     body: (section
-      (block
-        indent: (indent)
+      (indent
+        indent: (whitespace)
         body: (logbook_drawer
           body: (list
             item: (list_item
@@ -597,8 +597,8 @@ Indented LOGBOOK drawer with note line
     stars: (stars)
     title: (plain_text)
     body: (section
-      (block
-        indent: (indent)
+      (indent
+        indent: (whitespace)
         body: (logbook_drawer
           body: (list
             item: (list_item
@@ -666,8 +666,8 @@ Indented LOGBOOK note with indented blank line
     stars: (stars)
     title: (plain_text)
     body: (section
-      (block
-        indent: (indent)
+      (indent
+        indent: (whitespace)
         body: (logbook_drawer
           body: (list
             item: (list_item
@@ -703,8 +703,8 @@ LOGBOOK drawer start line with inline text and unindented list
     todo: (todo_keyword)
     title: (plain_text)
     body: (section
-      (block
-        indent: (indent)
+      (indent
+        indent: (whitespace)
         body: (logbook_drawer
           body: (drawer_start_text)
           body: (list
@@ -765,8 +765,8 @@ Indented property drawer with >>> in link description
 
 (document
   (zeroth_section
-    (block
-      indent: (indent)
+    (indent
+      indent: (whitespace)
       body: (property_drawer
         (node_property
           name: (property_name)
@@ -814,8 +814,8 @@ Property link description ending with []] in archive-style heading
     todo: (todo_keyword)
     title: (plain_text)
     body: (section
-      (block
-        indent: (indent)
+      (indent
+        indent: (whitespace)
         body: (property_drawer
           (node_property
             name: (property_name)
@@ -854,8 +854,8 @@ Logbook before properties with []] link description tail
     todo: (todo_keyword)
     title: (plain_text)
     body: (section
-      (block
-        indent: (indent)
+      (indent
+        indent: (whitespace)
         body: (logbook_drawer
           body: (list
             item: (list_item
@@ -886,8 +886,8 @@ Property link description with bracket list and <<":">> fragment
 
 (document
   (zeroth_section
-    (block
-      indent: (indent)
+    (indent
+      indent: (whitespace)
       body: (property_drawer
         (node_property
           name: (property_name)
@@ -1136,8 +1136,8 @@ Fully indented custom drawer with timestamp line
 
 (document
   (zeroth_section
-    (block
-      indent: (indent)
+    (indent
+      indent: (whitespace)
       body: (drawer
         name: (drawer_name)
         body: (paragraph
@@ -1162,8 +1162,8 @@ Indented custom drawer with consecutive timestamp paragraphs
 
 (document
   (zeroth_section
-    (block
-      indent: (indent)
+    (indent
+      indent: (whitespace)
       body: (drawer
         name: (drawer_name)
         body: (paragraph
