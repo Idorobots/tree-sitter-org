@@ -687,6 +687,82 @@ Indented LOGBOOK note with indented blank line
               body: (blank_line))))))))
 
 ================
+Indented LOGBOOK with misaligned list item note
+================
+    :LOGBOOK:
+- State "CANCELLED"  from "ACTIVE"     [2013-05-29 śro 09:03] \\
+  No need to.
+- State "ACTIVE"     from "TODO"       [2013-05-29 śro 09:02]
+    :END:
+
+---
+
+(document
+  (zeroth_section
+    (indent
+      indent: (whitespace)
+      body: (logbook_drawer
+        body: (list
+          item: (list_item
+            bullet: (unordered_bullet)
+            first_line: (plain_text)
+            first_line: (timestamp
+              year: (ts_year)
+              month: (ts_month)
+              day: (ts_day)
+              dayname: (ts_dayname)
+              time: (ts_time))
+            first_line: (plain_text)
+            first_line: (line_break)
+            body: (paragraph
+              (plain_text)
+              (newline)))
+          item: (list_item
+            bullet: (unordered_bullet)
+            first_line: (plain_text)
+            first_line: (timestamp
+              year: (ts_year)
+              month: (ts_month)
+              day: (ts_day)
+              dayname: (ts_dayname)
+              time: (ts_time))))))))
+
+================
+Indented LOGBOOK with final misaligned note
+================
+* Test
+    :LOGBOOK:
+- State "CANCELLED"  from "TODO"       [2013-06-05 śro 14:39] \\
+  Not a bug, really.
+    :END:
+
+---
+
+(document
+  (heading
+    stars: (stars)
+    title: (plain_text)
+    body: (section
+      (indent
+        indent: (whitespace)
+        body: (logbook_drawer
+          body: (list
+            item: (list_item
+              bullet: (unordered_bullet)
+              first_line: (plain_text)
+              first_line: (timestamp
+                year: (ts_year)
+                month: (ts_month)
+                day: (ts_day)
+                dayname: (ts_dayname)
+                time: (ts_time))
+              first_line: (plain_text)
+              first_line: (line_break)
+              body: (paragraph
+                (plain_text)
+                (newline)))))))))
+
+================
 LOGBOOK drawer start line with inline text and unindented list
 ================
 *** DONE Test

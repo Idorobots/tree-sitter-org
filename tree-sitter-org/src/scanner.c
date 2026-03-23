@@ -2599,7 +2599,21 @@ static int scan_block_begin(Scanner *s, TSLexer *lexer, const bool *valid_symbol
 
   if (indent_col == current) return -1;
 
-  if (indent_col < current) return -1;
+  if (indent_col < current) {
+    bool drawer_misaligned_continuation =
+      s->drawer_depth > 0 &&
+      indent_col > 0 &&
+      starter != ':' &&
+      starter != '+' &&
+      starter != '-' &&
+      starter != '*' &&
+      starter != '#' &&
+      starter != '|' &&
+      starter != '%' &&
+      !(starter >= '0' && starter <= '9');
+
+    if (!drawer_misaligned_continuation) return -1;
+  }
   if (s->section_block_depth >= MAX_SECTION_BLOCK_DEPTH) return -1;
 
   /* Fix the token boundary to the consumed whitespace now.  All advance()
@@ -2671,6 +2685,7 @@ static int scan_block_end(Scanner *s, TSLexer *lexer, const bool *valid_symbols)
   }
 
   if (indent_col > current && !eof(lexer) && ch != '\n' &&
+      !(s->drawer_depth > 0 && ch == ':') &&
       valid_symbols[TOKEN_INDENT_BEGIN]) {
     if (s->section_block_depth >= MAX_SECTION_BLOCK_DEPTH) return -1;
     s->section_block_indents[s->section_block_depth] = (uint16_t)indent_col;
@@ -2686,7 +2701,23 @@ static int scan_block_end(Scanner *s, TSLexer *lexer, const bool *valid_symbols)
   if (eof(lexer)) {
     should_close = true;
   } else if (indent_col < current) {
-    should_close = true;
+    bool drawer_misaligned_continuation =
+      s->drawer_depth > 0 &&
+      indent_col > 0 &&
+      ch != ':' &&
+      ch != '+' &&
+      ch != '-' &&
+      ch != '*' &&
+      ch != '#' &&
+      ch != '|' &&
+      ch != '%' &&
+      !(ch >= '0' && ch <= '9');
+
+    if (drawer_misaligned_continuation) {
+      should_close = false;
+    } else {
+      should_close = true;
+    }
   } else if (s->drawer_depth > 0 && indent_col == current && ch == ':') {
     if (current <= 2) {
       mark_end(lexer);
@@ -2700,6 +2731,9 @@ static int scan_block_end(Scanner *s, TSLexer *lexer, const bool *valid_symbols)
       should_close = true;
       close_on_end_marker = true;
     }
+  } else if (s->drawer_depth > 0 && indent_col > current && ch == ':') {
+    should_close = true;
+    close_on_end_marker = true;
   }
 
   if (!should_close) {

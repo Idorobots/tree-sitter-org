@@ -5002,8 +5002,34 @@ When a list body contains a paragraph that spans multiple lines, it causes the l
 - State "DONE"       from "TODO"       [2026-03-23 Mon 23:09]
 :END:
 Rename the =block= node to =indent= as it's more descriptive.
+
+** TODO Indentation edge cases
+There's a small edge case when a drawer list item has a note and is misaligned:
+
+#+begin_example
+    :LOGBOOK:
+- State "CANCELLED"  from "ACTIVE"     [2013-05-29 śro 09:03] \\
+  No need to.
+- State "ACTIVE"     from "TODO"       [2013-05-29 śro 09:02]
+    :END:
+#+end_example
+
+This should parse fine.
+
+Here's one more edge case:
+
+#+begin_example
+,* Test
+    :LOGBOOK:
+- State "CANCELLED"  from "TODO"       [2013-06-05 śro 14:39] \\
+  Not a bug, really.
+    :END:
+#+end_example
+
+When the list note is the final element, the drawer isn't parsed correctly.
+
 ** TODO Python list recovery
-Update the Python wrapper not to have to recover list and paragraph structure but rather accept the Tree-Sitter node structure as is currently.
+Update the Python wrapper not to have to recover list and paragraph structure but rather accept the Tree-Sitter node structure as is currently. Do keep the =Repeat= recovery though in place.
 The =IndentBlock= should be renamed to just =Indent= and treated as a first-class citizen in the semantic tree.
 
 * Error recovery overhaul
