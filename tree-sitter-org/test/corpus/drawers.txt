@@ -151,8 +151,8 @@ Indented drawer
 
 (document
   (zeroth_section
-    (block
-      (indent)
+    (indent
+      (whitespace)
       (drawer
         (drawer_name)))))
 
@@ -171,8 +171,8 @@ Indented property drawer in heading
     stars: (stars)
     title: (plain_text)
     body: (section
-      (block
-        indent: (indent)
+      (indent
+        indent: (whitespace)
         body: (property_drawer
           (node_property
             name: (property_name)
@@ -253,15 +253,16 @@ Drawer transition after property link keeps logbook timestamp
             (plain_text))
           description: (plain_text))))
     (logbook_drawer
-      body: (list_item
-        bullet: (unordered_bullet)
-        first_line: (plain_text)
-        first_line: (timestamp
-          year: (ts_year)
-          month: (ts_month)
-          day: (ts_day)
-          dayname: (ts_dayname)
-          time: (ts_time))))))
+      body: (list
+        item: (list_item
+          bullet: (unordered_bullet)
+          first_line: (plain_text)
+          first_line: (timestamp
+            year: (ts_year)
+            month: (ts_month)
+            day: (ts_day)
+            dayname: (ts_dayname)
+            time: (ts_time)))))))
 
 ================
 Indented logbook then properties with multiline link
@@ -284,18 +285,19 @@ Indented logbook then properties with multiline link
     stars: (stars)
     title: (plain_text)
     body: (section
-      (block
-        indent: (indent)
+      (indent
+        indent: (whitespace)
         body: (logbook_drawer
-          body: (list_item
-            bullet: (unordered_bullet)
-            first_line: (plain_text)
-            first_line: (timestamp
-              year: (ts_year)
-              month: (ts_month)
-              day: (ts_day)
-              dayname: (ts_dayname)
-              time: (ts_time))))
+          body: (list
+            item: (list_item
+              bullet: (unordered_bullet)
+              first_line: (plain_text)
+              first_line: (timestamp
+                year: (ts_year)
+                month: (ts_month)
+                day: (ts_day)
+                dayname: (ts_dayname)
+                time: (ts_time)))))
         body: (property_drawer
           (node_property
             name: (property_name)
@@ -329,15 +331,16 @@ Property drawer after logbook in heading body
     title: (plain_text)
     body: (section
       (logbook_drawer
-        body: (list_item
-          bullet: (unordered_bullet)
-          first_line: (plain_text)
-          first_line: (timestamp
-            year: (ts_year)
-            month: (ts_month)
-            day: (ts_day)
-            dayname: (ts_dayname)
-            time: (ts_time))))
+        body: (list
+          item: (list_item
+            bullet: (unordered_bullet)
+            first_line: (plain_text)
+            first_line: (timestamp
+              year: (ts_year)
+              month: (ts_month)
+              day: (ts_day)
+              dayname: (ts_dayname)
+              time: (ts_time)))))
       (property_drawer
         (node_property
           name: (property_name)
@@ -368,8 +371,8 @@ Malformed property link value does not break next heading drawer
     stars: (stars)
     title: (plain_text)
     body: (section
-      (block
-        indent: (indent)
+      (indent
+        indent: (whitespace)
         body: (property_drawer
           (node_property
             name: (property_name)
@@ -385,27 +388,28 @@ Malformed property link value does not break next heading drawer
     stars: (stars)
     title: (plain_text)
     body: (section
-      (block
-        indent: (indent)
+      (indent
+        indent: (whitespace)
         body: (logbook_drawer
-          body: (list_item
-            bullet: (unordered_bullet)
-            first_line: (plain_text)
-            first_line: (timestamp
-              year: (ts_year)
-              month: (ts_month)
-              day: (ts_day)
-              dayname: (ts_dayname)
-              time: (ts_time)))
-          body: (list_item
-            bullet: (unordered_bullet)
-            first_line: (plain_text)
-            first_line: (timestamp
-              year: (ts_year)
-              month: (ts_month)
-              day: (ts_day)
-              dayname: (ts_dayname)
-              time: (ts_time))))))))
+          body: (list
+            item: (list_item
+              bullet: (unordered_bullet)
+              first_line: (plain_text)
+              first_line: (timestamp
+                year: (ts_year)
+                month: (ts_month)
+                day: (ts_day)
+                dayname: (ts_dayname)
+                time: (ts_time)))
+            item: (list_item
+              bullet: (unordered_bullet)
+              first_line: (plain_text)
+              first_line: (timestamp
+                year: (ts_year)
+                month: (ts_month)
+                day: (ts_day)
+                dayname: (ts_dayname)
+                time: (ts_time)))))))))
 
 ================
 Custom drawer with key-like empty value line
@@ -452,8 +456,8 @@ Custom drawer with indented timestamp line
   (zeroth_section
     (drawer
       name: (drawer_name)
-      body: (block
-        indent: (indent)
+      body: (indent
+        indent: (whitespace)
         body: (paragraph
           (timestamp
             year: (ts_year)
@@ -479,18 +483,8 @@ LOGBOOK drawer with mis-aligned end in archive style
 (document
   (zeroth_section
     (logbook_drawer
-      body: (list_item
-        bullet: (unordered_bullet)
-        first_line: (plain_text)
-        first_line: (timestamp
-          year: (ts_year)
-          month: (ts_month)
-          day: (ts_day)
-          dayname: (ts_dayname)
-          time: (ts_time)))
-      body: (block
-        indent: (indent)
-        body: (list_item
+      body: (list
+        item: (list_item
           bullet: (unordered_bullet)
           first_line: (plain_text)
           first_line: (timestamp
@@ -499,31 +493,39 @@ LOGBOOK drawer with mis-aligned end in archive style
             day: (ts_day)
             dayname: (ts_dayname)
             time: (ts_time))
-          first_line: (plain_text)
-          first_line: (line_break))
-        body: (block
-          indent: (indent)
-          body: (paragraph
-            (plain_text)
-            (newline)))
-        body: (list_item
-          bullet: (unordered_bullet)
-          first_line: (plain_text)
-          first_line: (timestamp
-            year: (ts_year)
-            month: (ts_month)
-            day: (ts_day)
-            dayname: (ts_dayname)
-            time: (ts_time)))
-        body: (list_item
-          bullet: (unordered_bullet)
-          first_line: (plain_text)
-          first_line: (timestamp
-            year: (ts_year)
-            month: (ts_month)
-            day: (ts_day)
-            dayname: (ts_dayname)
-            time: (ts_time)))))))
+          body: (list
+            item: (list_item
+              bullet: (unordered_bullet)
+              first_line: (plain_text)
+              first_line: (timestamp
+                year: (ts_year)
+                month: (ts_month)
+                day: (ts_day)
+                dayname: (ts_dayname)
+                time: (ts_time))
+              first_line: (plain_text)
+              first_line: (line_break)
+              body: (paragraph
+                (plain_text)
+                (newline)))
+            item: (list_item
+              bullet: (unordered_bullet)
+              first_line: (plain_text)
+              first_line: (timestamp
+                year: (ts_year)
+                month: (ts_month)
+                day: (ts_day)
+                dayname: (ts_dayname)
+                time: (ts_time)))
+            item: (list_item
+              bullet: (unordered_bullet)
+              first_line: (plain_text)
+              first_line: (timestamp
+                year: (ts_year)
+                month: (ts_month)
+                day: (ts_day)
+                dayname: (ts_dayname)
+                time: (ts_time)))))))))
 
 ================
 Logbook drawer end with trailing angle text
@@ -538,15 +540,16 @@ Logbook drawer end with trailing angle text
   (zeroth_section
     (logbook_drawer
       body: (drawer_start_text)
-      body: (list_item
-        bullet: (unordered_bullet)
-        first_line: (plain_text)
-        first_line: (timestamp
-          year: (ts_year)
-          month: (ts_month)
-          day: (ts_day)
-          dayname: (ts_dayname)
-          time: (ts_time)))
+      body: (list
+        item: (list_item
+          bullet: (unordered_bullet)
+          first_line: (plain_text)
+          first_line: (timestamp
+            year: (ts_year)
+            month: (ts_month)
+            day: (ts_day)
+            dayname: (ts_dayname)
+            time: (ts_time))))
       end_text: (plain_text))))
 
 ================
@@ -564,18 +567,19 @@ Indented LOGBOOK drawer in heading
     stars: (stars)
     title: (plain_text)
     body: (section
-      (block
-        indent: (indent)
+      (indent
+        indent: (whitespace)
         body: (logbook_drawer
-          body: (list_item
-            bullet: (unordered_bullet)
-            first_line: (plain_text)
-            first_line: (timestamp
-              year: (ts_year)
-              month: (ts_month)
-              day: (ts_day)
-              dayname: (ts_dayname)
-              time: (ts_time))))))))
+          body: (list
+            item: (list_item
+              bullet: (unordered_bullet)
+              first_line: (plain_text)
+              first_line: (timestamp
+                year: (ts_year)
+                month: (ts_month)
+                day: (ts_day)
+                dayname: (ts_dayname)
+                time: (ts_time)))))))))
 
 ================
 Indented LOGBOOK drawer with note line
@@ -593,25 +597,24 @@ Indented LOGBOOK drawer with note line
     stars: (stars)
     title: (plain_text)
     body: (section
-      (block
-        indent: (indent)
+      (indent
+        indent: (whitespace)
         body: (logbook_drawer
-          body: (list_item
-            bullet: (unordered_bullet)
-            first_line: (plain_text)
-            first_line: (timestamp
-              year: (ts_year)
-              month: (ts_month)
-              day: (ts_day)
-              dayname: (ts_dayname)
-              time: (ts_time))
-            first_line: (plain_text)
-            first_line: (line_break))
-          body: (block
-            indent: (indent)
-            body: (paragraph
-              (plain_text)
-              (newline))))))))
+          body: (list
+            item: (list_item
+              bullet: (unordered_bullet)
+              first_line: (plain_text)
+              first_line: (timestamp
+                year: (ts_year)
+                month: (ts_month)
+                day: (ts_day)
+                dayname: (ts_dayname)
+                time: (ts_time))
+              first_line: (plain_text)
+              first_line: (line_break)
+              body: (paragraph
+                (plain_text)
+                (newline)))))))))
 
 ================
 Unindented LOGBOOK drawer with continuation note
@@ -630,22 +633,21 @@ Unindented LOGBOOK drawer with continuation note
     title: (plain_text)
     body: (section
       (logbook_drawer
-        body: (list_item
-          bullet: (unordered_bullet)
-          first_line: (plain_text)
-          first_line: (timestamp
-            year: (ts_year)
-            month: (ts_month)
-            day: (ts_day)
-            dayname: (ts_dayname)
-            time: (ts_time))
-          first_line: (plain_text)
-          first_line: (line_break))
-        body: (block
-          indent: (indent)
-          body: (paragraph
-            (plain_text)
-            (newline)))))))
+        body: (list
+          item: (list_item
+            bullet: (unordered_bullet)
+            first_line: (plain_text)
+            first_line: (timestamp
+              year: (ts_year)
+              month: (ts_month)
+              day: (ts_day)
+              dayname: (ts_dayname)
+              time: (ts_time))
+            first_line: (plain_text)
+            first_line: (line_break)
+            body: (paragraph
+              (plain_text)
+              (newline))))))))
 
 ================
 Indented LOGBOOK note with indented blank line
@@ -664,10 +666,44 @@ Indented LOGBOOK note with indented blank line
     stars: (stars)
     title: (plain_text)
     body: (section
-      (block
-        indent: (indent)
+      (indent
+        indent: (whitespace)
         body: (logbook_drawer
-          body: (list_item
+          body: (list
+            item: (list_item
+              bullet: (unordered_bullet)
+              first_line: (plain_text)
+              first_line: (timestamp
+                year: (ts_year)
+                month: (ts_month)
+                day: (ts_day)
+                dayname: (ts_dayname)
+                time: (ts_time))
+              first_line: (plain_text)
+              first_line: (line_break)
+              body: (paragraph
+                (plain_text)
+                (newline))
+              body: (blank_line))))))))
+
+================
+Indented LOGBOOK with misaligned list item note
+================
+    :LOGBOOK:
+- State "CANCELLED"  from "ACTIVE"     [2013-05-29 śro 09:03] \\
+  No need to.
+- State "ACTIVE"     from "TODO"       [2013-05-29 śro 09:02]
+    :END:
+
+---
+
+(document
+  (zeroth_section
+    (indent
+      indent: (whitespace)
+      body: (logbook_drawer
+        body: (list
+          item: (list_item
             bullet: (unordered_bullet)
             first_line: (plain_text)
             first_line: (timestamp
@@ -677,13 +713,54 @@ Indented LOGBOOK note with indented blank line
               dayname: (ts_dayname)
               time: (ts_time))
             first_line: (plain_text)
-            first_line: (line_break))
-          body: (block
-            indent: (indent)
+            first_line: (line_break)
             body: (paragraph
               (plain_text)
-              (newline))
-            body: (blank_line)))))))
+              (newline)))
+          item: (list_item
+            bullet: (unordered_bullet)
+            first_line: (plain_text)
+            first_line: (timestamp
+              year: (ts_year)
+              month: (ts_month)
+              day: (ts_day)
+              dayname: (ts_dayname)
+              time: (ts_time))))))))
+
+================
+Indented LOGBOOK with final misaligned note
+================
+* Test
+    :LOGBOOK:
+- State "CANCELLED"  from "TODO"       [2013-06-05 śro 14:39] \\
+  Not a bug, really.
+    :END:
+
+---
+
+(document
+  (heading
+    stars: (stars)
+    title: (plain_text)
+    body: (section
+      (indent
+        indent: (whitespace)
+        body: (logbook_drawer
+          body: (list
+            item: (list_item
+              bullet: (unordered_bullet)
+              first_line: (plain_text)
+              first_line: (timestamp
+                year: (ts_year)
+                month: (ts_month)
+                day: (ts_day)
+                dayname: (ts_dayname)
+                time: (ts_time))
+              first_line: (plain_text)
+              first_line: (line_break)
+              body: (paragraph
+                (plain_text)
+                (newline)))))))))
 
 ================
 LOGBOOK drawer start line with inline text and unindented list
@@ -702,28 +779,29 @@ LOGBOOK drawer start line with inline text and unindented list
     todo: (todo_keyword)
     title: (plain_text)
     body: (section
-      (block
-        indent: (indent)
+      (indent
+        indent: (whitespace)
         body: (logbook_drawer
           body: (drawer_start_text)
-          body: (list_item
-            bullet: (unordered_bullet)
-            first_line: (plain_text)
-            first_line: (timestamp
-              year: (ts_year)
-              month: (ts_month)
-              day: (ts_day)
-              dayname: (ts_dayname)
-              time: (ts_time)))
-          body: (list_item
-            bullet: (unordered_bullet)
-            first_line: (plain_text)
-            first_line: (timestamp
-              year: (ts_year)
-              month: (ts_month)
-              day: (ts_day)
-              dayname: (ts_dayname)
-              time: (ts_time))))))))
+          body: (list
+            item: (list_item
+              bullet: (unordered_bullet)
+              first_line: (plain_text)
+              first_line: (timestamp
+                year: (ts_year)
+                month: (ts_month)
+                day: (ts_day)
+                dayname: (ts_dayname)
+                time: (ts_time)))
+            item: (list_item
+              bullet: (unordered_bullet)
+              first_line: (plain_text)
+              first_line: (timestamp
+                year: (ts_year)
+                month: (ts_month)
+                day: (ts_day)
+                dayname: (ts_dayname)
+                time: (ts_time)))))))))
 
 ================
 Logbook escaped timestamp stays plain text
@@ -738,18 +816,19 @@ Logbook escaped timestamp stays plain text
 (document
   (zeroth_section
     (logbook_drawer
-      body: (list_item
-        bullet: (unordered_bullet)
-        first_line: (plain_text)
-        first_line: (timestamp
-          year: (ts_year)
-          month: (ts_month)
-          day: (ts_day)
-          dayname: (ts_dayname)
-          time: (ts_time)))
-      body: (list_item
-        bullet: (unordered_bullet)
-        first_line: (plain_text)))))
+      body: (list
+        item: (list_item
+          bullet: (unordered_bullet)
+          first_line: (plain_text)
+          first_line: (timestamp
+            year: (ts_year)
+            month: (ts_month)
+            day: (ts_day)
+            dayname: (ts_dayname)
+            time: (ts_time)))
+        item: (list_item
+          bullet: (unordered_bullet)
+          first_line: (plain_text))))))
 
 ================
 Indented property drawer with >>> in link description
@@ -762,8 +841,8 @@ Indented property drawer with >>> in link description
 
 (document
   (zeroth_section
-    (block
-      indent: (indent)
+    (indent
+      indent: (whitespace)
       body: (property_drawer
         (node_property
           name: (property_name)
@@ -811,8 +890,8 @@ Property link description ending with []] in archive-style heading
     todo: (todo_keyword)
     title: (plain_text)
     body: (section
-      (block
-        indent: (indent)
+      (indent
+        indent: (whitespace)
         body: (property_drawer
           (node_property
             name: (property_name)
@@ -851,18 +930,19 @@ Logbook before properties with []] link description tail
     todo: (todo_keyword)
     title: (plain_text)
     body: (section
-      (block
-        indent: (indent)
+      (indent
+        indent: (whitespace)
         body: (logbook_drawer
-          body: (list_item
-            bullet: (unordered_bullet)
-            first_line: (plain_text)
-            first_line: (timestamp
-              year: (ts_year)
-              month: (ts_month)
-              day: (ts_day)
-              dayname: (ts_dayname)
-              time: (ts_time))))
+          body: (list
+            item: (list_item
+              bullet: (unordered_bullet)
+              first_line: (plain_text)
+              first_line: (timestamp
+                year: (ts_year)
+                month: (ts_month)
+                day: (ts_day)
+                dayname: (ts_dayname)
+                time: (ts_time)))))
         body: (property_drawer
           (node_property
             name: (property_name)
@@ -882,8 +962,8 @@ Property link description with bracket list and <<":">> fragment
 
 (document
   (zeroth_section
-    (block
-      indent: (indent)
+    (indent
+      indent: (whitespace)
       body: (property_drawer
         (node_property
           name: (property_name)
@@ -1132,8 +1212,8 @@ Fully indented custom drawer with timestamp line
 
 (document
   (zeroth_section
-    (block
-      indent: (indent)
+    (indent
+      indent: (whitespace)
       body: (drawer
         name: (drawer_name)
         body: (paragraph
@@ -1158,8 +1238,8 @@ Indented custom drawer with consecutive timestamp paragraphs
 
 (document
   (zeroth_section
-    (block
-      indent: (indent)
+    (indent
+      indent: (whitespace)
       body: (drawer
         name: (drawer_name)
         body: (paragraph

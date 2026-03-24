@@ -116,20 +116,40 @@ Indented paragraphs under heading and list item
     stars: (stars)
     title: (plain_text)
     body: (section
-      (block
-        indent: (indent)
+      (indent
+        indent: (whitespace)
         body: (paragraph
           (plain_text)
           (newline)))
       (blank_line)
-      (list_item
-        bullet: (unordered_bullet)
-        first_line: (plain_text))
-      (block
-        indent: (indent)
-        body: (paragraph
-          (plain_text)
-          (newline))))))
+      (list
+        item: (list_item
+          bullet: (unordered_bullet)
+          first_line: (plain_text)
+          body: (paragraph
+            (plain_text)
+            (newline)))))))
+
+================
+Indented block paragraph spans consecutive lines
+================
+  Text
+  Text
+  Text
+
+---
+
+(document
+  (zeroth_section
+    (indent
+      indent: (whitespace)
+      body: (paragraph
+        (plain_text)
+        (newline)
+        (plain_text)
+        (newline)
+        (plain_text)
+        (newline)))))
 
 ================
 Indented hash comment inside heading body
@@ -149,8 +169,8 @@ Indented hash comment inside heading body
       (paragraph
         (plain_text)
         (newline))
-      (block
-        indent: (indent)
+      (indent
+        indent: (whitespace)
         body: (comment))
       (paragraph
         (plain_text)
@@ -322,8 +342,8 @@ Indented single dash line stays plain text
 
 (document
   (zeroth_section
-    (block
-      indent: (indent)
+    (indent
+      indent: (whitespace)
       body: (paragraph
         (plain_text)
         (newline)))))
@@ -387,8 +407,8 @@ Indented timestamp and link lines in heading section
     stars: (stars)
     title: (plain_text)
     body: (section
-      (block
-        indent: (indent)
+      (indent
+        indent: (whitespace)
         body: (paragraph
           (timestamp
             year: (ts_year)
@@ -396,8 +416,7 @@ Indented timestamp and link lines in heading section
             day: (ts_day)
             dayname: (ts_dayname)
             time: (ts_time))
-          (newline))
-        body: (paragraph
+          (newline)
           (regular_link
             path: (link_path)
             description: (plain_text))
@@ -414,8 +433,8 @@ Timestamp-prefixed paragraph lines in zeroth section
 
 (document
   (zeroth_section
-    (block
-      indent: (indent)
+    (indent
+      indent: (whitespace)
       body: (paragraph
         (timestamp
           year: (ts_year)

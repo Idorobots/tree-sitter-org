@@ -114,8 +114,8 @@ Erlang binary syntax with targets and brackets
 
 (document
   (zeroth_section
-    (block
-      (indent)
+    (indent
+      (whitespace)
       (paragraph
         (plain_text)
         (target

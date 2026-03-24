@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterator, MutableMapping, Sequence
 from typing import TYPE_CHECKING
 
-from org_parser._nodes import BLOCK, NODE_PROPERTY
+from org_parser._nodes import INDENT, NODE_PROPERTY
 from org_parser.element._dispatch import body_element_factories
 from org_parser.element._element import (
     Element,
@@ -15,11 +15,8 @@ from org_parser.element._element import (
     node_source,
 )
 from org_parser.element._list import List, ListItem, Repeat
-from org_parser.element._structure import IndentBlock
-from org_parser.element._structure_recovery import (
-    attach_affiliated_keywords,
-    recover_lists,
-)
+from org_parser.element._structure import Indent
+from org_parser.element._structure_recovery import attach_affiliated_keywords
 from org_parser.text._rich_text import RichText
 from org_parser.time import Clock
 
@@ -66,13 +63,10 @@ class Drawer(Element):
         """Create a :class:`Drawer` from a tree-sitter ``drawer`` node."""
         name_node = node.child_by_field_name("name")
         name = "" if name_node is None else document.source_for(name_node).decode()
-        drawer_body = recover_lists(
-            [
-                _extract_drawer_body_element(child, document)
-                for child in node.children_by_field_name("body")
-            ],
-            parent=parent,
-        )
+        drawer_body = [
+            _extract_drawer_body_element(child, document)
+            for child in node.children_by_field_name("body")
+        ]
         attach_affiliated_keywords(drawer_body)
         drawer = cls(
             name=name,
@@ -196,13 +190,10 @@ class Logbook(Drawer):
         parent: Document | Heading | Element | None = None,
     ) -> Logbook:
         """Create a :class:`Logbook` from ``logbook_drawer`` node."""
-        body = recover_lists(
-            [
-                _extract_drawer_body_element(child, document)
-                for child in node.children_by_field_name("body")
-            ],
-            parent=parent,
-        )
+        body = [
+            _extract_drawer_body_element(child, document)
+            for child in node.children_by_field_name("body")
+        ]
         attach_affiliated_keywords(body)
         repeats = _extract_logbook_repeats(body, document)
         clock_entries = [element for element in body if isinstance(element, Clock)]
@@ -415,8 +406,8 @@ def _extract_drawer_body_element(
     parent: Document | Heading | Element | None = None,
 ) -> Element:
     """Build one semantic element object for a drawer body child node."""
-    if node.type == BLOCK:
-        return _extract_indent_block(node, document, parent=parent)
+    if node.type == INDENT:
+        return _extract_indent(node, document, parent=parent)
 
     dispatch: dict[str, Callable[..., Element]] = body_element_factories()
     factory = dispatch.get(node.type)
@@ -432,38 +423,26 @@ def _coerce_rich_text(value: RichText | str) -> RichText:
     return RichText(value)
 
 
-def _extract_indent_block(
+def _extract_indent(
     node: tree_sitter.Node,
     document: Document,
     *,
     parent: Document | Heading | Element | None = None,
-) -> IndentBlock:
-    """Build one :class:`IndentBlock` for a drawer body ``block`` node."""
-    indent_node = node.child_by_field_name("indent")
-    indent_text = node_source(indent_node, document)
-    indent = indent_text if indent_text != "" else None
-    block = IndentBlock(
-        body=[
-            _extract_drawer_body_element(child, document, parent=parent)
-            for child in node.children_by_field_name("body")
-            if child.is_named
-        ],
-        indent=indent,
+) -> Indent:
+    """Build one :class:`Indent` for a drawer body ``indent`` node."""
+    return Indent.from_node(
+        node, document, parent=parent, child_factory=_extract_drawer_body_element
     )
-    block.attach_source(node, document)
-    return block
 
 
 def _extract_logbook_repeats(body: list[Element], document: Document) -> list[Repeat]:
     """Convert repeat-form list items in logbook lists into :class:`Repeat`.
 
-    This runs after list recovery so each candidate item already owns its
-    continuation body, which the repeat parser uses as the note payload.
+    Each list item body is parsed directly from tree-sitter fields, so the
+    repeat parser receives the full continuation payload as-is.
     """
     repeats: list[Repeat] = []
-    for element in body:
-        if not isinstance(element, List):
-            continue
+    for element in _iter_repeat_candidate_lists(body):
         updated_items: list[ListItem] = []
         converted = False
         for item in element.items:
@@ -486,11 +465,19 @@ def _extract_logbook_repeats(body: list[Element], document: Document) -> list[Re
 def _extract_existing_logbook_repeats(body: list[Element]) -> list[Repeat]:
     """Collect repeat entries already present in logbook body list items."""
     repeats: list[Repeat] = []
-    for element in body:
-        if not isinstance(element, List):
-            continue
+    for element in _iter_repeat_candidate_lists(body):
         repeats.extend(item for item in element.items if isinstance(item, Repeat))
     return repeats
+
+
+def _iter_repeat_candidate_lists(elements: list[Element]) -> Iterator[List]:
+    """Yield lists scanned for repeat conversion in one logbook body stream."""
+    for element in elements:
+        if isinstance(element, List):
+            yield element
+            continue
+        if isinstance(element, Indent):
+            yield from _iter_repeat_candidate_lists(element.body)
 
 
 def _sync_logbook_repeat_list(
@@ -501,9 +488,7 @@ def _sync_logbook_repeat_list(
 ) -> None:
     """Synchronize explicit repeat entries into a concrete logbook list."""
     target_list: List | None = None
-    for element in logbook.body:
-        if not isinstance(element, List):
-            continue
+    for element in _iter_repeat_candidate_lists(logbook.body):
         if any(isinstance(item, Repeat) for item in element.items):
             target_list = element
             break

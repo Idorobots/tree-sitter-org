@@ -26,6 +26,7 @@ from org_parser.document._body import (
 )
 from org_parser.element import (
     Drawer,
+    Indent,
     List,
     ListItem,
     Logbook,
@@ -38,7 +39,6 @@ from org_parser.element._element import (
 )
 from org_parser.element._structure_recovery import (
     attach_affiliated_keywords,
-    recover_lists,
 )
 from org_parser.text._inline import CompletionCounter
 from org_parser.text._rich_text import RichText
@@ -882,12 +882,11 @@ def _extract_body(
         else:
             body.append(extract_body_element(child, parent=parent, document=document))
 
-    recovered_body = recover_lists(body, parent=parent)
-    attach_affiliated_keywords(recovered_body)
+    attach_affiliated_keywords(body)
     return (
         merge_properties_drawers(properties_drawers, parent=parent),
         merge_logbook_drawers(logbook_drawers, parent=parent),
-        recovered_body,
+        body,
     )
 
 
@@ -994,6 +993,10 @@ def _recover_heading_body_lists_and_extract_clocks(
                 clocks.append(element)
                 continue
 
+            if isinstance(element, Indent):
+                collect_from_drawer_body(element.body)
+                continue
+
             if isinstance(element, List):
                 collect_from_list(element)
                 continue
@@ -1007,6 +1010,10 @@ def _recover_heading_body_lists_and_extract_clocks(
                 collect_from_drawer_body(element.body)
 
     for element in body:
+        if isinstance(element, Indent):
+            collect_from_drawer_body(element.body)
+            continue
+
         if isinstance(element, List):
             collect_from_list(element)
             continue

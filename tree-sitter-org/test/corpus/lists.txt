@@ -9,15 +9,16 @@ Unordered list with dashes
 
 (document
   (zeroth_section
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text))
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text))
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text))))
+    (list
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text))
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text))
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text)))))
 
 ================
 Indented lone :END: after list item in heading
@@ -34,17 +35,18 @@ Indented lone :END: after list item in heading
     todo: (todo_keyword)
     title: (plain_text)
     body: (section
-      (block
-        indent: (indent)
-        body: (list_item
-          bullet: (unordered_bullet)
-          first_line: (plain_text)
-          first_line: (timestamp
-            year: (ts_year)
-            month: (ts_month)
-            day: (ts_day)
-            dayname: (ts_dayname)
-            time: (ts_time)))
+      (indent
+        indent: (whitespace)
+        body: (list
+          item: (list_item
+            bullet: (unordered_bullet)
+            first_line: (plain_text)
+            first_line: (timestamp
+              year: (ts_year)
+              month: (ts_month)
+              day: (ts_day)
+              dayname: (ts_dayname)
+              time: (ts_time))))
         body: (paragraph
           (plain_text)
           (newline))))))
@@ -62,49 +64,50 @@ List items allow arrows inside verbatim markup
 
 (document
   (zeroth_section
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text))
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (verbatim
-        body: (verbatim_content))
-      first_line: (plain_text)
-      first_line: (verbatim
-        body: (verbatim_content)))
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (verbatim
-        body: (verbatim_content))
-      first_line: (plain_text)
-      first_line: (verbatim
-        body: (verbatim_content))
-      first_line: (plain_text)
-      first_line: (verbatim
-        body: (verbatim_content)))
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (verbatim
-        body: (verbatim_content))
-      first_line: (plain_text)
-      first_line: (verbatim
-        body: (verbatim_content))
-      first_line: (plain_text))
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text)
-      first_line: (verbatim
-        body: (verbatim_content))
-      first_line: (plain_text)
-      first_line: (verbatim
-        body: (verbatim_content))
-      first_line: (plain_text)
-      first_line: (verbatim
-        body: (verbatim_content))
-      first_line: (plain_text)
-      first_line: (verbatim
-        body: (verbatim_content))
-      first_line: (plain_text))))
+    (list
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text))
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (verbatim
+          body: (verbatim_content))
+        first_line: (plain_text)
+        first_line: (verbatim
+          body: (verbatim_content)))
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (verbatim
+          body: (verbatim_content))
+        first_line: (plain_text)
+        first_line: (verbatim
+          body: (verbatim_content))
+        first_line: (plain_text)
+        first_line: (verbatim
+          body: (verbatim_content)))
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (verbatim
+          body: (verbatim_content))
+        first_line: (plain_text)
+        first_line: (verbatim
+          body: (verbatim_content))
+        first_line: (plain_text))
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text)
+        first_line: (verbatim
+          body: (verbatim_content))
+        first_line: (plain_text)
+        first_line: (verbatim
+          body: (verbatim_content))
+        first_line: (plain_text)
+        first_line: (verbatim
+          body: (verbatim_content))
+        first_line: (plain_text)
+        first_line: (verbatim
+          body: (verbatim_content))
+        first_line: (plain_text)))))
 
 ================
 Unordered list with plus
@@ -116,12 +119,13 @@ Unordered list with plus
 
 (document
   (zeroth_section
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text))
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text))))
+    (list
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text))
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text)))))
 
 ================
 Second list item starts with verbatim markup
@@ -133,13 +137,14 @@ Second list item starts with verbatim markup
 
 (document
   (zeroth_section
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text))
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (verbatim
-        body: (verbatim_content)))))
+    (list
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text))
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (verbatim
+          body: (verbatim_content))))))
 
 ================
 Checkbox item with verbatim containing inner equals
@@ -150,13 +155,14 @@ Checkbox item with verbatim containing inner equals
 
 (document
   (zeroth_section
-    (list_item
-      bullet: (unordered_bullet)
-      checkbox: (checkbox)
-      first_line: (plain_text)
-      first_line: (verbatim
-        body: (verbatim_content))
-      first_line: (plain_text))))
+    (list
+      item: (list_item
+        bullet: (unordered_bullet)
+        checkbox: (checkbox)
+        first_line: (plain_text)
+        first_line: (verbatim
+          body: (verbatim_content))
+        first_line: (plain_text)))))
 
 ================
 List item code markup followed by slash text
@@ -169,23 +175,24 @@ List item code markup followed by slash text
 
 (document
   (zeroth_section
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text)
-      first_line: (code
-        body: (code_content))
-      first_line: (plain_text)
-      first_line: (code
-        body: (code_content))
-      first_line: (plain_text))
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text))
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (code
-        body: (code_content))
-      first_line: (plain_text))))
+    (list
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text)
+        first_line: (code
+          body: (code_content))
+        first_line: (plain_text)
+        first_line: (code
+          body: (code_content))
+        first_line: (plain_text))
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text))
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (code
+          body: (code_content))
+        first_line: (plain_text)))))
 
 ================
 List items with URLs ending in slash
@@ -197,12 +204,13 @@ List items with URLs ending in slash
 
 (document
   (zeroth_section
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text))
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text))))
+    (list
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text))
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text)))))
 
 ================
 List items with inline code and trailing whitespace
@@ -214,14 +222,15 @@ List items with inline code and trailing whitespace
 
 (document
   (zeroth_section
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (code
-        body: (code_content)))
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (code
-        body: (code_content)))))
+    (list
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (code
+          body: (code_content)))
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (code
+          body: (code_content))))))
 
 ================
 Plus sign in list item text is not a new bullet
@@ -232,11 +241,12 @@ Plus sign in list item text is not a new bullet
 
 (document
   (zeroth_section
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (verbatim
-        body: (verbatim_content))
-      first_line: (plain_text))))
+    (list
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (verbatim
+          body: (verbatim_content))
+        first_line: (plain_text)))))
 
 ================
 Inline plus in list item text
@@ -249,15 +259,16 @@ Inline plus in list item text
 
 (document
   (zeroth_section
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text))
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text))
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text))))
+    (list
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text))
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text))
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text)))))
 
 ================
 Inline plus in indented list under heading
@@ -274,17 +285,18 @@ Inline plus in indented list under heading
     stars: (stars)
     title: (plain_text)
     body: (section
-      (block
-        indent: (indent)
-        body: (list_item
-          bullet: (unordered_bullet)
-          first_line: (plain_text))
-        body: (list_item
-          bullet: (unordered_bullet)
-          first_line: (plain_text))
-        body: (list_item
-          bullet: (unordered_bullet)
-          first_line: (plain_text))))))
+      (indent
+        indent: (whitespace)
+        body: (list
+          item: (list_item
+            bullet: (unordered_bullet)
+            first_line: (plain_text))
+          item: (list_item
+            bullet: (unordered_bullet)
+            first_line: (plain_text))
+	  item: (list_item
+            bullet: (unordered_bullet)
+            first_line: (plain_text)))))))
 
 ================
 Drawer-like tail stays plain text in list items
@@ -297,15 +309,16 @@ Drawer-like tail stays plain text in list items
 
 (document
   (zeroth_section
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text))
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text))
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text))))
+    (list
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text))
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text))
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text)))))
 
 ================
 Drawer-like tails with inline verbatim in list items
@@ -318,27 +331,28 @@ Drawer-like tails with inline verbatim in list items
 
 (document
   (zeroth_section
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text)
-      first_line: (verbatim
-        body: (verbatim_content))
-      first_line: (plain_text)
-      first_line: (verbatim
-        body: (verbatim_content))
-      first_line: (plain_text))
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text)
-      first_line: (verbatim
-        body: (verbatim_content))
-      first_line: (plain_text))
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text)
-      first_line: (verbatim
-        body: (verbatim_content))
-      first_line: (plain_text))))
+    (list
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text)
+        first_line: (verbatim
+          body: (verbatim_content))
+        first_line: (plain_text)
+        first_line: (verbatim
+          body: (verbatim_content))
+        first_line: (plain_text))
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text)
+        first_line: (verbatim
+          body: (verbatim_content))
+        first_line: (plain_text))
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text)
+        first_line: (verbatim
+          body: (verbatim_content))
+        first_line: (plain_text)))))
 
 ================
 List items keep greater-than comparisons and drawer-like tails
@@ -350,18 +364,19 @@ List items keep greater-than comparisons and drawer-like tails
 
 (document
   (zeroth_section
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text)
-      first_line: (verbatim
-        body: (verbatim_content))
-      first_line: (plain_text))
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text)
-      first_line: (verbatim
-        body: (verbatim_content))
-      first_line: (plain_text))))
+    (list
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text)
+        first_line: (verbatim
+          body: (verbatim_content))
+        first_line: (plain_text))
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text)
+        first_line: (verbatim
+          body: (verbatim_content))
+        first_line: (plain_text)))))
 
 ================
 Horizontal rule after list
@@ -374,9 +389,10 @@ Horizontal rule after list
 
 (document
   (zeroth_section
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text))
+    (list
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text)))
     (blank_line)
     (horizontal_rule)))
 
@@ -390,28 +406,29 @@ Multiple list items starting with inline markup
 
 (document
   (zeroth_section
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (bold
-        body: (plain_text))
-      first_line: (plain_text)
-      first_line: (verbatim
-        body: (verbatim_content))
-      first_line: (plain_text))
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (bold
-        body: (plain_text))
-      first_line: (plain_text)
-      first_line: (verbatim
-        body: (verbatim_content))
-      first_line: (plain_text)
-      first_line: (verbatim
-        body: (verbatim_content))
-      first_line: (plain_text)
-      first_line: (verbatim
-        body: (verbatim_content))
-      first_line: (plain_text))))
+    (list
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (bold
+          body: (plain_text))
+        first_line: (plain_text)
+        first_line: (verbatim
+          body: (verbatim_content))
+        first_line: (plain_text))
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (bold
+          body: (plain_text))
+        first_line: (plain_text)
+        first_line: (verbatim
+          body: (verbatim_content))
+        first_line: (plain_text)
+        first_line: (verbatim
+          body: (verbatim_content))
+        first_line: (plain_text)
+        first_line: (verbatim
+          body: (verbatim_content))
+        first_line: (plain_text)))))
 
 ================
 Indented drawer starts after list item
@@ -425,14 +442,13 @@ Indented drawer starts after list item
 
 (document
   (zeroth_section
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text))
-    (block
-      indent: (indent)
-      body: (drawer
-        name: (drawer_name)
-        body: (drawer_kv_line)))))
+    (list
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text)
+        body: (drawer
+          name: (drawer_name)
+          body: (drawer_kv_line))))))
 
 ================
 Indented fixed-width starts after list item
@@ -444,12 +460,11 @@ Indented fixed-width starts after list item
 
 (document
   (zeroth_section
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text))
-    (block
-      indent: (indent)
-      body: (fixed_width))))
+    (list
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text)
+        body: (fixed_width)))))
 
 ================
 Indented nested item drawer starts after list
@@ -465,21 +480,19 @@ Indented nested item drawer starts after list
 
 (document
   (zeroth_section
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text))
-    (block
-      indent: (indent)
-      body: (list_item
+    (list
+      item: (list_item
         bullet: (unordered_bullet)
-        first_line: (plain_text))
-      body: (block
-        indent: (indent)
-        body: (logbook_drawer
-          body: (drawer_kv_line))))
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text))))
+        first_line: (plain_text)
+        body: (list
+          item: (list_item
+            bullet: (unordered_bullet)
+            first_line: (plain_text)
+            body: (logbook_drawer
+              body: (drawer_kv_line)))))
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text)))))
 
 ================
 Indented nested fixed-width starts after list
@@ -493,20 +506,18 @@ Indented nested fixed-width starts after list
 
 (document
   (zeroth_section
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text))
-    (block
-      indent: (indent)
-      body: (list_item
+    (list
+      item: (list_item
         bullet: (unordered_bullet)
-        first_line: (plain_text))
-      body: (block
-        indent: (indent)
-        body: (fixed_width)))
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text))))
+        first_line: (plain_text)
+        body: (list
+          item: (list_item
+            bullet: (unordered_bullet)
+            first_line: (plain_text)
+            body: (fixed_width))))
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text)))))
 
 ================
 Indented quote block after list item
@@ -527,18 +538,17 @@ Indented quote block after list item
     title: (plain_text)
     body: (section
       (blank_line)
-      (list_item
-        bullet: (unordered_bullet)
-        first_line: (plain_text))
-      (block
-        indent: (indent)
-        body: (quote_block
-          body: (paragraph
-            (plain_text)
-            (newline))
-          body: (paragraph
-            (plain_text)
-            (newline)))))))
+      (list
+        item: (list_item
+          bullet: (unordered_bullet)
+          first_line: (plain_text)
+          body: (quote_block
+            body: (paragraph
+              (plain_text)
+              (newline))
+            body: (paragraph
+              (plain_text)
+              (newline))))))))
 
 ================
 Indented src block belongs to nested list item body
@@ -554,23 +564,21 @@ Indented src block belongs to nested list item body
 
 (document
   (zeroth_section
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text))
-    (block
-      indent: (indent)
-      body: (list_item
+    (list
+      item: (list_item
         bullet: (unordered_bullet)
-        first_line: (plain_text))
-      body: (block
-        indent: (indent)
-        body: (src_block
-          language: (language)
-          body: (src_block_body
-            (src_line)))))
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text))))
+        first_line: (plain_text)
+        body: (list
+          item: (list_item
+            bullet: (unordered_bullet)
+            first_line: (plain_text)
+            body: (src_block
+              language: (language)
+              body: (src_block_body
+                (src_line))))))
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text)))))
 
 ================
 Ordered list with numbers
@@ -583,15 +591,16 @@ Ordered list with numbers
 
 (document
   (zeroth_section
-    (list_item
-      (counter)
-      (plain_text))
-    (list_item
-      (counter)
-      (plain_text))
-    (list_item
-      (counter)
-      (plain_text))))
+    (list
+      (list_item
+        (counter)
+        (plain_text))
+      (list_item
+        (counter)
+        (plain_text))
+      (list_item
+        (counter)
+        (plain_text)))))
 
 ================
 Ordered list counter-set cookie
@@ -603,13 +612,14 @@ Ordered list counter-set cookie
 
 (document
   (zeroth_section
-    (list_item
-      counter: (counter)
-      counter_set: (counter_set)
-      first_line: (plain_text))
-    (list_item
-      counter: (counter)
-      first_line: (plain_text))))
+    (list
+      item: (list_item
+        counter: (counter)
+        counter_set: (counter_set)
+        first_line: (plain_text))
+      item: (list_item
+        counter: (counter)
+        first_line: (plain_text)))))
 
 ================
 Ordered list cookie with apostrophe text
@@ -620,10 +630,11 @@ Ordered list cookie with apostrophe text
 
 (document
   (zeroth_section
-    (list_item
-      counter: (counter)
-      counter_set: (counter_set)
-      first_line: (plain_text))))
+    (list
+      item: (list_item
+        counter: (counter)
+        counter_set: (counter_set)
+        first_line: (plain_text)))))
 
 ================
 List with checkboxes
@@ -636,18 +647,19 @@ List with checkboxes
 
 (document
   (zeroth_section
-    (list_item
-      bullet: (unordered_bullet)
-      checkbox: (checkbox)
-      first_line: (plain_text))
-    (list_item
-      bullet: (unordered_bullet)
-      checkbox: (checkbox)
-      first_line: (plain_text))
-    (list_item
-      bullet: (unordered_bullet)
-      checkbox: (checkbox)
-      first_line: (plain_text))))
+    (list
+      item: (list_item
+        bullet: (unordered_bullet)
+        checkbox: (checkbox)
+        first_line: (plain_text))
+      item: (list_item
+        bullet: (unordered_bullet)
+        checkbox: (checkbox)
+        first_line: (plain_text))
+      item: (list_item
+        bullet: (unordered_bullet)
+        checkbox: (checkbox)
+        first_line: (plain_text)))))
 
 ================
 Invalid checkbox marker stays plain text
@@ -659,13 +671,14 @@ Invalid checkbox marker stays plain text
 
 (document
   (zeroth_section
-    (list_item
-      bullet: (unordered_bullet)
-      checkbox: (checkbox)
-      first_line: (plain_text))
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text))))
+    (list
+      item: (list_item
+        bullet: (unordered_bullet)
+        checkbox: (checkbox)
+        first_line: (plain_text))
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text)))))
 
 ================
 List items with slash and percent completion counters
@@ -681,38 +694,38 @@ List items with slash and percent completion counters
 
 (document
   (zeroth_section
-    (list_item
-      bullet: (unordered_bullet)
-      checkbox: (checkbox)
-      first_line: (plain_text)
-      first_line: (completion_counter
-        value: (completion_counter_value)))
-    (block
-      indent: (indent)
-      body: (list_item
+    (list
+      item: (list_item
+        bullet: (unordered_bullet)
+        checkbox: (checkbox)
+        first_line: (plain_text)
+        first_line: (completion_counter
+          value: (completion_counter_value))
+        body: (list
+          item: (list_item
+            bullet: (unordered_bullet)
+            checkbox: (checkbox)
+            first_line: (plain_text))
+          item: (list_item
+            bullet: (unordered_bullet)
+            checkbox: (checkbox)
+            first_line: (plain_text))))
+      item: (list_item
+        bullet: (unordered_bullet)
+        checkbox: (checkbox)
+        first_line: (plain_text)
+        first_line: (completion_counter
+          value: (completion_counter_value)))
+      item: (list_item
         bullet: (unordered_bullet)
         checkbox: (checkbox)
         first_line: (plain_text))
-      body: (list_item
+      item: (list_item
         bullet: (unordered_bullet)
         checkbox: (checkbox)
-        first_line: (plain_text)))
-    (list_item
-      bullet: (unordered_bullet)
-      checkbox: (checkbox)
-      first_line: (plain_text)
-      first_line: (completion_counter
-        value: (completion_counter_value)))
-    (list_item
-      bullet: (unordered_bullet)
-      checkbox: (checkbox)
-      first_line: (plain_text))
-    (list_item
-      bullet: (unordered_bullet)
-      checkbox: (checkbox)
-      first_line: (plain_text)
-      first_line: (completion_counter
-        value: (completion_counter_value)))))
+        first_line: (plain_text)
+        first_line: (completion_counter
+          value: (completion_counter_value))))))
 
 ================
 Nested plus checkbox list items stay list_item nodes
@@ -727,28 +740,28 @@ Nested plus checkbox list items stay list_item nodes
 
 (document
   (zeroth_section
-    (list_item
-      bullet: (unordered_bullet)
-      checkbox: (checkbox)
-      first_line: (plain_text))
-    (list_item
-      bullet: (unordered_bullet)
-      checkbox: (checkbox)
-      first_line: (plain_text))
-    (block
-      indent: (indent)
-      body: (list_item
+    (list
+      item: (list_item
         bullet: (unordered_bullet)
         checkbox: (checkbox)
         first_line: (plain_text))
-      body: (list_item
+      item: (list_item
         bullet: (unordered_bullet)
         checkbox: (checkbox)
-        first_line: (plain_text)))
-    (list_item
-      bullet: (unordered_bullet)
-      checkbox: (checkbox)
-      first_line: (plain_text))))
+        first_line: (plain_text)
+        body: (list
+          item: (list_item
+            bullet: (unordered_bullet)
+            checkbox: (checkbox)
+            first_line: (plain_text))
+          item: (list_item
+            bullet: (unordered_bullet)
+            checkbox: (checkbox)
+            first_line: (plain_text))))
+      item: (list_item
+        bullet: (unordered_bullet)
+        checkbox: (checkbox)
+        first_line: (plain_text)))))
 
 ================
 Nested list — flat with indent preserved
@@ -762,20 +775,97 @@ Nested list — flat with indent preserved
 
 (document
   (zeroth_section
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text))
-    (block
-      indent: (indent)
-      body: (list_item
+    (list
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text)
+        body: (list
+          item: (list_item
+            bullet: (unordered_bullet)
+            first_line: (plain_text))
+          item: (list_item
+            bullet: (unordered_bullet)
+            first_line: (plain_text))))
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text)))))
+
+================
+Nested list with many consecutive children stays one list
+================
+- foo
+  - baz
+  - herp
+  - drep
+  - hurr
+  - durr
+- bar
+- baz
+
+---
+
+(document
+  (zeroth_section
+    (list
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text)
+        body: (list
+          item: (list_item
+            bullet: (unordered_bullet)
+            first_line: (plain_text))
+          item: (list_item
+            bullet: (unordered_bullet)
+            first_line: (plain_text))
+          item: (list_item
+            bullet: (unordered_bullet)
+            first_line: (plain_text))
+          item: (list_item
+            bullet: (unordered_bullet)
+            first_line: (plain_text))
+          item: (list_item
+            bullet: (unordered_bullet)
+            first_line: (plain_text))))
+      item: (list_item
         bullet: (unordered_bullet)
         first_line: (plain_text))
-      body: (list_item
+      item: (list_item
         bullet: (unordered_bullet)
-        first_line: (plain_text)))
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text))))
+        first_line: (plain_text)))))
+
+================
+Nested list item paragraph does not terminate nested list
+================
+- list
+  - sublist
+    bar
+    foo
+  - sublist
+- list
+
+---
+
+(document
+  (zeroth_section
+    (list
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text)
+        body: (list
+          item: (list_item
+            bullet: (unordered_bullet)
+            first_line: (plain_text)
+            body: (paragraph
+              (plain_text)
+              (newline)
+              (plain_text)
+              (newline)))
+          item: (list_item
+            bullet: (unordered_bullet)
+            first_line: (plain_text))))
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text)))))
 
 ================
 Blank-line-separated list items
@@ -788,13 +878,15 @@ Blank-line-separated list items
 
 (document
   (zeroth_section
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text))
+    (list
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text)))
     (blank_line)
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text))))
+    (list
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text)))))
 
 ================
 Blank line before indented continuation paragraph
@@ -808,18 +900,20 @@ Blank line before indented continuation paragraph
 
 (document
   (zeroth_section
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text))
+    (list
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text)))
     (blank_line)
-    (block
-      indent: (indent)
+    (indent
+      indent: (whitespace)
       body: (paragraph
         (plain_text)
         (newline)))
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text))))
+    (list
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text)))))
 
 ================
 Indented numeric continuation lines stay in list items
@@ -833,22 +927,19 @@ Indented numeric continuation lines stay in list items
 
 (document
   (zeroth_section
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text))
-    (block
-      indent: (indent)
-      body: (paragraph
-        (plain_text)
-        (newline)))
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text))
-    (block
-      indent: (indent)
-      body: (paragraph
-        (plain_text)
-        (newline)))))
+    (list
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text)
+        body: (paragraph
+          (plain_text)
+          (newline)))
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text)
+        body: (paragraph
+          (plain_text)
+          (newline))))))
 
 ================
 List items with bullet-like continuation paragraphs
@@ -862,38 +953,35 @@ List items with bullet-like continuation paragraphs
 
 (document
   (zeroth_section
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text)
-      first_line: (timestamp
-        year: (ts_year)
-        month: (ts_month)
-        day: (ts_day)
-        dayname: (ts_dayname)
-        time: (ts_time))
-      first_line: (plain_text)
-      first_line: (line_break))
-    (block
-      indent: (indent)
-      body: (paragraph
-        (plain_text)
-        (newline)))
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text)
-      first_line: (timestamp
-        year: (ts_year)
-        month: (ts_month)
-        day: (ts_day)
-        dayname: (ts_dayname)
-        time: (ts_time))
-      first_line: (plain_text)
-      first_line: (line_break))
-    (block
-      indent: (indent)
-      body: (paragraph
-        (plain_text)
-        (newline)))))
+    (list
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text)
+        first_line: (timestamp
+          year: (ts_year)
+          month: (ts_month)
+          day: (ts_day)
+          dayname: (ts_dayname)
+          time: (ts_time))
+        first_line: (plain_text)
+        first_line: (line_break)
+        body: (paragraph
+          (plain_text)
+          (newline)))
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text)
+        first_line: (timestamp
+          year: (ts_year)
+          month: (ts_month)
+          day: (ts_day)
+          dayname: (ts_dayname)
+          time: (ts_time))
+        first_line: (plain_text)
+        first_line: (line_break)
+        body: (paragraph
+          (plain_text)
+          (newline))))))
 
 ================
 List continuation lines parse indented timestamps and links
@@ -906,24 +994,22 @@ List continuation lines parse indented timestamps and links
 
 (document
   (zeroth_section
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text))
-    (block
-      indent: (indent)
-      body: (paragraph
-        (timestamp
-          year: (ts_year)
-          month: (ts_month)
-          day: (ts_day)
-          dayname: (ts_dayname)
-          time: (ts_time))
-        (newline))
-      body: (paragraph
-        (regular_link
-          path: (link_path)
-          description: (plain_text))
-        (newline)))))
+    (list
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text)
+        body: (paragraph
+          (timestamp
+            year: (ts_year)
+            month: (ts_month)
+            day: (ts_day)
+            dayname: (ts_dayname)
+            time: (ts_time))
+          (newline)
+          (regular_link
+            path: (link_path)
+            description: (plain_text))
+          (newline))))))
 
 ================
 List items with completion counter variants
@@ -941,48 +1027,49 @@ List items with completion counter variants
 
 (document
   (zeroth_section
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (completion_counter
-        value: (completion_counter_value))
-      first_line: (plain_text))
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text)
-      first_line: (completion_counter
-        value: (completion_counter_value)))
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text)
-      first_line: (completion_counter
-        value: (completion_counter_value)))
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text)
-      first_line: (completion_counter
-        value: (completion_counter_value))
-      first_line: (plain_text))
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (completion_counter
-        value: (completion_counter_value))
-      first_line: (plain_text))
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text)
-      first_line: (completion_counter
-        value: (completion_counter_value)))
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text)
-      first_line: (completion_counter
-        value: (completion_counter_value)))
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text)
-      first_line: (completion_counter
-        value: (completion_counter_value))
-      first_line: (plain_text))))
+    (list
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (completion_counter
+          value: (completion_counter_value))
+        first_line: (plain_text))
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text)
+        first_line: (completion_counter
+          value: (completion_counter_value)))
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text)
+        first_line: (completion_counter
+          value: (completion_counter_value)))
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text)
+        first_line: (completion_counter
+          value: (completion_counter_value))
+        first_line: (plain_text))
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (completion_counter
+          value: (completion_counter_value))
+        first_line: (plain_text))
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text)
+        first_line: (completion_counter
+          value: (completion_counter_value)))
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text)
+        first_line: (completion_counter
+          value: (completion_counter_value)))
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text)
+        first_line: (completion_counter
+          value: (completion_counter_value))
+        first_line: (plain_text)))))
 
 ================
 List item keeps non-cookie bracket text and parses trailing counter
@@ -993,11 +1080,12 @@ List item keeps non-cookie bracket text and parses trailing counter
 
 (document
   (zeroth_section
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text)
-      first_line: (completion_counter
-        value: (completion_counter_value)))))
+    (list
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text)
+        first_line: (completion_counter
+          value: (completion_counter_value))))))
 
 ================
 List items keep bracketed bus ranges as plain text
@@ -1010,15 +1098,16 @@ List items keep bracketed bus ranges as plain text
 
 (document
   (zeroth_section
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text))
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text))
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text))))
+    (list
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text))
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text))
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text)))))
 
 ================
 Mixed unordered bullet types expose distinct bullet nodes
@@ -1031,17 +1120,17 @@ Mixed unordered bullet types expose distinct bullet nodes
 
 (document
   (zeroth_section
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text))
-    (list_item
-      bullet: (unordered_bullet)
-      first_line: (plain_text))
-    (block
-      indent: (indent)
-      body: (list_item
+    (list
+      item: (list_item
         bullet: (unordered_bullet)
-        first_line: (plain_text)))))
+        first_line: (plain_text))
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text)
+        body: (list
+          item: (list_item
+            bullet: (unordered_bullet)
+            first_line: (plain_text)))))))
 
 ================
 Alpha-ordered list items parse as list_item nodes
@@ -1055,15 +1144,72 @@ d. fourth
 
 (document
   (zeroth_section
-    (list_item
-      counter: (counter)
-      first_line: (plain_text))
-    (list_item
-      counter: (counter)
-      first_line: (plain_text))
-    (list_item
-      counter: (counter)
-      first_line: (plain_text))
-    (list_item
-      counter: (counter)
-      first_line: (plain_text))))
+    (list
+      item: (list_item
+        counter: (counter)
+        first_line: (plain_text))
+      item: (list_item
+        counter: (counter)
+        first_line: (plain_text))
+      item: (list_item
+        counter: (counter)
+        first_line: (plain_text))
+      item: (list_item
+        counter: (counter)
+        first_line: (plain_text)))))
+
+================
+Single-char nested list paragraph before following item
+================
+- foo
+  - baz
+  h
+  - qux
+
+---
+
+(document
+  (zeroth_section
+    (list
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text)
+        body: (list
+          item: (list_item
+            bullet: (unordered_bullet)
+            first_line: (plain_text)))
+        body: (paragraph
+          (plain_text)
+          (newline))
+        body: (list
+          item: (list_item
+            bullet: (unordered_bullet)
+            first_line: (plain_text)))))))
+
+================
+Single-digit nested list paragraph before following item
+================
+- foo
+  - baz
+  1
+  - qux
+
+---
+
+(document
+  (zeroth_section
+    (list
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text)
+        body: (list
+          item: (list_item
+            bullet: (unordered_bullet)
+            first_line: (plain_text)))
+        body: (paragraph
+          (plain_text)
+          (newline))
+        body: (list
+          item: (list_item
+            bullet: (unordered_bullet)
+            first_line: (plain_text)))))))

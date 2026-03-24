@@ -30,6 +30,7 @@ from org_parser._nodes import (
     EXPORT_BLOCK,
     FIXED_WIDTH,
     HORIZONTAL_RULE,
+    LIST,
     LIST_ITEM,
     LOGBOOK_DRAWER,
     ORG_TABLE,
@@ -59,7 +60,7 @@ def body_element_factories() -> dict[str, Callable[..., Element]]:
 
     The mapping covers every named node type that can appear as a direct
     child of a ``section`` or ``zeroth_section`` body — except for the
-    ``block`` (indentation-wrapper) and ``special_keyword`` nodes, which
+    ``indent`` and ``special_keyword`` nodes, which
     are context-specific and handled by each call site.
 
     The dict is built with lazy imports on the first call and then cached,
@@ -93,7 +94,7 @@ def body_element_factories() -> dict[str, Callable[..., Element]]:
         ResultsKeyword,
         TblnameKeyword,
     )
-    from org_parser.element._list import ListItem
+    from org_parser.element._list import List, ListItem
     from org_parser.element._paragraph import Paragraph
     from org_parser.element._structure import BlankLine, Comment, HorizontalRule
     from org_parser.element._table import Table, TableEl
@@ -118,6 +119,7 @@ def body_element_factories() -> dict[str, Callable[..., Element]]:
         SRC_BLOCK: SourceBlock.from_node,
         VERSE_BLOCK: VerseBlock.from_node,
         FIXED_WIDTH: FixedWidthBlock.from_node,
+        LIST: List.from_node,
         LIST_ITEM: ListItem.from_node,
         BLANK_LINE: BlankLine.from_node,
         CAPTION_KEYWORD: CaptionKeyword.from_node,

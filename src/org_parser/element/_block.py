@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from org_parser._node import node_source
-from org_parser._nodes import BLOCK, SPECIAL_KEYWORD
+from org_parser._nodes import INDENT, SPECIAL_KEYWORD
 from org_parser.element._dispatch import body_element_factories
 from org_parser.element._element import (
     Element,
@@ -13,7 +13,7 @@ from org_parser.element._element import (
     element_from_error_or_unknown,
     ensure_trailing_newline,
 )
-from org_parser.element._structure import IndentBlock
+from org_parser.element._structure import Indent
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator, Sequence
@@ -723,14 +723,10 @@ def _extract_container_contents(
         for child in node.children_by_field_name("body")
         if child.is_named
     ]
-    from org_parser.element._structure_recovery import (
-        attach_affiliated_keywords,
-        recover_lists,
-    )
+    from org_parser.element._structure_recovery import attach_affiliated_keywords
 
-    result = recover_lists(elements, parent=None)
-    attach_affiliated_keywords(result)
-    return result
+    attach_affiliated_keywords(elements)
+    return elements
 
 
 def _extract_nested_element(
@@ -740,8 +736,8 @@ def _extract_nested_element(
     parent: Document | Heading | Element | None = None,
 ) -> Element:
     """Build one semantic element for nested block contents."""
-    if node.type == BLOCK:
-        return _extract_indent_block(node, document, parent=parent)
+    if node.type == INDENT:
+        return _extract_indent(node, document, parent=parent)
 
     from org_parser.element._keyword import Keyword
 
@@ -755,26 +751,16 @@ def _extract_nested_element(
     return factory(node, document, parent=parent)
 
 
-def _extract_indent_block(
+def _extract_indent(
     node: tree_sitter.Node,
     document: Document,
     *,
     parent: Document | Heading | Element | None = None,
-) -> IndentBlock:
-    """Build one nested :class:`IndentBlock` from a ``block`` node."""
-    indent_node = node.child_by_field_name("indent")
-    indent_text = node_source(indent_node, document)
-    indent = indent_text if indent_text != "" else None
-    block = IndentBlock(
-        body=[
-            _extract_nested_element(child, document, parent=parent)
-            for child in node.children_by_field_name("body")
-            if child.is_named
-        ],
-        indent=indent,
+) -> Indent:
+    """Build one nested :class:`Indent` from an ``indent`` node."""
+    return Indent.from_node(
+        node, document, parent=parent, child_factory=_extract_nested_element
     )
-    block.attach_source(node, document)
-    return block
 
 
 def _extract_optional_field_text(
