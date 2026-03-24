@@ -5041,6 +5041,19 @@ When the list note is the final element, the drawer isn't parsed correctly.
 Update the Python wrapper not to have to recover list and paragraph structure but rather accept the Tree-Sitter node structure as is currently. Do keep the =Repeat= recovery though in place.
 The =IndentBlock= should be renamed to just =Indent= and treated as a first-class citizen in the semantic tree.
 
+** DONE Another indent edge case
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-24 Tue 19:16]
+:END:
+The =h= character below causes an error. Any single-character, indented paragraph fails when it's a body of a nested list that has more items following it.
+
+#+begin_example
+- foo
+  - baz
+  h
+  - foo
+#+end_example
+
 * Error recovery overhaul
 It would be nice to report parse errors for some of the obviously broken constructions.
 

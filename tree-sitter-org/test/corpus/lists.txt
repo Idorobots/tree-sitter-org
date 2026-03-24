@@ -1157,3 +1157,59 @@ d. fourth
       item: (list_item
         counter: (counter)
         first_line: (plain_text)))))
+
+================
+Single-char nested list paragraph before following item
+================
+- foo
+  - baz
+  h
+  - qux
+
+---
+
+(document
+  (zeroth_section
+    (list
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text)
+        body: (list
+          item: (list_item
+            bullet: (unordered_bullet)
+            first_line: (plain_text)))
+        body: (paragraph
+          (plain_text)
+          (newline))
+        body: (list
+          item: (list_item
+            bullet: (unordered_bullet)
+            first_line: (plain_text)))))))
+
+================
+Single-digit nested list paragraph before following item
+================
+- foo
+  - baz
+  1
+  - qux
+
+---
+
+(document
+  (zeroth_section
+    (list
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text)
+        body: (list
+          item: (list_item
+            bullet: (unordered_bullet)
+            first_line: (plain_text)))
+        body: (paragraph
+          (plain_text)
+          (newline))
+        body: (list
+          item: (list_item
+            bullet: (unordered_bullet)
+            first_line: (plain_text)))))))

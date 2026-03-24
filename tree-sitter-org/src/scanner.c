@@ -2463,12 +2463,21 @@ static int scan_block_paragraph_continue(Scanner *s, TSLexer *lexer) {
   return 1;
 }
 
-static bool scan_block_list_bullet_start(TSLexer *lexer) {
+// Probe for list bullet syntax at current position.
+// Return values:
+//   1  -> matched list bullet prefix
+//   0  -> no match, no advance performed
+//  -1  -> no match after advance(s); caller must return false to rewind
+static int scan_block_list_bullet_start(TSLexer *lexer) {
+  uint32_t col_before = get_column(lexer);
   int32_t ch = lookahead(lexer);
 
   if (ch == '+' || ch == '-' || ch == '*') {
     advance(lexer);
-    return lookahead(lexer) == ' ' || lookahead(lexer) == '\t';
+    if (lookahead(lexer) == ' ' || lookahead(lexer) == '\t') {
+      return 1;
+    }
+    return -1;
   }
 
   if (ch >= '0' && ch <= '9') {
@@ -2477,20 +2486,26 @@ static bool scan_block_list_bullet_start(TSLexer *lexer) {
       ch = lookahead(lexer);
     } while (ch >= '0' && ch <= '9');
 
-    if (ch != '.' && ch != ')') return false;
+    if (ch != '.' && ch != ')') return -1;
     advance(lexer);
-    return lookahead(lexer) == ' ' || lookahead(lexer) == '\t';
+    if (lookahead(lexer) == ' ' || lookahead(lexer) == '\t') {
+      return 1;
+    }
+    return -1;
   }
 
   if (ch >= 'a' && ch <= 'z') {
     advance(lexer);
     ch = lookahead(lexer);
-    if (ch != '.' && ch != ')') return false;
+    if (ch != '.' && ch != ')') return -1;
     advance(lexer);
-    return lookahead(lexer) == ' ' || lookahead(lexer) == '\t';
+    if (lookahead(lexer) == ' ' || lookahead(lexer) == '\t') {
+      return 1;
+    }
+    return -1;
   }
 
-  return false;
+  return get_column(lexer) == col_before ? 0 : -1;
 }
 
 static bool starts_with_end_marker(TSLexer *lexer) {
@@ -2559,7 +2574,8 @@ static int scan_block_list_item_continue(Scanner *s, TSLexer *lexer) {
 
   uint16_t current = s->section_block_indents[s->section_block_depth - 1];
   if (indent_col != current) return -1;
-  if (!scan_block_list_bullet_start(lexer)) return -1;
+  int probe = scan_block_list_bullet_start(lexer);
+  if (probe != 1) return -1;
 
   lexer->result_symbol = TOKEN_INDENT_LIST_ITEM_CONTINUE;
   return 1;
@@ -2664,12 +2680,17 @@ static int scan_block_end(Scanner *s, TSLexer *lexer, const bool *valid_symbols)
 
   int32_t ch = lookahead(lexer);
   uint16_t current = s->section_block_indents[s->section_block_depth - 1];
+  bool list_probe_advanced_miss = false;
 
   if (indent_col == current && valid_symbols[TOKEN_INDENT_LIST_ITEM_CONTINUE]) {
     mark_end(lexer);
-    if (scan_block_list_bullet_start(lexer)) {
+    int probe = scan_block_list_bullet_start(lexer);
+    if (probe == 1) {
       lexer->result_symbol = TOKEN_INDENT_LIST_ITEM_CONTINUE;
       return 1;
+    }
+    if (probe == -1) {
+      list_probe_advanced_miss = true;
     }
   }
 
@@ -2739,7 +2760,9 @@ static int scan_block_end(Scanner *s, TSLexer *lexer, const bool *valid_symbols)
   if (!should_close) {
     if (valid_symbols[TOKEN_INDENT_CONTENT_CONTINUE] &&
         indent_col >= current && !eof(lexer) && ch != '\n') {
-      mark_end(lexer);
+      if (!list_probe_advanced_miss) {
+        mark_end(lexer);
+      }
       lexer->result_symbol = TOKEN_INDENT_CONTENT_CONTINUE;
       return 1;
     }
