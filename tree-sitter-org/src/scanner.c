@@ -198,6 +198,10 @@ typedef struct {
 
   // Drawer nesting depth (custom/property/logbook).
   uint8_t drawer_depth;
+
+  // True when we just left column 0 via grammar/internal tokens (for example,
+  // list bullets). Used to detect list-item tag separators in first-line text.
+  bool bol_shifted_by_grammar;
 } Scanner;
 
 // ---------------------------------------------------------------------------
@@ -364,6 +368,7 @@ void *tree_sitter_org_external_scanner_create(void) {
     scanner->plain_lbracket_depth = 0;
     scanner->suppress_block_begin_on_end_line = false;
     scanner->drawer_depth = 0;
+    scanner->bol_shifted_by_grammar = false;
     reset_markup_open_state(scanner);
   }
   return scanner;
@@ -424,8 +429,8 @@ unsigned tree_sitter_org_external_scanner_serialize(
   // prev_char, consecutive_blank_lines, in_table, last_column,
   // plain_lbracket_depth,
   // markup-open flags, in_heading_line, suppress_block_begin_on_end_line,
-  // drawer_depth
-  if (pos + 19 > SERIALIZE_BUF_SIZE) return 0;
+  // drawer_depth, bol_shifted_by_grammar
+  if (pos + 20 > SERIALIZE_BUF_SIZE) return 0;
   buffer[pos++] = (char)((s->prev_char >> 24) & 0xFF);
   buffer[pos++] = (char)((s->prev_char >> 16) & 0xFF);
   buffer[pos++] = (char)((s->prev_char >> 8) & 0xFF);
@@ -445,6 +450,7 @@ unsigned tree_sitter_org_external_scanner_serialize(
   buffer[pos++] = (char)(s->in_heading_line ? 1 : 0);
   buffer[pos++] = (char)(s->suppress_block_begin_on_end_line ? 1 : 0);
   buffer[pos++] = (char)s->drawer_depth;
+  buffer[pos++] = (char)(s->bol_shifted_by_grammar ? 1 : 0);
 
   return pos;
 }
@@ -467,6 +473,7 @@ void tree_sitter_org_external_scanner_deserialize(
   s->in_heading_line = false;
   s->suppress_block_begin_on_end_line = false;
   s->drawer_depth = 0;
+  s->bol_shifted_by_grammar = false;
   reset_markup_open_state(s);
 
   for (int i = 0; i < NUM_DEFAULT_TODO_KWS; i++) {
@@ -517,7 +524,7 @@ void tree_sitter_org_external_scanner_deserialize(
   // prev_char, consecutive_blank_lines, in_table, last_column,
   // plain_lbracket_depth,
   // markup-open flags, in_heading_line, suppress_block_begin_on_end_line,
-  // drawer_depth
+  // drawer_depth, bol_shifted_by_grammar
   if (pos + 5 <= length) {
     s->prev_char = ((int32_t)(uint8_t)buffer[pos] << 24) |
                    ((int32_t)(uint8_t)buffer[pos + 1] << 16) |
@@ -563,6 +570,9 @@ void tree_sitter_org_external_scanner_deserialize(
   }
   if (pos < length) {
     s->drawer_depth = (uint8_t)buffer[pos++];
+  }
+  if (pos < length) {
+    s->bol_shifted_by_grammar = (bool)buffer[pos++];
   }
 }
 
@@ -984,7 +994,7 @@ static bool scan_fndef_end(Scanner *s, TSLexer *lexer) {
 }
 
 // _ITEM_TAG_END: find ' :: '
-static bool scan_item_tag_end(TSLexer *lexer) {
+static bool scan_item_tag_end(Scanner *s, TSLexer *lexer) {
   if (lookahead(lexer) == ' ') {
     advance(lexer);
     if (lookahead(lexer) == ':') {
@@ -1000,6 +1010,20 @@ static bool scan_item_tag_end(TSLexer *lexer) {
       }
     }
   }
+
+  if (lookahead(lexer) == ':' && s->prev_char == ' ') {
+    advance(lexer);
+    if (lookahead(lexer) == ':') {
+      advance(lexer);
+      if (lookahead(lexer) == ' ') {
+        advance(lexer);
+        lexer->result_symbol = TOKEN_ITEM_TAG_END;
+        mark_end(lexer);
+        return true;
+      }
+    }
+  }
+
   return false;
 }
 
@@ -1546,6 +1570,7 @@ static bool scan_plain_text(Scanner *s, TSLexer *lexer, const bool *valid_symbol
   }
 
   bool found_any = false;
+  bool bol_shifted = s->bol_shifted_by_grammar;
   uint32_t plain_lbracket_depth = s->plain_lbracket_depth;
   bool saw_plain_lbracket = plain_lbracket_depth > 0;
   bool maybe_clock_kw = (get_column(lexer) == 0 || s->prev_char == 0);
@@ -1818,6 +1843,28 @@ static bool scan_plain_text(Scanner *s, TSLexer *lexer, const bool *valid_symbol
       }
 
       if (ch == ':') {
+        if (bol_shifted && !s->in_heading_line && s->prev_char == ' ') {
+          advance(lexer);  // probe first ':'
+          if (lookahead(lexer) == ':') {
+            advance(lexer);  // probe second ':'
+            if (lookahead(lexer) == ' ') {
+              if (!found_any) {
+                if (valid_symbols[TOKEN_ITEM_TAG_END]) return false;
+                s->prev_char = ':';
+                mark_end(lexer);
+                found_any = true;
+                continue;
+              }
+              break;
+            }
+          }
+
+          s->prev_char = ':';
+          mark_end(lexer);
+          found_any = true;
+          continue;
+        }
+
         // Preserve a leading CLOCK: token for the clock element rule.
         if (maybe_clock_kw && consumed_len == 5) {
           if (!found_any) return false;
@@ -3138,6 +3185,7 @@ bool tree_sitter_org_external_scanner_scan(
     s->prev_char = 0;
     s->plain_lbracket_depth = 0;
     s->in_heading_line = false;
+    s->bol_shifted_by_grammar = false;
     reset_markup_open_state(s);
 
     // Keep table state in sync across element boundaries even when
@@ -3158,6 +3206,7 @@ bool tree_sitter_org_external_scanner_scan(
     s->prev_char = s->section_block_depth > 0 ? 0 : ' ';
     s->plain_lbracket_depth = 0;
     s->in_heading_line = false;
+    s->bol_shifted_by_grammar = true;
   } else if (col > 0 && s->last_column == 0 && s->prev_char == 0) {
     // We left column 0 via grammar/internal tokens only (for example list
     // bullets/spaces or heading stars/space). No external scanner token has
@@ -3168,6 +3217,9 @@ bool tree_sitter_org_external_scanner_scan(
     } else if (s->section_block_depth == 0) {
       s->prev_char = ' ';
     }
+    s->bol_shifted_by_grammar = true;
+  } else {
+    s->bol_shifted_by_grammar = false;
   }
 
   s->last_column = (uint16_t)(col > 0xFFFF ? 0xFFFF : col);
@@ -3273,7 +3325,7 @@ bool tree_sitter_org_external_scanner_scan(
 
   // --- ITEM_TAG_END ---
   if (valid_symbols[TOKEN_ITEM_TAG_END]) {
-    if (scan_item_tag_end(lexer)) return true;
+    if (scan_item_tag_end(s, lexer)) return true;
   }
 
   // --- Markup close tokens ---

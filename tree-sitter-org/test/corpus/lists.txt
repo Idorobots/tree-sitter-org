@@ -321,6 +321,24 @@ Drawer-like tail stays plain text in list items
         first_line: (plain_text)))))
 
 ================
+List item body keeps single-colon text
+================
+- Item
+  Test :hurr: durr
+
+---
+
+(document
+  (zeroth_section
+    (list
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_text)
+        body: (paragraph
+          (plain_text)
+          (newline))))))
+
+================
 Drawer-like tails with inline verbatim in list items
 ================
 - DONE Fixed critical bug: =LMOVE= with =source == destination= corrupted the list. :bugfix:
@@ -634,6 +652,42 @@ Ordered list cookie with apostrophe text
       item: (list_item
         counter: (counter)
         counter_set: (counter_set)
+        first_line: (plain_text)))))
+
+================
+List items with leading tags and contents
+================
+- tag :: item contents
+- longer tag :: item contents
++ [-] tag :: item contents
+1. [@5] tag :: item contents
+
+---
+
+(document
+  (zeroth_section
+    (list
+      item: (list_item
+        bullet: (unordered_bullet)
+        tag: (item_tag
+          (plain_text))
+        first_line: (plain_text))
+      item: (list_item
+        bullet: (unordered_bullet)
+        tag: (item_tag
+          (plain_text))
+        first_line: (plain_text))
+      item: (list_item
+        bullet: (unordered_bullet)
+        checkbox: (checkbox)
+        tag: (item_tag
+          (plain_text))
+        first_line: (plain_text))
+      item: (list_item
+        counter: (counter)
+        counter_set: (counter_set)
+        tag: (item_tag
+          (plain_text))
         first_line: (plain_text)))))
 
 ================

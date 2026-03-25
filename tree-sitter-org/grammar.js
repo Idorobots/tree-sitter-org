@@ -552,7 +552,12 @@ module.exports = grammar({
       optional(field('counter_set', $.counter_set)),
       optional(field('checkbox', $.checkbox)),
       choice(
-        seq(field('tag', $.item_tag), $._NL),
+        prec(1, seq(
+          field('tag', $.item_tag),
+          optional(field('first_line', $._item_first_line)),
+          optional($._TRAILING),
+          $._NL,
+        )),
         seq(optional(field('first_line', $._item_first_line)), optional($._TRAILING), $._NL),
       ),
       optional(prec.dynamic(5, $._list_item_body)),
