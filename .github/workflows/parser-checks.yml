@@ -38,6 +38,11 @@ jobs:
         run: tree-sitter test
         working-directory: tree-sitter-org
 
+      - name: Run Tree-sitter fuzz (1000 iterations)
+        run: tree-sitter fuzz --iterations 1000
+        working-directory: tree-sitter-org
+        timeout-minutes: 20
+
       - name: Parse-check examples and key Org files
         run: python3 check.py "examples/*.org" "*.org"
 
