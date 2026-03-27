@@ -737,9 +737,13 @@ static bool scan_todo_kw(Scanner *s, TSLexer *lexer, const bool *valid_symbols) 
   }
 
   // 'COMMENT' is the org-mode heading comment indicator, not a TODO keyword.
-  // The lexer has already advanced past the 7 characters, so emit the
-  // COMMENT token directly instead of returning false (which would rewind).
+  // Emit it only when followed by a word boundary; otherwise treat it as
+  // plain title text (e.g. "COMMENT:Title").
   if (strcmp(word, "COMMENT") == 0 && valid_symbols[TOKEN_COMMENT_TOKEN]) {
+    int32_t after = lookahead(lexer);
+    if (!eof(lexer) && after != ' ' && after != '\t' && after != '\n') {
+      return false;
+    }
     while (lookahead(lexer) == ' ' || lookahead(lexer) == '\t') {
       advance(lexer);
     }

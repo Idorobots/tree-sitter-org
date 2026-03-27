@@ -585,6 +585,23 @@ COMMENT marker combinations
     (comment_keyword)))
 
 ================
+COMMENT marker requires word boundary
+================
+* COMMENT:Title
+* TODO COMMENT:Title
+
+---
+
+(document
+  (heading
+    (stars)
+    (plain_text))
+  (heading
+    (stars)
+    (todo_keyword)
+    (plain_text)))
+
+================
 Heading with body and next sibling
 ================
 * First
