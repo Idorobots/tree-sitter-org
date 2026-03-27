@@ -748,7 +748,7 @@ module.exports = grammar({
       token(prec(2, ci('#+begin_comment'))),
       optional($._TRAILING),
       $._NL,
-      field('body', optional($._raw_block_body)),
+      field('body', optional($.comment_block_body)),
       token(prec(3, /[ \t]*#\+end_comment/i)),
       optional($._TRAILING),
       $._NL,
@@ -768,19 +768,27 @@ module.exports = grammar({
 
     example_line: _ => seq(/[^\n]*/, '\n'),
 
+    comment_block_body: $ => repeat1($.comment_line),
+
+    comment_line: _ => seq(/[^\n]*/, '\n'),
+
     export_block: $ => seq(
       token(prec(2, ci('#+begin_export'))),
       $._S,
       field('backend', alias($._EXPORT_BACKEND, $.export_backend)),
       optional(field('parameters', seq($._S, $._REST_OF_LINE))),
       $._NL,
-      field('body', optional($._raw_block_body)),
+      field('body', optional($.export_block_body)),
       token(prec(3, /[ \t]*#\+end_export/i)),
       optional($._TRAILING),
       $._NL,
     ),
 
     _EXPORT_BACKEND: _ => /[^ \t\n]+/,
+
+    export_block_body: $ => repeat1($.export_line),
+
+    export_line: _ => seq(/[^\n]*/, '\n'),
 
     src_block: $ => seq(
       token(prec(2, ci('#+begin_src'))),
@@ -816,10 +824,6 @@ module.exports = grammar({
       $._PARAGRAPH_CONTINUE,
       repeat1($._object),
     ),
-
-    _raw_block_body: $ => repeat1($._raw_line),
-
-    _raw_line: _ => seq(/[^\n]*/, '\n'),
 
     _verse_body: $ => repeat1($._verse_line),
 
@@ -892,7 +896,7 @@ module.exports = grammar({
     // positioning with prev_char == 0). It consumes the optional leading
     // indentation and the ':' itself.
     _fixed_width_line: $ => choice(
-      seq($._FIXED_WIDTH_COLON, ' ', optional(field('value', /[^\n]*/)), $._NL),
+      seq($._FIXED_WIDTH_COLON, ' ', optional(field('value', alias(/[^\n]*/, $.fixed_width_value))), $._NL),
       seq($._FIXED_WIDTH_COLON, $._NL),
     ),
 

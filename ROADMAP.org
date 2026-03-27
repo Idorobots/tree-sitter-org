@@ -5127,6 +5127,28 @@ Here the collon causes an error in the list item body parsing. It's the same fai
 clock: [2024-10-12]
 #+end_example
 
+** DONE Block bodies
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-27 Fri 17:07]
+:END:
+Expose =export_block= and =comment_block= bodies in the parse tree. These can be just paragraphs of plaintext.
+Similarly, expose the body of the fixed-width line in the parse tree.
+
+** CANCELLED Block indents
+:LOGBOOK:
+- State "CANCELLED"  from "TODO"       [2026-03-27 Fri 18:44] \\
+  Proved too difficult for the AI to implement, both Claude and Codex failed misserably.
+:END:
+I'd like indented block bodies not to include the indent in their body lines:
+
+#+begin_example
+  #+begin_src python
+  print("hello")
+  #+end_src
+#+end_example
+
+Here the whole source block should be wrapped in an =indent= and each line of the source block should only capture the content excluding the indent. Please follow the same approach that is done to the bodies of the =quote_block= and =center_block=. Apply the same logic to the other blocks, ideally the indent is part of the =indent= and the indented blocks exclude it from their bodies.
+
 * DONE Error recovery overhaul
 :LOGBOOK:
 - State "DONE"       from              [2026-03-27 Fri 12:30]

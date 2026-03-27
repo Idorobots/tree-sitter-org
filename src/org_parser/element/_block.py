@@ -454,9 +454,8 @@ class CommentBlock(_TextBlock):
         parent: Document | Heading | Element | None = None,
     ) -> CommentBlock:
         """Create a :class:`CommentBlock` from a ``comment_block`` node."""
-        source_text = node_source(node, document)
         block = cls(
-            body=_extract_block_body_text(source_text),
+            body=_extract_optional_field_text(node, document, "body") or "",
             parent=parent,
         )
         block._node = node
@@ -551,7 +550,7 @@ class ExportBlock(_TextBlock):
             backend=parsed_backend if backend is None else backend,
             parameters=_extract_optional_field_text(node, document, "parameters")
             or parsed_parameters,
-            body=_extract_block_body_text(source_text),
+            body=_extract_optional_field_text(node, document, "body") or "",
             parent=parent,
         )
         block._node = node
@@ -672,9 +671,8 @@ class FixedWidthBlock(Element):
         parent: Document | Heading | Element | None = None,
     ) -> FixedWidthBlock:
         """Create a :class:`FixedWidthBlock` from a ``fixed_width`` node."""
-        source_text = node_source(node, document)
         block = cls(
-            body=_extract_fixed_width_contents(source_text),
+            body=_extract_optional_field_text(node, document, "value") or "",
             parent=parent,
         )
         block._node = node
@@ -782,18 +780,6 @@ def _extract_block_body_text(source_text: str) -> str:
     if len(lines) <= 2:
         return ""
     return "".join(lines[1:-1])
-
-
-def _extract_fixed_width_contents(source_text: str) -> str:
-    """Return fixed-width content text without leading prefix markers."""
-    line = source_text.rstrip("\n")
-    trimmed = line.lstrip(" \t")
-    if not trimmed.startswith(":"):
-        return ""
-    content = trimmed[1:]
-    if content.startswith(" "):
-        content = content[1:]
-    return content
 
 
 def _extract_begin_parameters(source_text: str, prefix: str) -> str | None:

@@ -482,7 +482,8 @@ Indented fixed-width starts after list item
       item: (list_item
         bullet: (unordered_bullet)
         first_line: (plain_text)
-        body: (fixed_width)))))
+        body: (fixed_width
+          value: (fixed_width_value))))))
 
 ================
 Indented nested item drawer starts after list
@@ -532,7 +533,8 @@ Indented nested fixed-width starts after list
           item: (list_item
             bullet: (unordered_bullet)
             first_line: (plain_text)
-            body: (fixed_width))))
+            body: (fixed_width
+              value: (fixed_width_value)))))
       item: (list_item
         bullet: (unordered_bullet)
         first_line: (plain_text)))))
