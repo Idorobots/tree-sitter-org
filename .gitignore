@@ -8,3 +8,6 @@ src/node-types.json
 tree-sitter-org.wasm
 org.so
 build
+libtree-sitter-org.*
+src/*.o
+tree-sitter-org.pc

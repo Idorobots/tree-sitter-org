@@ -17,7 +17,10 @@
 :END:
 Please analyze the queries/highlights.scm file and update it to match the current state of the grammar.
 
-** TODO C parser bindings
+** DONE C parser bindings
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-28 Sat 15:10]
+:END:
 Add parser bindings for the C/C++ programming language.
 
 ** TODO Python parser bindins

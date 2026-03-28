@@ -18,7 +18,7 @@
     "description": "Tree-sitter grammar for Org Mode syntax",
     "authors": [],
     "links": {
-      "repository": "https://github.com/your-org/tree-sitter-org"
+      "repository": "https://github.com/Idorobots/tree-sitter-org"
     }
   },
   "bindings": {
