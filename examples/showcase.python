@@ -250,7 +250,7 @@ Document(
         body=[
             Indent(
               body=[
-                  SourceBlock(begin_line='#+begin_src scheme :results output', body='  (display "hello")\n  (newline)\n'),
+                  SourceBlock(language='scheme', switches=':results output', body='  (display "hello")\n  (newline)\n'),
                 ],
               indent='  ',
             ),
@@ -265,7 +265,7 @@ Document(
             BlankLine(),
             Indent(
               body=[
-                  ExampleBlock(begin_line='#+begin_example', body='  verbatim example text\n'),
+                  ExampleBlock(body='  verbatim example text\n'),
                 ],
               indent='  ',
             ),
@@ -273,7 +273,6 @@ Document(
             Indent(
               body=[
                   QuoteBlock(
-                    begin_line='#+begin_quote',
                     body=[
                         Paragraph(body=RichText('A quoted passage.\n')),
                       ],
@@ -285,7 +284,6 @@ Document(
             Indent(
               body=[
                   CenterBlock(
-                    begin_line='#+begin_center',
                     body=[
                         Paragraph(body=RichText('Centered text.\n')),
                       ],
@@ -297,7 +295,6 @@ Document(
             Indent(
               body=[
                   VerseBlock(
-                    begin_line='#+begin_verse',
                     body=[
                         Paragraph(body=RichText('Line one.\n')),
                         Paragraph(body=RichText('Line two.\n')),
@@ -309,14 +306,14 @@ Document(
             BlankLine(),
             Indent(
               body=[
-                  CommentBlock(begin_line='#+begin_comment', body='  Hidden comment block.\n'),
+                  CommentBlock(body='  Hidden comment block.\n'),
                 ],
               indent='  ',
             ),
             BlankLine(),
             Indent(
               body=[
-                  ExportBlock(begin_line='#+begin_export html', body='  <p>Raw HTML export.</p>\n'),
+                  ExportBlock(backend='html', body='  <p>Raw HTML export.</p>\n'),
                 ],
               indent='  ',
             ),
@@ -324,7 +321,7 @@ Document(
             Indent(
               body=[
                   SpecialBlock(
-                    begin_line='#+begin_special',
+                    name='special',
                     body=[
                         Paragraph(body=RichText('Custom special block.\n')),
                       ],
@@ -354,7 +351,8 @@ Document(
             Indent(
               body=[
                   DynamicBlock(
-                    begin_line='#+begin: clocktable :scope file',
+                    name='clocktable',
+                    parameters=':scope file',
                     body=[
                         Paragraph(body=RichText('dynamic block contents\n')),
                       ],

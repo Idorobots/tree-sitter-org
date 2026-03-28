@@ -27,6 +27,30 @@ def test_block_repr_shows_embedded_elements() -> None:
     assert "    List(" in rendered
 
 
+def test_block_repr_shows_specific_metadata_fields() -> None:
+    """Block repr exposes dedicated metadata fields over begin-line text."""
+    document = loads(
+        "#+begin_src python -n\n"
+        "print('x')\n"
+        "#+end_src\n\n"
+        "#+begin_warning :foo bar\n"
+        "careful\n"
+        "#+end_warning\n"
+    )
+
+    source_repr = repr(document.body[0])
+    assert source_repr.startswith("SourceBlock(")
+    assert "language='python'" in source_repr
+    assert "switches='-n'" in source_repr
+    assert "begin_line" not in source_repr
+
+    special_repr = repr(document.body[2])
+    assert special_repr.startswith("SpecialBlock(")
+    assert "name='warning'" in special_repr
+    assert "parameters=':foo bar'" in special_repr
+    assert "begin_line" not in special_repr
+
+
 def test_drawer_and_table_repr_show_semantic_structure() -> None:
     """Drawer and table reprs expose body rows/cells and nested elements."""
     drawer_document = loads(":X:\n- one\n:END:\n")
