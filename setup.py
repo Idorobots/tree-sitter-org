@@ -1,3 +1,4 @@
+import subprocess
 from os import path
 from sysconfig import get_config_var
 
@@ -8,8 +9,27 @@ from setuptools.command.egg_info import egg_info
 from wheel.bdist_wheel import bdist_wheel
 
 
+def _ensure_parser():
+    """Generate src/parser.c via the tree-sitter CLI if it is absent.
+
+    This is required for source installations (e.g. VCS installs via pip/poetry)
+    where the generated file is not committed to the repository.  Pre-built
+    wheels already contain the compiled extension, so this path is never
+    reached for normal binary installs.
+    """
+    if not path.exists("src/parser.c"):
+        try:
+            subprocess.run(["tree-sitter", "generate"], check=True)
+        except FileNotFoundError:
+            raise RuntimeError(
+                "src/parser.c is missing and the tree-sitter CLI could not be "
+                "found.  Install it (e.g. via npm or cargo) and re-run the build."
+            )
+
+
 class Build(build):
     def run(self):
+        _ensure_parser()
         if path.isdir("queries"):
             dest = path.join(self.build_lib, "tree_sitter_org", "queries")
             self.copy_tree("queries", dest)
@@ -38,10 +58,16 @@ class BdistWheel(bdist_wheel):
 
 
 class EggInfo(egg_info):
+    def run(self):
+        _ensure_parser()
+        super().run()
+
     def find_sources(self):
         super().find_sources()
         self.filelist.recursive_include("queries", "*.scm")
         self.filelist.include("src/tree_sitter/*.h")
+        self.filelist.include("src/parser.c")
+        self.filelist.include("src/scanner.c")
 
 
 setup(
