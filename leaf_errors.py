@@ -160,11 +160,7 @@ def main() -> int:
         print(f"error: file not found: {file_path}", file=sys.stderr)
         return 2
 
-    repo_root = Path(__file__).resolve().parent
-    grammar_path = repo_root / "tree-sitter-org"
-    if not grammar_path.exists():
-        print("error: tree-sitter grammar directory not found at ./tree-sitter-org", file=sys.stderr)
-        return 2
+    grammar_path = Path(__file__).resolve().parent
 
     proc = run_parse_command(file_path, grammar_path, xml=True)
     xml_text = extract_xml(proc.stdout)

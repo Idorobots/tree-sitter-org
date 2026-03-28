@@ -1,15 +1,14 @@
-#+TITLE: Org-Mode parser
+#+TITLE: Tree-Sitter Org-Mode parser
 #+OPTIONS: toc:t
 
 * Overview
-This project implements a Tree-Sitter-based parser for Emacs Org-Mode files
-with a Python wrapper providing "nicer" semantic nodes.
+This project implements a Tree-Sitter-based parser for Emacs Org-Mode files.
 
 The long-term goal is high fidelity and eventually 100% feature coverage, while
 keeping robust error recovery and useful parse trees for downstream processing.
 
 * Supported features
-Parsing [[examples/showcase.org][this file]] results in [[examples/showcase.tree-sitter][the following parse tree]] and [[examples/showcase.python][Python object layout]].
+Parsing [[examples/showcase.org][this file]] results in [[examples/showcase.tree-sitter][the following parse tree]].
 
 * Gotchas
 - Table.el tables parse as verbatim blocks of text. Their contents are inaccessible.

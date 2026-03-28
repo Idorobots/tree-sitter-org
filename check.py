@@ -232,11 +232,7 @@ def main() -> int:
         print("No files to check.", file=sys.stderr)
         return 2
 
-    repo_root = Path(__file__).resolve().parent
-    grammar_path = repo_root / "tree-sitter-org"
-    if not grammar_path.exists():
-        print("error: tree-sitter grammar directory not found at ./tree-sitter-org", file=sys.stderr)
-        return 2
+    grammar_path = Path(__file__).resolve().parent
 
     results = [run_parse(path, grammar_path) for path in files]
     passing = sum(1 for r in results if r.passing)

@@ -1,9 +1,10 @@
 .agent-shell/
-.coverage
-src/org_parser/__pycache__/
-src/org_parser/document/__pycache__/
-tests/__pycache__/
-src/org_parser/element/__pycache__/
-src/org_parser/text/__pycache__/
-src/org_parser/time/__pycache__/
 opencode.json
+
+src/parser.c
+src/tree_sitter
+src/grammar.json
+src/node-types.json
+tree-sitter-org.wasm
+org.so
+build

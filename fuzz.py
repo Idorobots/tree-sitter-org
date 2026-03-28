@@ -184,7 +184,7 @@ def main() -> int:
     )
     cli.add_argument(
         "--lib-path",
-        default="tree-sitter-org/org.so",
+        default="org.so",
         help="Path to compiled parser shared library.",
     )
     args = cli.parse_args()
