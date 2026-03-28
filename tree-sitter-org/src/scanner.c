@@ -120,7 +120,12 @@ static bool is_markup_open_pre_for_marker(int32_t prev, int32_t marker) {
 
 static bool is_markup_post_for_marker(int32_t marker, int32_t ch) {
   if (is_markup_post(ch)) return true;
-  if (is_markup_marker(ch) && ch != marker) return true;
+  if (is_markup_marker(ch) && ch != marker) {
+    // Avoid treating path-like '/.../_name' as italic by disallowing '/'
+    // closes immediately before '_' markup markers.
+    if (marker == '/' && ch == '_') return false;
+    return true;
+  }
   return false;
 }
 
@@ -1083,6 +1088,124 @@ static bool is_ascii_digit(int32_t ch) {
   return ch >= '0' && ch <= '9';
 }
 
+static bool is_word_constituent(int32_t ch) {
+  return is_ascii_alpha(ch) || is_ascii_digit(ch);
+}
+
+static bool is_plain_link_type_initial(int32_t ch) {
+  return ch == 's' || ch == 'n' || ch == 'm' ||
+         ch == 'h' || ch == 'f' || ch == 'e';
+}
+
+static bool is_plain_link_path_char(int32_t ch) {
+  return ch != ' ' && ch != '\t' && ch != '\n' &&
+         ch != '[' && ch != ']' && ch != '<' && ch != '>' &&
+         ch != '(' && ch != ')' && ch != 0;
+}
+
+// Match a short literal at the current cursor and advance on matched chars.
+//
+// Returns true when the full literal matched. Returns false on the first
+// mismatch, potentially after consuming a prefix. The caller decides whether
+// to keep consumed chars as plain_text fallback.
+static bool match_literal_and_advance(
+  TSLexer *lexer,
+  const char *literal,
+  bool *consumed_any,
+  int32_t *last_consumed
+) {
+  for (const char *p = literal; *p != '\0'; p++) {
+    if (lookahead(lexer) != *p) return false;
+    advance(lexer);
+    *consumed_any = true;
+    *last_consumed = *p;
+  }
+
+  return true;
+}
+
+// Match the remainder of a supported plain-link type after the first letter
+// has already been consumed.
+static bool match_plain_link_type_suffix(
+  TSLexer *lexer,
+  int32_t first,
+  bool *consumed_any,
+  int32_t *last_consumed
+) {
+  switch (first) {
+    case 's':
+      return match_literal_and_advance(lexer, "hell", consumed_any, last_consumed);
+    case 'n':
+      return match_literal_and_advance(lexer, "ews", consumed_any, last_consumed);
+    case 'm':
+      return match_literal_and_advance(lexer, "ailto", consumed_any, last_consumed);
+    case 'e':
+      return match_literal_and_advance(lexer, "lisp", consumed_any, last_consumed);
+    case 'h':
+      if (match_literal_and_advance(lexer, "ttp", consumed_any, last_consumed)) {
+        if (lookahead(lexer) == 's') {
+          advance(lexer);
+          *consumed_any = true;
+          *last_consumed = 's';
+        }
+        return true;
+      }
+      return match_literal_and_advance(lexer, "elp", consumed_any, last_consumed);
+    case 'f':
+      if (match_literal_and_advance(lexer, "tp", consumed_any, last_consumed)) {
+        return true;
+      }
+      return match_literal_and_advance(lexer, "ile", consumed_any, last_consumed);
+    default:
+      return false;
+  }
+}
+
+// Probe and consume a plain-link candidate starting at the current cursor.
+//
+// Returns true if at least one character was consumed. `*matched` is set when
+// the consumed run satisfies plain-link shape and word-post boundary:
+//   LINK_TYPE ':' PATH  where PATH has at least one char.
+//
+// On failure, consumed characters are left consumed so the caller can keep
+// them as plain_text. Callers rely on tree-sitter rewind behavior when they
+// intentionally return false/break after a successful probe.
+static bool scan_plain_link_candidate(TSLexer *lexer, bool *matched, int32_t *last_consumed) {
+  *matched = false;
+  *last_consumed = 0;
+
+  int32_t ch = lookahead(lexer);
+  if (!is_plain_link_type_initial(ch)) return false;
+
+  bool consumed = false;
+
+  // Parse one of the allowed lowercase link types.
+  // shell, news, mailto, https, http, ftp, help, file, elisp
+  advance(lexer);
+  consumed = true;
+  *last_consumed = ch;
+  if (!match_plain_link_type_suffix(lexer, ch, &consumed, last_consumed)) {
+    return consumed;
+  }
+
+  if (lookahead(lexer) != ':') return consumed;
+  advance(lexer);
+  *last_consumed = ':';
+
+  if (!is_plain_link_path_char(lookahead(lexer))) return consumed;
+  while (is_plain_link_path_char(lookahead(lexer))) {
+    *last_consumed = lookahead(lexer);
+    advance(lexer);
+  }
+
+  int32_t post = lookahead(lexer);
+  if (post == '\n' || eof(lexer) || !is_word_constituent(post)) {
+    *matched = true;
+  }
+
+  return consumed;
+}
+
 static bool is_angle_email_char(int32_t ch) {
   return is_ascii_alpha(ch) || is_ascii_digit(ch) ||
          ch == '.' || ch == '!' || ch == '#' || ch == '$' || ch == '%' ||
@@ -1582,6 +1705,72 @@ static bool scan_plain_text(Scanner *s, TSLexer *lexer, const bool *valid_symbol
 
   while (!eof(lexer) && lookahead(lexer) != '\n') {
     int32_t ch = lookahead(lexer);
+
+    // Detect plain links (type:path) with word-boundary guards so they are
+    // parsed as plain_link objects instead of being swallowed by plain_text.
+    //
+    // _WORD_PRE: previous char is non-word or BOL
+    // _WORD_POST: following char is non-word or EOL
+    if (is_plain_link_type_initial(ch) &&
+        (s->prev_char == 0 || !is_word_constituent(s->prev_char))) {
+      bool plain_link_matched = false;
+      int32_t last_plain_link_char = 0;
+      bool consumed_plain_link_probe = scan_plain_link_candidate(
+        lexer,
+        &plain_link_matched,
+        &last_plain_link_char
+      );
+
+      if (plain_link_matched) {
+        if (!found_any) return false;
+        break;
+      }
+
+      if (consumed_plain_link_probe) {
+        // Keep inline source starts reachable when plain-link probing consumes
+        // only the initial 's' and the actual text is a real `src_LANG{...}`
+        // sequence. Do not split for unrelated `sr...` text (e.g. file paths
+        // containing `/src/` or words like `shrug`).
+        if (found_any && ch == 's' && last_plain_link_char == 's' &&
+            lookahead(lexer) == 'r' && valid_symbols[TOKEN_INLINE_SRC_START]) {
+          advance(lexer);  // consume 'r'
+          if (lookahead(lexer) != 'c') {
+            s->prev_char = 'r';
+            mark_end(lexer);
+            found_any = true;
+            maybe_clock_kw = false;
+            continue;
+          }
+
+          advance(lexer);  // consume 'c'
+          if (lookahead(lexer) != '_') {
+            s->prev_char = 'c';
+            mark_end(lexer);
+            found_any = true;
+            maybe_clock_kw = false;
+            continue;
+          }
+
+          advance(lexer);  // consume '_'
+          int32_t probe_last = '_';
+          if (probe_inline_src_after_prefix(lexer, &probe_last)) {
+            break;
+          }
+
+          s->prev_char = probe_last;
+          mark_end(lexer);
+          found_any = true;
+          maybe_clock_kw = false;
+          continue;
+        }
+        s->prev_char = last_plain_link_char;
+        mark_end(lexer);
+        found_any = true;
+        maybe_clock_kw = false;
+        consumed_len++;
+        continue;
+      }
+    }
 
     // ---------------------------------------------------------------------------
     // Alpha-bullet guard: when scan_inline_babel_start or scan_inline_src_start

@@ -207,10 +207,16 @@ List items with URLs ending in slash
     (list
       item: (list_item
         bullet: (unordered_bullet)
-        first_line: (plain_text))
+        first_line: (plain_text)
+        first_line: (plain_link
+          type: (link_type)
+          path: (link_path)))
       item: (list_item
         bullet: (unordered_bullet)
-        first_line: (plain_text)))))
+        first_line: (plain_text)
+        first_line: (plain_link
+          type: (link_type)
+          path: (link_path))))))
 
 ================
 List items with inline code and trailing whitespace
@@ -244,6 +250,7 @@ List items with targeted trailing whitespace as plain text
 - +strike+ 
 - [[https://example.com][desc]] 
 - <https://example.org> 
+- https://example.net/ 
 - [2025-03-14 Fri] 
 - [1/2] 
 - \alpha 
@@ -300,6 +307,12 @@ List items with targeted trailing whitespace as plain text
       item: (list_item
         bullet: (unordered_bullet)
         first_line: (angle_link
+          type: (link_type)
+          path: (link_path))
+        first_line: (plain_text))
+      item: (list_item
+        bullet: (unordered_bullet)
+        first_line: (plain_link
           type: (link_type)
           path: (link_path))
         first_line: (plain_text))

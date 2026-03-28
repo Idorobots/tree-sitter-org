@@ -593,6 +593,7 @@ module.exports = grammar({
         $.strike_through,
         $.regular_link,
         $.angle_link,
+        $.plain_link,
         $.timestamp,
         $.completion_counter,
         $.entity,

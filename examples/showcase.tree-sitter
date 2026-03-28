@@ -17,6 +17,9 @@
     (blank_line)
     (paragraph
       (plain_text)
+      (plain_link
+        type: (link_type)
+        path: (link_path))
       (newline)
       (plain_text)
       (angle_link

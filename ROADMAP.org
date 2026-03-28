@@ -5247,13 +5247,56 @@ TREE_SITTER_SEED=12219355399008411731 tree-sitter fuzz -i "Table with indented T
 
 The issue is likely similar to the list item trailing whitespace handling. It's OK to fix it the same way - always take the whitespace into account as the table cell value.
 
-** TODO Plain link in list items
+** DONE Plain link in list items
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-28 Sat 11:54]
+:END:
 
 List items whose first line ends with a =plain_link= (e.g. =- see https://example.com=) do not match =_item_first_line_target_end= and fall back to =_item_first_line=. The consequence is that any trailing-whitespace =plain_text= node that =_item_first_line_target_end= is designed to handle is silently dropped or mis-attributed for those items.
 
 =plain_link= appears in =_object_nofn= (the prefix =repeat=) but is absent from the terminal =choice(...)= list at =grammar.js:587-607=, unlike every other inline object type (=regular_link=, =angle_link=, etc.).
 
 Either add =$.plain_link= to the terminal choice list and add a corpus test covering a list item ending with a plain link, or add a comment explaining why =plain_link= is intentionally excluded.
+
+*** DONE Plain link support
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-28 Sat 11:24]
+:END:
+It appears that plain links are not actually produced by the parser at all. Pleas make sure that plain links are indeed parsed correctly.
+*** DONE tree-sitter-org/src/scanner.c
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-28 Sat 11:37]
+:END:
+
+In file tree-sitter-org/src/scanner.c around line 1122, near the ~static bool is_ascii_digit(int32_t ch) {~
+
+#+begin_example
++  // Parse one of the allowed lowercase link types.
++  // shell, news, mailto, https, http, ftp, help, file, elisp
++  switch (ch) {
+#+end_example
+
+Can this be replaced with a 1 or more alphanum characters followed by a =:= and then at least one alphanum character?
+
+Abstract the lexer lookahead into a function that accepts a short string and does the match, so that =scan_plain_link_candidate= can instead call that function for each of the supported link types.
+
+*** DONE Inline SRC block regression
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-28 Sat 11:54]
+:END:
+
+#+begin_example
+Inline source: src_python{1 + 1}.
+Inline babel call: call_identity(x=1).
+#+end_example
+*** DONE Raw file path regression
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-28 Sat 12:03]
+:END:
+
+#+begin_example
+Filename: /org-mode-parser/src/org_parser/element/_drawer.py
+#+end_example
 
 * DONE Error recovery overhaul
 :LOGBOOK:
