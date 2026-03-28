@@ -3,7 +3,6 @@
   "version": "0.1.0",
   "description": "Tree-sitter grammar for Org Mode syntax",
   "license": "MIT",
-  "main": "bindings/node",
   "keywords": [
     "parser",
     "tree-sitter",
@@ -12,31 +11,16 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-org/tree-sitter-org.git"
+    "url": "git+https://github.com/Idorobots/tree-sitter-org.git"
   },
   "files": [
     "grammar.js",
-    "binding.gyp",
-    "prebuilds/**",
-    "bindings/node/*",
     "queries/*",
     "src/**",
     "*.wasm"
   ],
-  "dependencies": {
-    "node-addon-api": "^8.0.0"
-  },
   "devDependencies": {
-    "tree-sitter-cli": "^0.26.0",
-    "prebuildify": "^6.0.0"
-  },
-  "peerDependencies": {
-    "tree-sitter": "^0.22.0"
-  },
-  "peerDependenciesMeta": {
-    "tree-sitter": {
-      "optional": true
-    }
+    "tree-sitter-cli": "^0.26.0"
   },
   "scripts": {
     "build": "tree-sitter generate && tree-sitter build",

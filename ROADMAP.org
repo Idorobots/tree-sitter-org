@@ -1,12 +1,40 @@
 #+TITLE: A Tree-Sitter parser for Org Mode nodes
 #+ARCHIVE: ./docs/plans/ROADMAP_ARCHIVE.org::
 
-* TreeSitter parser release
+* Initial parser release
 ** DONE Tree-Sitter parser pulled into a separate repository
 :LOGBOOK:
 - State "DONE"       from "TODO"       [2026-03-28 Sat 14:17]
 :END:
+** DONE Update the package.json to better match the current state of the repo
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-28 Sat 14:41]
+:END:
+
+** TODO Updated highlights queries
+Please analyze the queries/highlights.scm file and update it to match the current state of the grammar.
+
+** TODO CI workflow using generic tree-sitter actions
+Use the reusable tree-sitter workflows for the publishing of this grammar. These can be found here: https://github.com/tree-sitter/workflows
+
+For now let's only release to GitHub.
+
+** C, Python and JS bindings
+** More distribution options
+- Release to PyPi
+- Release to NPM
+- Release to crates.io
+
 ** Grammar & scanner linters
-** Updated highlights queries
-** Python, C, Rust, Go, JS bindings
-** CI workflow using generic tree-sitter actions
+** Release v0.23.5
+
+* Next
+** Rust, Go, Swift bindings
+
+* Fuzz cases
+** TODO Indented lesser blocks
+
+Reproduction step:
+#+begin_src bash
+TREE_SITTER_SEED=6817280694206471717 tree-sitter fuzz -i "Indented lesser blocks" --iterations 1 --edits 1 --log-graphs
+#+end_src
