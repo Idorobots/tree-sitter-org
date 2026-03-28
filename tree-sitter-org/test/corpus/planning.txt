@@ -239,7 +239,8 @@ SCHEDULED: hurr
     (stars)
     (plain_text)
     (ERROR
-      (planning_keyword))
+      (planning_keyword)
+      (keyword_key))
     (blank_line)))
 
 ================

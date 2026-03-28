@@ -753,7 +753,7 @@ module.exports = grammar({
     table_cell: $ => choice(
       seq($._S, $._table_cell_objects, optional($._S)),
       seq(optional($._S), $._table_cell_objects, optional($._S)),
-      $._S,
+      alias($._S, $.plain_text),
     ),
 
     _table_cell_objects: $ => repeat1($._object_table),

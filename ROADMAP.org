@@ -5207,6 +5207,54 @@ Where this still reproduces:
 
 Make sure that the Python wrapper supports the extended first_line on list items.
 
+** DONE Another fuzzing issue
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-28 Sat 10:53]
+:END:
+
+#+begin_example
+  0. org - corpus - tables - Table with indented TBLFM formula line
+ |    *Total* |              |            |                 |                |              150 |
+ #+TBLFM: @>$6=vsum(@2$6..@>>$6)
+
+
+ |    *Total* |     
+          |            |      zsrow28k (                |              150 beTFM: @>$6=vsum(@2$6..@>>$6)
+CT6R
+
+
+ |    *Total* |              |            |                 |                |              150 |
+ #+TBLFM: @>$6=vsum(@2$6..@>>$6)
+
+
+Incorrect parse for org - corpus - tables - Table with indented TBLFM formula line - seed 12219355399008411731
+
+correct / expected / unexpected
+(document (zeroth_section (indent indent: (whitespace) body: (org_table (table_row (table_cell (bold body: (plain_text)) (plain_text)) (table_cell (plain_text)) (table_cell) (table_cell (plain_text)) (table_cell (plain_text)) (table_cell (plain_text))) (tblfm_line)))))
+(document (zeroth_section (indent indent: (whitespace) body: (org_table (table_row (table_cell (bold body: (plain_text)) (plain_text)) (table_cell (plain_text)) (table_cell (plain_text)) (table_cell (plain_text)) (table_cell (plain_text)) (table_cell (plain_text))) (tblfm_line)))))
+
+
+1 org corpus tests failed fuzzing
+#+end_example
+
+Please analyze and attempt to fix the root cause.
+
+You can reproduce the issue with:
+
+#+begin_example
+TREE_SITTER_SEED=12219355399008411731 tree-sitter fuzz -i "Table with indented TBLFM formula line" --iterations 1000 --edits 1 --log-graphs
+#+end_example
+
+The issue is likely similar to the list item trailing whitespace handling. It's OK to fix it the same way - always take the whitespace into account as the table cell value.
+
+** TODO Plain link in list items
+
+List items whose first line ends with a =plain_link= (e.g. =- see https://example.com=) do not match =_item_first_line_target_end= and fall back to =_item_first_line=. The consequence is that any trailing-whitespace =plain_text= node that =_item_first_line_target_end= is designed to handle is silently dropped or mis-attributed for those items.
+
+=plain_link= appears in =_object_nofn= (the prefix =repeat=) but is absent from the terminal =choice(...)= list at =grammar.js:587-607=, unlike every other inline object type (=regular_link=, =angle_link=, etc.).
+
+Either add =$.plain_link= to the terminal choice list and add a corpus test covering a list item ending with a plain link, or add a comment explaining why =plain_link= is intentionally excluded.
+
 * DONE Error recovery overhaul
 :LOGBOOK:
 - State "DONE"       from              [2026-03-27 Fri 12:30]
