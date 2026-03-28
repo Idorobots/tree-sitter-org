@@ -11,25 +11,40 @@
 - State "DONE"       from "TODO"       [2026-03-28 Sat 14:41]
 :END:
 
-** TODO Updated highlights queries
+** DONE Updated highlights queries
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-28 Sat 14:53]
+:END:
 Please analyze the queries/highlights.scm file and update it to match the current state of the grammar.
+
+** TODO C parser bindings
+Add parser bindings for the C/C++ programming language.
+
+** TODO Python parser bindins
+Add parser bindings for Python.
+
+** TODO JS parser bindings
+Add parser bindings for JavaScript.
 
 ** TODO CI workflow using generic tree-sitter actions
 Use the reusable tree-sitter workflows for the publishing of this grammar. These can be found here: https://github.com/tree-sitter/workflows
 
+It might be instrumental to check the https://github.com/tree-sitter/tree-sitter-python project for inspiration.
+
 For now let's only release to GitHub.
 
-** C, Python and JS bindings
-** More distribution options
-- Release to PyPi
-- Release to NPM
-- Release to crates.io
+** PyPi publishing
+Add release jobs that publish to PyPi.
+
+** NPM publishing
+Add release jobs that publish to NPM.
 
 ** Grammar & scanner linters
 ** Release v0.23.5
 
 * Next
 ** Rust, Go, Swift bindings
+- Release to crates.io, etc
 
 * Fuzz cases
 ** TODO Indented lesser blocks
