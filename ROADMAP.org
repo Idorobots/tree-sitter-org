@@ -35,7 +35,10 @@ Add parser bindings for Python.
 :END:
 Add parser bindings for JavaScript.
 
-** TODO CI workflow using generic tree-sitter actions
+** DONE CI workflow using generic tree-sitter actions
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-28 Sat 15:51]
+:END:
 Use the reusable tree-sitter workflows for the publishing of this grammar. These can be found here: https://github.com/tree-sitter/workflows
 
 It might be instrumental to check the https://github.com/tree-sitter/tree-sitter-python project for inspiration.
