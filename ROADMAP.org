@@ -23,7 +23,10 @@ Please analyze the queries/highlights.scm file and update it to match the curren
 :END:
 Add parser bindings for the C/C++ programming language.
 
-** TODO Python parser bindins
+** DONE Python parser bindins
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-28 Sat 15:39]
+:END:
 Add parser bindings for Python.
 
 ** TODO JS parser bindings
