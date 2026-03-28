@@ -29,7 +29,10 @@ Add parser bindings for the C/C++ programming language.
 :END:
 Add parser bindings for Python.
 
-** TODO JS parser bindings
+** DONE JS parser bindings
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-28 Sat 15:41]
+:END:
 Add parser bindings for JavaScript.
 
 ** TODO CI workflow using generic tree-sitter actions
