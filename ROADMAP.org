@@ -1,12 +1,82 @@
 #+TITLE: A Tree-Sitter parser for Org Mode nodes
 #+ARCHIVE: ./docs/plans/ROADMAP_ARCHIVE.org::
 
-* TreeSitter parser release
+* Initial parser release
 ** DONE Tree-Sitter parser pulled into a separate repository
 :LOGBOOK:
 - State "DONE"       from "TODO"       [2026-03-28 Sat 14:17]
 :END:
-** Grammar & scanner linters
-** Updated highlights queries
-** Python, C, Rust, Go, JS bindings
-** CI workflow using generic tree-sitter actions
+** DONE Update the package.json to better match the current state of the repo
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-28 Sat 14:41]
+:END:
+
+** DONE Updated highlights queries
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-28 Sat 14:53]
+:END:
+Please analyze the queries/highlights.scm file and update it to match the current state of the grammar.
+
+** DONE C parser bindings
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-28 Sat 15:10]
+:END:
+Add parser bindings for the C/C++ programming language.
+
+** DONE Python parser bindins
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-28 Sat 15:39]
+:END:
+Add parser bindings for Python.
+
+** DONE JS parser bindings
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-28 Sat 15:41]
+:END:
+Add parser bindings for JavaScript.
+
+** DONE CI workflow using generic tree-sitter actions
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-28 Sat 15:51]
+:END:
+Use the reusable tree-sitter workflows for the publishing of this grammar. These can be found here: https://github.com/tree-sitter/workflows
+
+It might be instrumental to check the https://github.com/tree-sitter/tree-sitter-python project for inspiration.
+
+For now let's only release to GitHub.
+
+** DONE Grammar linter
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-29 Sun 15:48]
+:END:
+Add Eslint for the grammar.
+
+** DONE PyPi publishing
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-29 Sun 16:28]
+:END:
+Add release jobs that publish to PyPi.
+
+** DONE Indented lesser blocks fuzz failure
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-29 Sun 17:09]
+:END:
+
+Reproduction step:
+
+#+begin_src bash
+TREE_SITTER_SEED=6817280694206471717 tree-sitter fuzz -i "Indented lesser blocks" --iterations 1 --edits 1 --log-graphs
+#+end_src
+
+** DONE Release v0.23.5
+:LOGBOOK:
+- State "DONE"       from              [2026-03-29 Sun 17:15]
+:END:
+
+* Next
+** NPM publishing
+Add release jobs that publish to NPM.
+
+** Rust, Go, Swift bindings
+- Release to crates.io, etc
+

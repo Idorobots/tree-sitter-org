@@ -1,15 +1,10 @@
 ; tree-sitter-org highlight queries
 ; Basic highlights for Org Mode syntax
 
-; --- Document structure ---
-(stars) @markup.heading
-
 ; --- Headings ---
-(heading
-  (stars) @markup.heading
-  (todo_keyword) @keyword)
-
+(stars) @markup.heading
 (todo_keyword) @keyword
+(comment_keyword) @keyword
 (priority) @constant
 
 (tags) @tag
@@ -24,7 +19,10 @@
 
 ; --- Keywords ---
 (special_keyword
-  (keyword_key) @keyword) @keyword
+  (keyword_key) @keyword
+  (keyword_value) @string)
+(special_keyword
+  (keyword_key) @keyword)
 (caption_keyword) @keyword
 (tblname_keyword) @keyword
 (results_keyword) @keyword
@@ -36,9 +34,13 @@
 
 ; --- Blocks ---
 (src_block
+  (language) @string.special
+  (src_switches) @string) @markup.raw
+(src_block
   (language) @string.special) @markup.raw
+(export_block
+  (export_backend) @string.special) @markup.raw
 (example_block) @markup.raw
-(export_block) @markup.raw
 (verse_block) @markup.quote
 (center_block) @markup.quote
 (quote_block) @markup.quote
@@ -47,8 +49,11 @@
 ; --- Lists ---
 (list_item) @markup.list
 (unordered_bullet) @punctuation.special
+(list_item (counter) @constant)
+(item_tag) @markup.bold
 (checkbox) @constant
 (counter_set) @constant
+(completion_counter) @constant
 
 ; --- Tables ---
 (org_table) @markup.raw
@@ -56,6 +61,7 @@
 (table_cell) @markup.raw
 (table_rule) @punctuation.special
 (tblfm_line) @keyword
+(tableel_table) @markup.raw
 
 ; --- Objects: Markup ---
 (bold) @markup.bold
@@ -66,6 +72,8 @@
   (verbatim_content) @markup.raw) @markup.raw
 (code
   (code_content) @markup.raw) @markup.raw
+(subscript) @markup
+(superscript) @markup
 
 ; --- Objects: Links ---
 (regular_link
@@ -87,6 +95,7 @@
 (ts_year) @number
 (ts_month) @number
 (ts_day) @number
+(ts_time) @number
 (ts_dayname) @string.special
 
 ; --- Planning ---
@@ -104,15 +113,36 @@
 
 ; --- Objects: Citations ---
 (citation) @markup.link
+(citation
+  (cite_style_name) @string.special
+  (cite_variant) @string.special)
+(citation
+  (cite_style_name) @string.special)
 (citation_body) @markup.link.url
 
 ; --- Objects: Export snippets ---
+(export_snippet
+  (snippet_backend) @keyword
+  (snippet_value) @markup.raw) @markup.raw
 (export_snippet
   (snippet_backend) @keyword) @markup.raw
 
 ; --- Objects: Inline source ---
 (inline_source_block
   (inline_language) @string.special) @markup.raw
+
+; --- Objects: Babel calls ---
+(babel_call
+  (call_name) @function) @keyword
+(inline_babel_call
+  (call_name) @function) @markup.raw
+
+; --- Objects: Macros ---
+(macro
+  (macro_name) @function) @string.special
+
+; --- Objects: Entities ---
+(entity) @string.escape
 
 ; --- Objects: Line break ---
 (line_break) @punctuation.special

@@ -14,13 +14,22 @@
  */
 
 // Case-insensitive regex helper
+/**
+ *
+ * @param str
+ */
 function ci(str) {
   return new RegExp(
     str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-       .replace(/[a-zA-Z]/g, (c) => `[${c.toLowerCase()}${c.toUpperCase()}]`)
+      .replace(/[a-zA-Z]/g, (c) => `[${c.toLowerCase()}${c.toUpperCase()}]`),
   );
 }
 
+/**
+ *
+ * @param rule
+ * @param separator
+ */
 function sep1(rule, separator) {
   return seq(rule, repeat(seq(separator, rule)));
 }
@@ -30,12 +39,12 @@ module.exports = grammar({
 
   // External scanner tokens (src/scanner.c)
   externals: $ => [
-    $.stars,              // Heading stars at column 0 (e.g. "***")
-    $._HEADING_END,      // Close heading on same/higher-level stars or EOI
-    $._TODO_KW,          // Match current TODO keyword set
-    $._COMMENT_TOKEN,    // Match 'COMMENT' heading indicator at word boundary
-    $._BLOCK_END_MATCH,  // Verify #+end_NAME matches #+begin_NAME
-    $._GBLOCK_NAME,      // Block name not a lesser block name
+    $.stars, // Heading stars at column 0 (e.g. "***")
+    $._HEADING_END, // Close heading on same/higher-level stars or EOI
+    $._TODO_KW, // Match current TODO keyword set
+    $._COMMENT_TOKEN, // Match 'COMMENT' heading indicator at word boundary
+    $._BLOCK_END_MATCH, // Verify #+end_NAME matches #+begin_NAME
+    $._GBLOCK_NAME, // Block name not a lesser block name
     $._MARKUP_OPEN_BOLD,
     $._MARKUP_CLOSE_BOLD,
     $._MARKUP_OPEN_ITALIC,
@@ -53,22 +62,22 @@ module.exports = grammar({
     $._INDENT_LIST_ITEM_CONTINUE,
     $._INDENT_CONTENT_CONTINUE,
     $._FNDEF_END,
-    $._PLAIN_TEXT,        // Scan to next object boundary
-    $._ITEM_TAG_END,      // Rightmost ' :: '
+    $._PLAIN_TEXT, // Scan to next object boundary
+    $._ITEM_TAG_END, // Rightmost ' :: '
     $._INDENT_BEGIN,
     $._INDENT_END,
-    $._PLAN_KW_EXT,       // Planning keyword (DEADLINE/SCHEDULED/CLOSED)
-    $._DYNBLOCK_SYNC,     // Zero-width sync point for dynamic-block boundaries
-    $._TODO_SETUP_SYNC,   // Zero-width sync point to update TODO keyword set
-    $._AFFILIATED_SYNC,   // Zero-width sync point for affiliated-keyword boundaries
+    $._PLAN_KW_EXT, // Planning keyword (DEADLINE/SCHEDULED/CLOSED)
+    $._DYNBLOCK_SYNC, // Zero-width sync point for dynamic-block boundaries
+    $._TODO_SETUP_SYNC, // Zero-width sync point to update TODO keyword set
+    $._AFFILIATED_SYNC, // Zero-width sync point for affiliated-keyword boundaries
     $._DRAWER_ENTER_SYNC, // Zero-width sync point to enter drawer context
-    $._DRAWER_EXIT_SYNC,  // Zero-width sync point to exit drawer context
+    $._DRAWER_EXIT_SYNC, // Zero-width sync point to exit drawer context
     $._ERROR_SENTINEL,
-    $._TABLE_START,   // Zero-width gate: emitted once at the start of each org_table
+    $._TABLE_START, // Zero-width gate: emitted once at the start of each org_table
     $._TABLE_BREAK_SYNC, // Zero-width sync: emitted only when current table must end
     $._FIXED_WIDTH_COLON, // Consumes optional indent + ':' only at BOL context
     $._INLINE_BABEL_START, // Consumes 'call_' when followed by a valid function-name start
-    $._INLINE_SRC_START,   // Consumes 'src_' when followed by a valid language-name start
+    $._INLINE_SRC_START, // Consumes 'src_' when followed by a valid language-name start
     $._INLINE_BABEL_OUTSIDE_HEADER_START, // Consumes '[' in inline call suffix context
   ],
 
@@ -768,7 +777,7 @@ module.exports = grammar({
     ),
 
     tableel_table: _ => token(prec(1,
-      /[ \t]*\+-[^\n]*\n(?:[ \t]*\|[^\n]*\n|[ \t]*\+-[^\n]*\n)+/
+      /[ \t]*\+-[^\n]*\n(?:[ \t]*\|[^\n]*\n|[ \t]*\+-[^\n]*\n)+/,
     )),
 
     // §7 Lesser Elements
@@ -1207,13 +1216,13 @@ module.exports = grammar({
     // being consumed as plain_text after the argument list closes.
     // prec.right resolves the optional-outside-header shift/reduce conflict.
     inline_babel_call: $ => prec.right(seq(
-        $._INLINE_BABEL_START,
-        field('name', alias($._BABEL_CALL_NAME, $.call_name)),
-        optional($._babel_inside_header),
-        '(',
-        field('arguments', optional(alias($._BABEL_ARGS, $.call_arguments))),
-        ')',
-        optional($._babel_outside_header_inline),
+      $._INLINE_BABEL_START,
+      field('name', alias($._BABEL_CALL_NAME, $.call_name)),
+      optional($._babel_inside_header),
+      '(',
+      field('arguments', optional(alias($._BABEL_ARGS, $.call_arguments))),
+      ')',
+      optional($._babel_outside_header_inline),
     )),
 
     // --- 8.5c Macros ---

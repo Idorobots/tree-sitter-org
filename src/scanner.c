@@ -2972,7 +2972,32 @@ static int scan_block_begin(Scanner *s, TSLexer *lexer, const bool *valid_symbol
 // _INDENT_END: zero-width token to close active section blocks on dedent.
 static int scan_block_end(Scanner *s, TSLexer *lexer, const bool *valid_symbols) {
   if (s->section_block_depth == 0) return 0;
-  if (get_column(lexer) != 0) return 0;
+  if (get_column(lexer) != 0) {
+    /* Non-column-0 '\n': can occur during error recovery when a grammar ERROR
+     * node consumes content mid-line (e.g. an unexpected character), leaving
+     * the lexer positioned at a '\n' whose column is shallower than the
+     * current indent block level.  Without this branch the grammar regex for
+     * blank_line would consume that '\n' *inside* the indent block, serialising
+     * section_block_depth > 0 into the node.  On a subsequent incremental
+     * re-parse (e.g. after edit+revert) tree-sitter may reuse that blank_line
+     * node because both the grammar state and the scanner state appear to match
+     * at that byte position, but the stale section_block_depth then causes
+     * scan_block_end to emit _INDENT_CONTENT_CONTINUE for the next indented
+     * line instead of closing the block, producing an incorrect parse tree.
+     *
+     * Emitting _INDENT_END here ensures that the blank_line is always attached
+     * to the correct enclosing scope and that the serialised scanner state
+     * reflects the closed block, preventing the stale-state reuse. */
+    if (lookahead(lexer) != '\n') return 0;
+    uint32_t col = get_column(lexer);
+    uint16_t current = s->section_block_indents[s->section_block_depth - 1];
+    if (col >= current) return 0;
+    mark_end(lexer);
+    s->section_block_depth--;
+    s->suppress_block_begin_on_end_line = false;
+    lexer->result_symbol = TOKEN_INDENT_END;
+    return 1;
+  }
 
   mark_end(lexer);
 
