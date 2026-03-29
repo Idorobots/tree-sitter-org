@@ -1,5 +1,4 @@
 #+TITLE: Tree-Sitter Org-Mode parser
-#+OPTIONS: toc:t
 
 * Overview
 This project implements a Tree-Sitter-based parser for Emacs Org-Mode files.
@@ -9,6 +8,7 @@ keeping robust error recovery and useful parse trees for downstream processing.
 
 * Supported features
 Parsing [[examples/showcase.org][this file]] results in [[examples/showcase.tree-sitter][the following parse tree]].
+See the other [[file:examples/][example files]] to get a better idea what this parser can parse.
 
 * Gotchas
 - Table.el tables parse as verbatim blocks of text. Their contents are inaccessible.
