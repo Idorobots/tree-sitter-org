@@ -25,10 +25,13 @@ concurrency:
 
 jobs:
   lint:
+    name: Lint grammar
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
       - name: Check for grammar changes
         id: grammar-check
         run: |-
