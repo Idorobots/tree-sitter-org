@@ -66,6 +66,7 @@ enum TokenType {
   TOKEN_INLINE_BABEL_START, // consumes 'call_' when followed by a valid name-start char
   TOKEN_INLINE_SRC_START,   // consumes 'src_' when followed by a valid lang-start char
   TOKEN_INLINE_BABEL_OUTSIDE_HEADER_START, // consumes '[' before inline babel outside header
+  TOKEN_TABLE_CELL_EMPTY,  // zero-width: marks an empty table cell (next char is '|')
 };
 
 // ---------------------------------------------------------------------------
@@ -2112,7 +2113,10 @@ static bool scan_plain_text(Scanner *s, TSLexer *lexer, const bool *valid_symbol
       }
 
       if (ch == '|') {
-        if (s->in_table) {
+        bool table_context = s->in_table ||
+                             valid_symbols[TOKEN_TABLE_CELL_EMPTY] ||
+                             valid_symbols[TOKEN_TABLE_BREAK_SYNC];
+        if (table_context) {
           if (!found_any) return false;
           break;
         }
@@ -3202,6 +3206,20 @@ static int scan_table_break_sync(Scanner *s, TSLexer *lexer) {
   return 1;
 }
 
+// _TABLE_CELL_EMPTY: zero-width token emitted when the cell at the current
+// position is empty (i.e. the next character is '|', meaning nothing lies
+// between the just-consumed separator '|' and the next separator or trailing
+// '|').  The '|' is NOT consumed; it is handled by grammar literal '|'.
+static int scan_table_cell_empty(Scanner *s, TSLexer *lexer) {
+    if (!s->in_table) return 0;
+    mark_end(lexer);  // zero-width: mark end at the initial position first
+    if (lookahead(lexer) == '|') {
+        lexer->result_symbol = TOKEN_TABLE_CELL_EMPTY;
+        return 1;
+    }
+    return 0;
+}
+
 // _DYNBLOCK_SYNC: zero-width sync point used at dynamic-block boundaries.
 //
 // Dynamic-block begin/end lines are internal regex tokens. Depending on parse
@@ -3534,6 +3552,10 @@ bool tree_sitter_org_external_scanner_scan(
     int result = scan_table_break_sync(s, lexer);
     if (result == 1) return true;
     if (result == -1) return false;
+  }
+
+  if (valid_symbols[TOKEN_TABLE_CELL_EMPTY]) {
+    if (scan_table_cell_empty(s, lexer)) return true;
   }
 
   // --- FNDEF_END ---

@@ -533,3 +533,34 @@ Tables separated by blank line
           (plain_text))
         (table_cell
           (plain_text))))))
+
+================
+Empty table cells (consecutive pipes)
+================
+|Value|Double|
+|1||
+|2||
+|3||
+
+---
+
+(document
+  (zeroth_section
+    (org_table
+      (table_row
+        (table_cell
+          (plain_text))
+        (table_cell
+          (plain_text)))
+      (table_row
+        (table_cell
+          (plain_text))
+        (table_cell))
+      (table_row
+        (table_cell
+          (plain_text))
+        (table_cell))
+      (table_row
+        (table_cell
+          (plain_text))
+        (table_cell)))))
