@@ -22,7 +22,47 @@ concurrency:
   group: ${{github.workflow}}-${{github.ref}}
   cancel-in-progress: true
 
+
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Check for grammar changes
+        id: grammar-check
+        run: |-
+          if git diff --quiet HEAD^ -- grammar.cjs; then
+            printf 'changed=false\n' >> "$GITHUB_OUTPUT"
+          else
+            printf 'changed=true\n' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Set up tree-sitter
+        uses: tree-sitter/setup-action/cli@v2
+        if: steps.grammar-check.outputs.changed == 'true'
+      - name: Regenerate parser
+        shell: bash
+        run: |
+          while read -r grammar_dir; do
+            grammar_dir="${grammar_dir%$'\r'}"
+            pushd "$grammar_dir"
+            tree-sitter generate
+            popd > /dev/null
+          done < <(jq -r '.grammars[].path // "."' tree-sitter.json)
+        if: steps.grammar-check.outputs.changed == 'true'
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          cache: npm
+          node-version: '22'
+        if: steps.grammar-check.outputs.changed == 'true'
+      - name: Install modules
+        run: npm i
+        if: steps.grammar-check.outputs.changed == 'true'
+      - name: Run ESLint
+        run: npm run lint
+        if: steps.grammar-check.outputs.changed == 'true'
+
   test:
     name: Test parser
     runs-on: ubuntu-latest
@@ -36,7 +76,7 @@ jobs:
         with:
           test-node: true
           test-python: true
-          node-version: "22"
+          node-version: '22'
       - name: Parse example files
         uses: tree-sitter/parse-action@v4
         id: parse-files

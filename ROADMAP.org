@@ -45,18 +45,23 @@ It might be instrumental to check the https://github.com/tree-sitter/tree-sitter
 
 For now let's only release to GitHub.
 
+** DONE Grammar linter
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-29 Sun 15:48]
+:END:
+Add Eslint for the grammar.
+
 ** PyPi publishing
 Add release jobs that publish to PyPi.
 
-** NPM publishing
-Add release jobs that publish to NPM.
-
-** Grammar & scanner linters
 ** Release v0.23.5
 
 * Next
 ** Rust, Go, Swift bindings
 - Release to crates.io, etc
+
+** NPM publishing
+Add release jobs that publish to NPM.
 
 * Fuzz cases
 ** TODO Indented lesser blocks
