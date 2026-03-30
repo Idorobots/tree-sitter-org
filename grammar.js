@@ -79,6 +79,7 @@ module.exports = grammar({
     $._INLINE_BABEL_START, // Consumes 'call_' when followed by a valid function-name start
     $._INLINE_SRC_START, // Consumes 'src_' when followed by a valid language-name start
     $._INLINE_BABEL_OUTSIDE_HEADER_START, // Consumes '[' in inline call suffix context
+    $._TABLE_CELL_EMPTY, // Zero-width: marks an empty table cell (next char is '|')
   ],
 
   extras: _ => [],
@@ -755,15 +756,20 @@ module.exports = grammar({
     _table_rule_row: _ => seq('-', /[^\n]*/),
 
     _table_std_row: $ => seq(
-      $.table_cell,
-      repeat(seq('|', $.table_cell)),
-      optional('|'),
+      choice(
+        $.table_cell,
+        seq(
+          repeat1(seq($.table_cell, '|')),
+          optional($.table_cell),
+        ),
+      ),
     ),
 
     table_cell: $ => choice(
       seq($._S, $._table_cell_objects, optional($._S)),
       seq(optional($._S), $._table_cell_objects, optional($._S)),
       alias($._S, $.plain_text),
+      $._TABLE_CELL_EMPTY,
     ),
 
     _table_cell_objects: $ => repeat1($._object_table),
