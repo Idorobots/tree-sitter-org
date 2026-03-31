@@ -76,6 +76,8 @@ module.exports = grammar({
     $._TABLE_START, // Zero-width gate: emitted once at the start of each org_table
     $._TABLE_BREAK_SYNC, // Zero-width sync: emitted only when current table must end
     $._FIXED_WIDTH_COLON, // Consumes optional indent + ':' only at BOL context
+    $._FIXED_WIDTH_CONTINUE, // Continuation of a fixed-width block: same gate, inside repeat
+    $._INDENT_FIXED_WIDTH_CONTINUE, // Like _INDENT_CONTENT_CONTINUE but only for ': ' lines inside fixed_width repeat
     $._INLINE_BABEL_START, // Consumes 'call_' when followed by a valid function-name start
     $._INLINE_SRC_START, // Consumes 'src_' when followed by a valid language-name start
     $._INLINE_BABEL_OUTSIDE_HEADER_START, // Consumes '[' in inline call suffix context
@@ -99,6 +101,8 @@ module.exports = grammar({
     [$.logbook_drawer, $._affiliatable_no_drawer],
     // footnote definition vs footnote reference (both start with [fn:LABEL])
     [$.footnote_definition, $._fn_ref_labeled],
+    // fixed_width continuation vs new block element after indent advance
+    [$.fixed_width],
   ],
 
   inline: $ => [
@@ -940,7 +944,20 @@ module.exports = grammar({
     ),
 
     // --- 7.6 Fixed-Width Areas ---
-    fixed_width: $ => prec(1, repeat1($._fixed_width_line)),
+    //
+    // Consecutive fixed-width lines coalesce into a single node via the
+    // _FIXED_WIDTH_CONTINUE external token.  The first line is gated by
+    // _FIXED_WIDTH_COLON (valid at the element level); every additional line
+    // is gated by _FIXED_WIDTH_CONTINUE (valid only inside the repeat).
+    //
+    // When tree-sitter's GLR merges the "continue block" and "start new block"
+    // states both tokens may appear in valid_symbols simultaneously.  The
+    // scanner checks _FIXED_WIDTH_CONTINUE first so that continuation always
+    // wins, producing a single coalesced node.
+    fixed_width: $ => seq(
+      $._fixed_width_line,
+      repeat($._fixed_width_continuation_line),
+    ),
 
     // _FIXED_WIDTH_COLON (external) enforces the BOL constraint from the spec:
     //   _fixed_width_line <- _BOL _INDENT? ':' (' ' value:[^\n]* / &_NL) _NL
@@ -951,6 +968,26 @@ module.exports = grammar({
     _fixed_width_line: $ => choice(
       seq($._FIXED_WIDTH_COLON, ' ', optional(field('value', alias(/[^\n]*/, $.fixed_width_value))), $._NL),
       seq($._FIXED_WIDTH_COLON, $._NL),
+    ),
+
+    // _FIXED_WIDTH_CONTINUE uses the same BOL gate as _FIXED_WIDTH_COLON but
+    // is only valid inside fixed_width's repeat — never at element-start level.
+    //
+    // Unindented: _FIXED_WIDTH_CONTINUE fires at column 0, consuming ':'.
+    //
+    // Indented (inside `indent` blocks): scan_block_content_continue normally
+    // emits _INDENT_CONTENT_CONTINUE for any non-blank indented line.  When
+    // _INDENT_FIXED_WIDTH_CONTINUE is also in valid_symbols (we are inside
+    // fixed_width's repeat) AND the line looks like ': ' or ':\n', it emits
+    // _INDENT_FIXED_WIDTH_CONTINUE instead.  This kills the "start a new
+    // fixed_width element" GLR path (which needed _INDENT_CONTENT_CONTINUE)
+    // and leaves only the continuation path alive, then _FIXED_WIDTH_CONTINUE
+    // consumes ':' to complete the line header.
+    _fixed_width_continuation_line: $ => choice(
+      seq($._FIXED_WIDTH_CONTINUE, ' ', optional(field('value', alias(/[^\n]*/, $.fixed_width_value))), $._NL),
+      seq($._FIXED_WIDTH_CONTINUE, $._NL),
+      seq($._INDENT_FIXED_WIDTH_CONTINUE, $._FIXED_WIDTH_CONTINUE, ' ', optional(field('value', alias(/[^\n]*/, $.fixed_width_value))), $._NL),
+      seq($._INDENT_FIXED_WIDTH_CONTINUE, $._FIXED_WIDTH_CONTINUE, $._NL),
     ),
 
     // --- 7.7 Horizontal Rules ---

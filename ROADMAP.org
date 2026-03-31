@@ -73,7 +73,6 @@ TREE_SITTER_SEED=6817280694206471717 tree-sitter fuzz -i "Indented lesser blocks
 - State "DONE"       from              [2026-03-29 Sun 17:15]
 :END:
 
-
 * Bugs
 ** DONE Empty table cells fail to parse
 :LOGBOOK:
@@ -87,6 +86,29 @@ TREE_SITTER_SEED=6817280694206471717 tree-sitter fuzz -i "Indented lesser blocks
 |3||
 #+end_example
 
+** DONE Consecutive fixed-width blocks should coalesce
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-03-31 Tue 13:35]
+:END:
+#+begin_example
+: Foo
+: Bar
+: Baz
+#+end_example
+
+The above should result in just one, three-line long fixed-width block.
+
+** TODO Lone list item parses as text
+
+: - Item 0
+
+Note the lack of newline at the end of the input
+
+** TODO Extra empty plaintext on newline-less paragraphs
+
+: Use *bold* text
+
+Note the lack of newline at the end of the input. The parse tree results in an extra plaintext value that doesn't store any data at the end of the paragraph.
 
 * Next
 ** NPM publishing
