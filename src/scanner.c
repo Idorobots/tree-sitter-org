@@ -69,6 +69,7 @@ enum TokenType {
   TOKEN_INLINE_SRC_START,   // consumes 'src_' when followed by a valid lang-start char
   TOKEN_INLINE_BABEL_OUTSIDE_HEADER_START, // consumes '[' before inline babel outside header
   TOKEN_TABLE_CELL_EMPTY,  // zero-width: marks an empty table cell (next char is '|')
+  TOKEN_EOI,               // zero-width: emitted only at EOF; substitutes for '\n' in _NL
 };
 
 // ---------------------------------------------------------------------------
@@ -1003,6 +1004,22 @@ static bool scan_fndef_end(Scanner *s, TSLexer *lexer) {
     return true;
   }
   return false;
+}
+
+// _EOI: zero-width end-of-input token used as an EOF substitute for '\n'.
+//
+// Emitted only when eof() is true, consuming nothing.  Because _NL in the
+// grammar is choice(/\n/, $._EOI), every element that ends with _NL can now
+// also close cleanly at end of file — list items, paragraphs, comments,
+// keywords, fixed-width lines, horizontal rules, block end markers, etc.
+//
+// The scanner is cheap: it returns false immediately at any non-EOF position,
+// so the per-newline overhead is a single branch check.
+static bool scan_eoi(TSLexer *lexer) {
+  if (!eof(lexer)) return false;
+  lexer->result_symbol = TOKEN_EOI;
+  mark_end(lexer);
+  return true;
 }
 
 // _ITEM_TAG_END: find ' :: '
@@ -3644,6 +3661,11 @@ bool tree_sitter_org_external_scanner_scan(
   // --- FNDEF_END ---
   if (valid_symbols[TOKEN_FNDEF_END]) {
     if (scan_fndef_end(s, lexer)) return true;
+  }
+
+  // --- EOI (NL substitute at end of file) ---
+  if (valid_symbols[TOKEN_EOI]) {
+    if (scan_eoi(lexer)) return true;
   }
 
   // --- TODO_KW ---

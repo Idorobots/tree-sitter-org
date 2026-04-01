@@ -98,13 +98,20 @@ TREE_SITTER_SEED=6817280694206471717 tree-sitter fuzz -i "Indented lesser blocks
 
 The above should result in just one, three-line long fixed-width block.
 
-** TODO Lone list item parses as text
+** DONE Lone list item parses as text
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-04-01 Wed 11:07]
+:END:
 
 : - Item 0
 
 Note the lack of newline at the end of the input
 
-** TODO Extra empty plaintext on newline-less paragraphs
+** CANCELLED Extra empty plaintext on newline-less paragraphs
+:LOGBOOK:
+- State "CANCELLED"  from "TODO"       [2026-04-01 Wed 11:42] \\
+  After the previous fix this is parsed as a =newline= without any content, so this is fine. :shrug:
+:END:
 
 : Use *bold* text
 

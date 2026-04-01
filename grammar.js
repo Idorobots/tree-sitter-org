@@ -82,6 +82,7 @@ module.exports = grammar({
     $._INLINE_SRC_START, // Consumes 'src_' when followed by a valid language-name start
     $._INLINE_BABEL_OUTSIDE_HEADER_START, // Consumes '[' in inline call suffix context
     $._TABLE_CELL_EMPTY, // Zero-width: marks an empty table cell (next char is '|')
+    $._EOI, // Zero-width: emitted only at EOF; substitutes for _NL when no trailing \n
   ],
 
   extras: _ => [],
@@ -382,7 +383,7 @@ module.exports = grammar({
       field('body', optional($._gblock_body)),
       token(prec(2, /[ \t]*#\+end_center/i)),
       optional($._TRAILING),
-      $._NL,
+      $._NL_or_EOI,
     ),
 
     quote_block: $ => seq(
@@ -392,7 +393,7 @@ module.exports = grammar({
       field('body', optional($._gblock_body)),
       token(prec(2, /[ \t]*#\+end_quote/i)),
       optional($._TRAILING),
-      $._NL,
+      $._NL_or_EOI,
     ),
 
     special_block: $ => seq(
@@ -404,7 +405,7 @@ module.exports = grammar({
       token(prec(1, /[ \t]*#\+end_/i)),
       $._BLOCK_END_MATCH,
       optional($._TRAILING),
-      $._NL,
+      $._NL_or_EOI,
     ),
 
     _block_params: $ => seq($._S, $._REST_OF_LINE),
@@ -482,14 +483,14 @@ module.exports = grammar({
         ),
         optional($._TRAILING),
       ),
-      $._NL,
+      $._NL_or_EOI,
     )),
 
     _DRAWER_KV_REST: _ => /[^\n\[][^\n]*/,
 
     drawer_double_colon_line: $ => seq(
       /[^:\n \t][^\n]*::[^\n]*/,
-      $._NL,
+      $._NL_or_EOI,
     ),
 
     // --- 6.3 LOGBOOK Drawers ---
@@ -571,20 +572,20 @@ module.exports = grammar({
           field('tag', $.item_tag),
           field('first_line', $._item_first_line_target_end),
           field('first_line', alias($._TRAILING, $.plain_text)),
-          $._NL,
+          $._NL_or_EOI,
         )),
         prec(2, seq(
           field('first_line', $._item_first_line_target_end),
           field('first_line', alias($._TRAILING, $.plain_text)),
-          $._NL,
+          $._NL_or_EOI,
         )),
         prec(1, seq(
           field('tag', $.item_tag),
           optional(field('first_line', $._item_first_line)),
           optional($._TRAILING),
-          $._NL,
+          $._NL_or_EOI,
         )),
-        seq(optional(field('first_line', $._item_first_line)), optional($._TRAILING), $._NL),
+        seq(optional(field('first_line', $._item_first_line)), optional($._TRAILING), $._NL_or_EOI),
       ),
       optional(prec.dynamic(5, $._list_item_body)),
     )),
@@ -702,7 +703,7 @@ module.exports = grammar({
         ))),
         optional($._TRAILING),
       ),
-      $._NL,
+      $._NL_or_EOI,
     ),
 
     _PROP_REST_OF_LINE: _ => /[^\n\[][^\n]*/,
@@ -754,7 +755,7 @@ module.exports = grammar({
         field('rule', alias($._table_rule_row, $.table_rule)),
         $._table_std_row,
       ),
-      $._NL,
+      $._NL_or_EOI,
     ),
 
     _table_rule_row: _ => seq('-', /[^\n]*/),
@@ -783,7 +784,7 @@ module.exports = grammar({
       token(prec(2, ci('#+tblfm:'))),
       optional($._S),
       $._REST_OF_LINE,
-      $._NL,
+      $._NL_or_EOI,
     ),
 
     tableel_table: _ => token(prec(1,
@@ -808,7 +809,7 @@ module.exports = grammar({
       field('body', optional($.comment_block_body)),
       token(prec(3, /[ \t]*#\+end_comment/i)),
       optional($._TRAILING),
-      $._NL,
+      $._NL_or_EOI,
     ),
 
     example_block: $ => seq(
@@ -818,7 +819,7 @@ module.exports = grammar({
       field('body', optional($.example_block_body)),
       token(prec(3, /[ \t]*#\+end_example/i)),
       optional($._TRAILING),
-      $._NL,
+      $._NL_or_EOI,
     ),
 
     example_block_body: $ => repeat1($.example_line),
@@ -838,7 +839,7 @@ module.exports = grammar({
       field('body', optional($.export_block_body)),
       token(prec(3, /[ \t]*#\+end_export/i)),
       optional($._TRAILING),
-      $._NL,
+      $._NL_or_EOI,
     ),
 
     _EXPORT_BACKEND: _ => /[^ \t\n]+/,
@@ -858,7 +859,7 @@ module.exports = grammar({
       field('body', optional($.src_block_body)),
       token(prec(3, /[ \t]*#\+end_src/i)),
       optional($._TRAILING),
-      $._NL,
+      $._NL_or_EOI,
     ),
 
     _SRC_LANGUAGE: _ => /[^ \t\n]+/,
@@ -874,7 +875,7 @@ module.exports = grammar({
       field('body', optional($._gblock_body)),
       token(prec(3, /[ \t]*#\+end_verse/i)),
       optional($._TRAILING),
-      $._NL,
+      $._NL_or_EOI,
     ),
 
     _indented_object_line: $ => seq(
@@ -899,7 +900,7 @@ module.exports = grammar({
         field('duration', $._DURATION),
       ),
       optional($._TRAILING),
-      $._NL,
+      $._NL_or_EOI,
     ),
 
     _DURATION: _ => seq('=>', /[ \t]+/, /[0-9]+/, ':', /[0-9][0-9]/),
@@ -910,7 +911,7 @@ module.exports = grammar({
       '%%',
       field('value', $._diary_sexp_value),
       optional($._TRAILING),
-      $._NL,
+      $._NL_or_EOI,
     ),
 
     _diary_sexp_value: _ => seq('(', /[^)\n]*/, ')'),
@@ -923,7 +924,7 @@ module.exports = grammar({
       $._planning_entry,
       repeat(seq($._S, $._planning_entry)),
       optional($._TRAILING),
-      $._NL,
+      $._NL_or_EOI,
     ),
 
     _planning_entry: $ => seq(
@@ -939,8 +940,8 @@ module.exports = grammar({
     comment: $ => prec(1, repeat1($._comment_line)),
 
     _comment_line: $ => choice(
-      seq('#', ' ', optional(field('value', /[^\n]*/)), $._NL),
-      seq('#', $._NL),
+      seq('#', ' ', optional(field('value', /[^\n]*/)), $._NL_or_EOI),
+      seq('#', $._NL_or_EOI),
     ),
 
     // --- 7.6 Fixed-Width Areas ---
@@ -966,8 +967,8 @@ module.exports = grammar({
     // positioning with prev_char == 0). It consumes the optional leading
     // indentation and the ':' itself.
     _fixed_width_line: $ => choice(
-      seq($._FIXED_WIDTH_COLON, ' ', optional(field('value', alias(/[^\n]*/, $.fixed_width_value))), $._NL),
-      seq($._FIXED_WIDTH_COLON, $._NL),
+      seq($._FIXED_WIDTH_COLON, ' ', optional(field('value', alias(/[^\n]*/, $.fixed_width_value))), $._NL_or_EOI),
+      seq($._FIXED_WIDTH_COLON, $._NL_or_EOI),
     ),
 
     // _FIXED_WIDTH_CONTINUE uses the same BOL gate as _FIXED_WIDTH_COLON but
@@ -984,17 +985,17 @@ module.exports = grammar({
     // and leaves only the continuation path alive, then _FIXED_WIDTH_CONTINUE
     // consumes ':' to complete the line header.
     _fixed_width_continuation_line: $ => choice(
-      seq($._FIXED_WIDTH_CONTINUE, ' ', optional(field('value', alias(/[^\n]*/, $.fixed_width_value))), $._NL),
-      seq($._FIXED_WIDTH_CONTINUE, $._NL),
-      seq($._INDENT_FIXED_WIDTH_CONTINUE, $._FIXED_WIDTH_CONTINUE, ' ', optional(field('value', alias(/[^\n]*/, $.fixed_width_value))), $._NL),
-      seq($._INDENT_FIXED_WIDTH_CONTINUE, $._FIXED_WIDTH_CONTINUE, $._NL),
+      seq($._FIXED_WIDTH_CONTINUE, ' ', optional(field('value', alias(/[^\n]*/, $.fixed_width_value))), $._NL_or_EOI),
+      seq($._FIXED_WIDTH_CONTINUE, $._NL_or_EOI),
+      seq($._INDENT_FIXED_WIDTH_CONTINUE, $._FIXED_WIDTH_CONTINUE, ' ', optional(field('value', alias(/[^\n]*/, $.fixed_width_value))), $._NL_or_EOI),
+      seq($._INDENT_FIXED_WIDTH_CONTINUE, $._FIXED_WIDTH_CONTINUE, $._NL_or_EOI),
     ),
 
     // --- 7.7 Horizontal Rules ---
     horizontal_rule: $ => seq(
       token(prec(2, /-----(-)*/)),
       optional($._TRAILING),
-      $._NL,
+      $._NL_or_EOI,
     ),
 
     lone_end_line: $ => seq(
@@ -1010,14 +1011,14 @@ module.exports = grammar({
         ':',
         $._TODO_SETUP_SYNC,
         optional(seq($._S, field('value', alias($._REST_OF_LINE, $.keyword_value)))),
-        $._NL,
+        $._NL_or_EOI,
       ),
       seq(
         '#+',
         field('key', alias($._SPECIAL_KEY_NO_TODO, $.keyword_key)),
         ':',
         optional(seq($._S, field('value', alias($._REST_OF_LINE, $.keyword_value)))),
-        $._NL,
+        $._NL_or_EOI,
       ),
     ),
 
@@ -1039,7 +1040,7 @@ module.exports = grammar({
       ':',
       $._AFFILIATED_SYNC,
       optional(field('value', seq($._S, alias($._REST_OF_LINE, $.plain_text)))),
-      $._NL,
+      $._NL_or_EOI,
     ),
 
     tblname_keyword: $ => seq(
@@ -1047,7 +1048,7 @@ module.exports = grammar({
       ':',
       $._AFFILIATED_SYNC,
       optional(field('value', seq($._S, alias($._REST_OF_LINE, $.plain_text)))),
-      $._NL,
+      $._NL_or_EOI,
     ),
 
     results_keyword: $ => seq(
@@ -1055,7 +1056,7 @@ module.exports = grammar({
       ':',
       $._AFFILIATED_SYNC,
       optional(field('value', seq($._S, alias($._REST_OF_LINE, $.plain_text)))),
-      $._NL,
+      $._NL_or_EOI,
     ),
 
     plot_keyword: $ => seq(
@@ -1063,7 +1064,7 @@ module.exports = grammar({
       ':',
       $._AFFILIATED_SYNC,
       optional(field('value', seq($._S, alias($._REST_OF_LINE, $.plain_text)))),
-      $._NL,
+      $._NL_or_EOI,
     ),
 
     _caption_optval: $ => seq(
@@ -1087,7 +1088,7 @@ module.exports = grammar({
       ')',
       optional($._babel_outside_header),
       optional($._TRAILING),
-      $._NL,
+      $._NL_or_EOI,
     ),
 
     _BABEL_CALL_NAME: _ => /[^ \t\n\[\]()]+/,
@@ -1185,7 +1186,7 @@ module.exports = grammar({
 
     _fn_ref_def: $ => repeat1(choice(
       $._object,
-      $.newline,
+      alias($._NL, $.newline),   // plain _NL (not _NL_or_EOI) to prevent zero-width loop at EOF in fuzzer
     )),
 
     // --- 8.3 Citations ---
@@ -1336,7 +1337,7 @@ module.exports = grammar({
     _link_description: $ => repeat1(choice(
       alias($._LINK_DESC_TEXT, $.plain_text),
       ']',
-      $.newline,
+      alias($._NL, $.newline),   // plain _NL (not _NL_or_EOI) to prevent zero-width loop at EOF in fuzzer
     )),
 
     _LINK_DESC_TEXT: _ => /[^\]\n]+/,
@@ -1585,12 +1586,19 @@ module.exports = grammar({
       $.verbatim, $.code, $.plain_text,
     ),
 
-    newline: $ => $._NL,
+    newline: $ => $._NL_or_EOI,
     blank_line: $ => $._blank_line,
 
     // §10 Lexical Primitives
     _S: _ => /[ \t]+/,
     _NL: _ => /\n/,
+    // _NL_or_EOI is used in every position where _NL is the final token of a
+    // complete element, so that elements at the end of a file without a
+    // trailing newline parse cleanly.  Structural separators (block begin
+    // lines, drawer open/close, footnote body, _fn_ref_def, _link_description)
+    // keep plain _NL to avoid ambiguity and potential zero-width loops in
+    // repeat1 rules.
+    _NL_or_EOI: $ => choice($._NL, $._EOI),
     _INDENT: _ => token(prec(-1, /[ \t]+/)),
     _TRAILING: _ => /[ \t]+/,
     _REST_OF_LINE: _ => /[^\n]+/,
