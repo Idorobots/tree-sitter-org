@@ -16,7 +16,7 @@
 // Case-insensitive regex helper
 /**
  *
- * @param str
+ * @param {string} str
  */
 function ci(str) {
   return new RegExp(
@@ -27,8 +27,8 @@ function ci(str) {
 
 /**
  *
- * @param rule
- * @param separator
+ * @param {RuleOrLiteral} rule
+ * @param {RuleOrLiteral} separator
  */
 function sep1(rule, separator) {
   return seq(rule, repeat(seq(separator, rule)));
@@ -1186,7 +1186,7 @@ module.exports = grammar({
 
     _fn_ref_def: $ => repeat1(choice(
       $._object,
-      alias($._NL, $.newline),   // plain _NL (not _NL_or_EOI) to prevent zero-width loop at EOF in fuzzer
+      alias($._NL, $.newline), // plain _NL (not _NL_or_EOI) to prevent zero-width loop at EOF in fuzzer
     )),
 
     // --- 8.3 Citations ---
@@ -1337,7 +1337,7 @@ module.exports = grammar({
     _link_description: $ => repeat1(choice(
       alias($._LINK_DESC_TEXT, $.plain_text),
       ']',
-      alias($._NL, $.newline),   // plain _NL (not _NL_or_EOI) to prevent zero-width loop at EOF in fuzzer
+      alias($._NL, $.newline), // plain _NL (not _NL_or_EOI) to prevent zero-width loop at EOF in fuzzer
     )),
 
     _LINK_DESC_TEXT: _ => /[^\]\n]+/,
