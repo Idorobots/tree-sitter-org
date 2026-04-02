@@ -62,11 +62,14 @@ enum TokenType {
   TOKEN_ERROR_SENTINEL,
   TOKEN_TABLE_START,   // zero-width gate emitted once at the start of each org_table
   TOKEN_TABLE_BREAK_SYNC, // zero-width sync emitted when current org_table must end
-  TOKEN_FIXED_WIDTH_COLON, // consumes optional indent + ':' only at BOL context
+  TOKEN_FIXED_WIDTH_COLON,             // consumes optional indent + ':' only at BOL context
+  TOKEN_FIXED_WIDTH_CONTINUE,          // continuation of a fixed-width block; same gate, inside repeat
+  TOKEN_INDENT_FIXED_WIDTH_CONTINUE,   // like INDENT_CONTENT_CONTINUE but only for ': ' lines inside fixed_width repeat
   TOKEN_INLINE_BABEL_START, // consumes 'call_' when followed by a valid name-start char
   TOKEN_INLINE_SRC_START,   // consumes 'src_' when followed by a valid lang-start char
   TOKEN_INLINE_BABEL_OUTSIDE_HEADER_START, // consumes '[' before inline babel outside header
   TOKEN_TABLE_CELL_EMPTY,  // zero-width: marks an empty table cell (next char is '|')
+  TOKEN_EOI,               // zero-width: emitted only at EOF; substitutes for '\n' in _NL
 };
 
 // ---------------------------------------------------------------------------
@@ -1001,6 +1004,22 @@ static bool scan_fndef_end(Scanner *s, TSLexer *lexer) {
     return true;
   }
   return false;
+}
+
+// _EOI: zero-width end-of-input token used as an EOF substitute for '\n'.
+//
+// Emitted only when eof() is true, consuming nothing.  Because _NL in the
+// grammar is choice(/\n/, $._EOI), every element that ends with _NL can now
+// also close cleanly at end of file — list items, paragraphs, comments,
+// keywords, fixed-width lines, horizontal rules, block end markers, etc.
+//
+// The scanner is cheap: it returns false immediately at any non-EOF position,
+// so the per-newline overhead is a single branch check.
+static bool scan_eoi(TSLexer *lexer) {
+  if (!eof(lexer)) return false;
+  lexer->result_symbol = TOKEN_EOI;
+  mark_end(lexer);
+  return true;
 }
 
 // _ITEM_TAG_END: find ' :: '
@@ -2862,6 +2881,27 @@ static int scan_block_content_continue(Scanner *s, TSLexer *lexer,
     if (starts_with_end_marker(lexer)) return -1;
   }
 
+  // If we are inside a fixed_width repeat AND this line looks like a
+  // fixed-width line (': ' or ':\n'), emit TOKEN_INDENT_FIXED_WIDTH_CONTINUE
+  // instead of TOKEN_INDENT_CONTENT_CONTINUE.  This kills the competing GLR
+  // path that would start a new fixed_width element (which expected
+  // TOKEN_INDENT_CONTENT_CONTINUE), leaving only the continuation path alive.
+  // scan_fixed_width_continue then fires to consume ':'.
+  //
+  // The advance() call here is purely for lookahead: mark_end() was already
+  // called above, so the token boundary stays at the end of the whitespace
+  // regardless of how far we peek.
+  if (valid_symbols[TOKEN_INDENT_FIXED_WIDTH_CONTINUE] && ch == ':') {
+    advance(lexer);
+    int32_t next = lookahead(lexer);
+    if (next == ' ' || next == '\n' || eof(lexer)) {
+      lexer->result_symbol = TOKEN_INDENT_FIXED_WIDTH_CONTINUE;
+      return 1;
+    }
+    // ':' not followed by valid fixed-width tail; fall through
+  }
+
+  if (!valid_symbols[TOKEN_INDENT_CONTENT_CONTINUE]) return 0;
   lexer->result_symbol = TOKEN_INDENT_CONTENT_CONTINUE;
   return 1;
 }
@@ -3091,13 +3131,36 @@ static int scan_block_end(Scanner *s, TSLexer *lexer, const bool *valid_symbols)
   }
 
   if (!should_close) {
-    if (valid_symbols[TOKEN_INDENT_CONTENT_CONTINUE] &&
+    bool can_content = valid_symbols[TOKEN_INDENT_CONTENT_CONTINUE];
+    bool can_fw = valid_symbols[TOKEN_INDENT_FIXED_WIDTH_CONTINUE];
+
+    if ((can_content || can_fw) &&
         indent_col >= current && !eof(lexer) && ch != '\n') {
       if (!list_probe_advanced_miss) {
         mark_end(lexer);
       }
-      lexer->result_symbol = TOKEN_INDENT_CONTENT_CONTINUE;
-      return 1;
+
+      // If this is a fixed-width continuation line (': ' or ':\n') and we
+      // are inside a fixed_width repeat, emit TOKEN_INDENT_FIXED_WIDTH_CONTINUE
+      // instead of TOKEN_INDENT_CONTENT_CONTINUE.  This kills the competing
+      // GLR path that expected TOKEN_INDENT_CONTENT_CONTINUE, so the
+      // fixed_width node coalesces.  The advance() is purely for lookahead;
+      // mark_end() was already set above so the token boundary stays at the
+      // end of the whitespace.
+      if (can_fw && ch == ':') {
+        advance(lexer);
+        int32_t next = lookahead(lexer);
+        if (next == ' ' || next == '\n' || eof(lexer)) {
+          lexer->result_symbol = TOKEN_INDENT_FIXED_WIDTH_CONTINUE;
+          return 1;
+        }
+        // ':' not followed by valid fixed-width tail; fall through
+      }
+
+      if (can_content) {
+        lexer->result_symbol = TOKEN_INDENT_CONTENT_CONTINUE;
+        return 1;
+      }
     }
 
     return -1;
@@ -3396,6 +3459,42 @@ static int scan_fixed_width_colon(Scanner *s, TSLexer *lexer, const bool *valid_
   return 1;
 }
 
+// _FIXED_WIDTH_CONTINUE: continuation gate for fixed-width lines 2+.
+//
+// Identical BOL constraints to _FIXED_WIDTH_COLON but emits
+// TOKEN_FIXED_WIDTH_CONTINUE instead.  This token is only in valid_symbols
+// when the parser is already inside fixed_width's repeat — never at the
+// section-element start level.  By checking it before TOKEN_FIXED_WIDTH_COLON
+// in the dispatch, we guarantee that when GLR merges the "continue block" and
+// "start new block" states, the scanner always picks continuation, coalescing
+// consecutive fixed-width lines into a single node.
+//
+// Return values:
+//   1  -> TOKEN_FIXED_WIDTH_CONTINUE emitted
+//   0  -> no match, no advance made
+//  -1  -> no match, but advance(s) were made; caller must immediately
+//         return false so tree-sitter rewinds before trying other tokens.
+static int scan_fixed_width_continue(Scanner *s, TSLexer *lexer) {
+  if (get_column(lexer) == 0) {
+    // Column-0 fixed-width lines are valid.
+  } else {
+    // Mid-line: only valid if no visible external text was consumed on this
+    // line (pure BOL path via grammar/internal tokens).
+    if (s->prev_char != 0) return 0;
+  }
+
+  if (lookahead(lexer) != ':') return 0;
+  advance(lexer);  // consume ':'
+
+  // ':' must be followed by a space, newline, or EOF to qualify
+  int32_t next = lookahead(lexer);
+  if (next != ' ' && next != '\n' && !eof(lexer)) return -1;
+
+  mark_end(lexer);
+  lexer->result_symbol = TOKEN_FIXED_WIDTH_CONTINUE;
+  return 1;
+}
+
 // ---------------------------------------------------------------------------
 // Main scan function
 // ---------------------------------------------------------------------------
@@ -3523,7 +3622,8 @@ bool tree_sitter_org_external_scanner_scan(
   }
 
   if (!valid_symbols[TOKEN_INDENT_END] &&
-      valid_symbols[TOKEN_INDENT_CONTENT_CONTINUE]) {
+      (valid_symbols[TOKEN_INDENT_CONTENT_CONTINUE] ||
+       valid_symbols[TOKEN_INDENT_FIXED_WIDTH_CONTINUE])) {
     int result = scan_block_content_continue(s, lexer, valid_symbols);
     if (result == 1) return true;
     if (result == -1) return false;
@@ -3561,6 +3661,11 @@ bool tree_sitter_org_external_scanner_scan(
   // --- FNDEF_END ---
   if (valid_symbols[TOKEN_FNDEF_END]) {
     if (scan_fndef_end(s, lexer)) return true;
+  }
+
+  // --- EOI (NL substitute at end of file) ---
+  if (valid_symbols[TOKEN_EOI]) {
+    if (scan_eoi(lexer)) return true;
   }
 
   // --- TODO_KW ---
@@ -3666,6 +3771,17 @@ bool tree_sitter_org_external_scanner_scan(
   // --- DYNBLOCK_SYNC ---
   if (valid_symbols[TOKEN_DYNBLOCK_SYNC]) {
     if (scan_dynblock_sync(s, lexer)) return true;
+  }
+
+  // --- FIXED_WIDTH_CONTINUE (block-continuation BOL gate) ---
+  // Checked before FIXED_WIDTH_COLON.  When GLR merges the "continue current
+  // block" and "start new block" states, both tokens appear in valid_symbols.
+  // Emitting CONTINUE first forces the continuation path, coalescing
+  // consecutive fixed-width lines into a single node.
+  if (valid_symbols[TOKEN_FIXED_WIDTH_CONTINUE]) {
+    int result = scan_fixed_width_continue(s, lexer);
+    if (result == 1) return true;
+    if (result == -1) return false;
   }
 
   // --- FIXED_WIDTH_COLON (element-level BOL gate) ---

@@ -22,7 +22,7 @@ Empty fixed-width line (colon alone)
     (fixed_width)))
 
 ================
-Multiple consecutive fixed-width lines each produce their own node
+Multiple consecutive fixed-width lines coalesce into one node
 ================
 : line one
 : line two
@@ -33,11 +33,59 @@ Multiple consecutive fixed-width lines each produce their own node
 (document
   (zeroth_section
     (fixed_width
-      (fixed_width_value))
+      (fixed_width_value)
+      (fixed_width_value)
+      (fixed_width_value))))
+
+================
+Consecutive mixed value and empty fixed-width lines coalesce
+================
+: line one
+:
+: line three
+
+---
+
+(document
+  (zeroth_section
+    (fixed_width
+      (fixed_width_value)
+      (fixed_width_value))))
+
+================
+Blank line separates fixed-width blocks
+================
+: block one
+
+: block two
+
+---
+
+(document
+  (zeroth_section
     (fixed_width
       (fixed_width_value))
+    (blank_line)
     (fixed_width
       (fixed_width_value))))
+
+================
+Indented consecutive fixed-width lines coalesce
+================
+   : line one
+   : line two
+   : line three
+
+---
+
+(document
+  (zeroth_section
+    (indent
+      (whitespace)
+      (fixed_width
+        (fixed_width_value)
+        (fixed_width_value)
+        (fixed_width_value)))))
 
 ================
 Indented fixed-width line
@@ -79,8 +127,7 @@ This is a paragraph.
 (document
   (zeroth_section
     (fixed_width
-      (fixed_width_value))
-    (fixed_width
+      (fixed_width_value)
       (fixed_width_value))
     (blank_line)
     (paragraph
