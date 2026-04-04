@@ -2065,6 +2065,14 @@ static bool scan_plain_text(Scanner *s, TSLexer *lexer, const bool *valid_symbol
             break;
           }
 
+          // On heading lines, do not let a failed markup-open probe swallow a
+          // trailing tags suffix (":tag:"). End the current plain_text token
+          // before the marker and let subsequent scans handle the marker and
+          // the tags suffix separately.
+          if (s->in_heading_line && found_any) {
+            break;
+          }
+
           s->prev_char = last;
           mark_end(lexer);
           found_any = true;

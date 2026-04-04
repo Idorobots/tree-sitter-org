@@ -11,6 +11,38 @@ Level 1 heading
     (plain_text)))
 
 ================
+Heading tags after markup-like title text
+================
+* Test /proc/stat :tag:
+* Create a story for the (+) button counters. :tag:
+* Refactor *Resource classes         :tag:
+
+---
+
+(document
+  (heading
+    (stars)
+    (plain_text)
+    (plain_text)
+    (plain_text)
+    (tags
+      (tag)))
+  (heading
+    (stars)
+    (plain_text)
+    (plain_text)
+    (plain_text)
+    (tags
+      (tag)))
+  (heading
+    (stars)
+    (plain_text)
+    (plain_text)
+    (plain_text)
+    (tags
+      (tag))))
+
+================
 Heading title keeps at-sign text
 ================
 * DELEGATED Fix Nexus @types resolving.
