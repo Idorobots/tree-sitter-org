@@ -124,7 +124,10 @@ Note the lack of newline at the end of the input. The parse tree results in an e
 
 This should parse with a single, unicode tag.
 
-** TODO Lack of space before tags causes mis-parse.
+** DONE Lack of space before tags causes mis-parse.
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-04-05 Sun 00:49]
+:END:
 #+begin_example
 ,* Test.:tag:
 #+end_example

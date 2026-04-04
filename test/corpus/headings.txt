@@ -312,6 +312,20 @@ Heading with colon in title and no tags
     (plain_text)))
 
 ================
+Heading tags without whitespace separator
+================
+* Test.:tag:
+
+---
+
+(document
+  (heading
+    (stars)
+    (plain_text)
+    (tags
+      (tag))))
+
+================
 Heading title keeps underscore and colon as plain text
 ================
 * Fixed_Width: Areas

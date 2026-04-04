@@ -2117,7 +2117,7 @@ static bool scan_plain_text(Scanner *s, TSLexer *lexer, const bool *valid_symbol
 
         // Preserve a real trailing heading tags suffix for grammar-level tags.
         // Inside list items, colon-wrapped tails (e.g. ":feature:") are text.
-        if (s->in_heading_line && (s->prev_char == ' ' || s->prev_char == '\t')) {
+        if (s->in_heading_line) {
           advance(lexer);
           if (is_heading_tag_char(lookahead(lexer)) && probe_heading_tags_suffix_after_colon(lexer)) {
             if (!found_any) return false;
@@ -2127,9 +2127,7 @@ static bool scan_plain_text(Scanner *s, TSLexer *lexer, const bool *valid_symbol
           s->prev_char = ':';
           mark_end(lexer);
           found_any = true;
-          lexer->result_symbol = TOKEN_PLAIN_TEXT;
-          s->plain_lbracket_depth = (uint16_t)plain_lbracket_depth;
-          return true;
+          continue;
         }
 
         s->prev_char = ':';
@@ -2514,7 +2512,7 @@ static bool scan_plain_text(Scanner *s, TSLexer *lexer, const bool *valid_symbol
     // Mid-line colons are often plain text ("test ::", "value: text").
     // Treat ':' as potential heading-tags start only if the remainder is a
     // full tags suffix.
-    if (s->in_heading_line && (s->prev_char == ' ' || s->prev_char == '\t')) {
+    if (s->in_heading_line) {
       advance(lexer);
       s->prev_char = ':';
       mark_end(lexer);
