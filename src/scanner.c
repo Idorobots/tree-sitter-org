@@ -1067,7 +1067,8 @@ static bool is_internal_token_start(int32_t ch) {
 static bool is_heading_tag_char(int32_t ch) {
   return (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') ||
          (ch >= '0' && ch <= '9') || ch == '_' || ch == '@' ||
-         ch == '#' || ch == '%';
+         ch == '#' || ch == '%' ||
+         (ch >= 0x80 && ch <= 0xFFFF);
 }
 
 // Probe for a heading tags suffix after consuming the leading ':'

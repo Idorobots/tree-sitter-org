@@ -117,7 +117,10 @@ Note the lack of newline at the end of the input
 
 Note the lack of newline at the end of the input. The parse tree results in an extra plaintext value that doesn't store any data at the end of the paragraph.
 
-** TODO Support for unicode in node tags
+** DONE Support for unicode in node tags
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-04-05 Sun 00:54]
+:END:
 #+begin_example
 ,* TODO 修正タスク名の確認 :開発:
 #+end_example

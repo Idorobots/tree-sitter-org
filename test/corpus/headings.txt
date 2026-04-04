@@ -326,6 +326,21 @@ Heading tags without whitespace separator
       (tag))))
 
 ================
+Heading with unicode tag
+================
+* TODO 修正タスク名の確認 :開発:
+
+---
+
+(document
+  (heading
+    (stars)
+    (todo_keyword)
+    (plain_text)
+    (tags
+      (tag))))
+
+================
 Heading title keeps underscore and colon as plain text
 ================
 * Fixed_Width: Areas

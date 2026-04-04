@@ -171,7 +171,7 @@ module.exports = grammar({
       ':',
     ),
 
-    tag: _ => /[A-Za-z0-9_@#%]+/,
+    tag: _ => /[A-Za-z0-9_@#%\u0080-\uFFFF]+/,
 
     // §4 Sections
     zeroth_section: $ => prec.left(repeat1(choice(
