@@ -41,9 +41,11 @@ module.exports = grammar({
   externals: $ => [
     $.stars, // Heading stars at column 0 (e.g. "***")
     $._HEADING_END, // Close heading on same/higher-level stars or EOI
+    $._HEADING_BOUNDARY_ABORT, // Zero-width: abort unclosed block/drawer at heading boundary
     $._TODO_KW, // Match current TODO keyword set
     $._COMMENT_TOKEN, // Match 'COMMENT' heading indicator at word boundary
     $._BLOCK_END_MATCH, // Verify #+end_NAME matches #+begin_NAME
+    $._SPECIAL_BLOCK_ABORT_SYNC, // Zero-width sync for aborted special_block stack state
     $._GBLOCK_NAME, // Block name not a lesser block name
     $._MARKUP_OPEN_BOLD,
     $._MARKUP_CLOSE_BOLD,
@@ -381,9 +383,14 @@ module.exports = grammar({
       optional(field('parameters', $._block_params)),
       $._NL,
       field('body', optional($._gblock_body)),
-      token(prec(2, /[ \t]*#\+end_center/i)),
-      optional($._TRAILING),
-      $._NL_or_EOI,
+      choice(
+        seq(
+          token(prec(2, /[ \t]*#\+end_center/i)),
+          optional($._TRAILING),
+          $._NL_or_EOI,
+        ),
+        seq(alias($._HEADING_BOUNDARY_ABORT, $.ERROR)),
+      ),
     ),
 
     quote_block: $ => seq(
@@ -391,9 +398,14 @@ module.exports = grammar({
       optional(field('parameters', $._block_params)),
       $._NL,
       field('body', optional($._gblock_body)),
-      token(prec(2, /[ \t]*#\+end_quote/i)),
-      optional($._TRAILING),
-      $._NL_or_EOI,
+      choice(
+        seq(
+          token(prec(2, /[ \t]*#\+end_quote/i)),
+          optional($._TRAILING),
+          $._NL_or_EOI,
+        ),
+        seq(alias($._HEADING_BOUNDARY_ABORT, $.ERROR)),
+      ),
     ),
 
     special_block: $ => seq(
@@ -402,10 +414,18 @@ module.exports = grammar({
       optional(field('parameters', $._block_params)),
       $._NL,
       field('body', optional($._gblock_body)),
-      token(prec(1, /[ \t]*#\+end_/i)),
-      $._BLOCK_END_MATCH,
-      optional($._TRAILING),
-      $._NL_or_EOI,
+      choice(
+        seq(
+          token(prec(1, /[ \t]*#\+end_/i)),
+          $._BLOCK_END_MATCH,
+          optional($._TRAILING),
+          $._NL_or_EOI,
+        ),
+        seq(
+          alias($._HEADING_BOUNDARY_ABORT, $.ERROR),
+          $._SPECIAL_BLOCK_ABORT_SYNC,
+        ),
+      ),
     ),
 
     _block_params: $ => seq($._S, $._REST_OF_LINE),
@@ -426,13 +446,21 @@ module.exports = grammar({
       ),
       $._DRAWER_ENTER_SYNC,
       field('body', optional($._drawer_body)),
-      token(prec(2, /[ \t]*:end:/i)),
-      optional(choice(
-        $._TRAILING,
-        field('end_text', alias($._REST_OF_LINE, $.plain_text)),
-      )),
-      $._NL,
-      $._DRAWER_EXIT_SYNC,
+      choice(
+        seq(
+          token(prec(2, /[ \t]*:end:/i)),
+          optional(choice(
+            $._TRAILING,
+            field('end_text', alias($._REST_OF_LINE, $.plain_text)),
+          )),
+          $._NL,
+          $._DRAWER_EXIT_SYNC,
+        ),
+        seq(
+          alias($._HEADING_BOUNDARY_ABORT, $.ERROR),
+          $._DRAWER_EXIT_SYNC,
+        ),
+      ),
     ),
 
     _DRAWER_NAME: _ => token(choice(
@@ -502,13 +530,21 @@ module.exports = grammar({
       ),
       $._DRAWER_ENTER_SYNC,
       field('body', optional($._logbook_drawer_body)),
-      token(prec(3, /[ \t]*:end:/i)),
-      optional(choice(
-        $._TRAILING,
-        field('end_text', alias($._REST_OF_LINE, $.plain_text)),
-      )),
-      $._NL,
-      $._DRAWER_EXIT_SYNC,
+      choice(
+        seq(
+          token(prec(3, /[ \t]*:end:/i)),
+          optional(choice(
+            $._TRAILING,
+            field('end_text', alias($._REST_OF_LINE, $.plain_text)),
+          )),
+          $._NL,
+          $._DRAWER_EXIT_SYNC,
+        ),
+        seq(
+          alias($._HEADING_BOUNDARY_ABORT, $.ERROR),
+          $._DRAWER_EXIT_SYNC,
+        ),
+      ),
     ),
 
     // --- 6.4 Dynamic Blocks ---
@@ -519,10 +555,18 @@ module.exports = grammar({
       optional(field('parameters', seq($._S, $._REST_OF_LINE))),
       $._NL,
       field('body', optional($._dynblock_body)),
-      token(prec(3, /[ \t]*#\+end:/i)),
-      optional($._TRAILING),
-      $._NL,
-      $._DYNBLOCK_SYNC,
+      choice(
+        seq(
+          token(prec(3, /[ \t]*#\+end:/i)),
+          optional($._TRAILING),
+          $._NL,
+          $._DYNBLOCK_SYNC,
+        ),
+        seq(
+          alias($._HEADING_BOUNDARY_ABORT, $.ERROR),
+          $._DYNBLOCK_SYNC,
+        ),
+      ),
     ),
 
     _DYNBLOCK_NAME: _ => /[^ \t\n]+/,
@@ -678,13 +722,21 @@ module.exports = grammar({
         $.blank_line,
         seq(optional($._INDENT), $.node_property),
       )),
-      token(prec(3, /[ \t]*:end:/i)),
-      optional(choice(
-        $._TRAILING,
-        field('end_text', alias($._REST_OF_LINE, $.plain_text)),
-      )),
-      $._NL,
-      $._DRAWER_EXIT_SYNC,
+      choice(
+        seq(
+          token(prec(3, /[ \t]*:end:/i)),
+          optional(choice(
+            $._TRAILING,
+            field('end_text', alias($._REST_OF_LINE, $.plain_text)),
+          )),
+          $._NL,
+          $._DRAWER_EXIT_SYNC,
+        ),
+        seq(
+          alias($._HEADING_BOUNDARY_ABORT, $.ERROR),
+          $._DRAWER_EXIT_SYNC,
+        ),
+      ),
     )),
 
     node_property: $ => seq(
@@ -807,9 +859,14 @@ module.exports = grammar({
       optional($._TRAILING),
       $._NL,
       field('body', optional($.comment_block_body)),
-      token(prec(3, /[ \t]*#\+end_comment/i)),
-      optional($._TRAILING),
-      $._NL_or_EOI,
+      choice(
+        seq(
+          token(prec(3, /[ \t]*#\+end_comment/i)),
+          optional($._TRAILING),
+          $._NL_or_EOI,
+        ),
+        alias($._HEADING_BOUNDARY_ABORT, $.ERROR),
+      ),
     ),
 
     example_block: $ => seq(
@@ -817,18 +874,29 @@ module.exports = grammar({
       optional(field('parameters', $._block_params)),
       $._NL,
       field('body', optional($.example_block_body)),
-      token(prec(3, /[ \t]*#\+end_example/i)),
-      optional($._TRAILING),
-      $._NL_or_EOI,
+      choice(
+        seq(
+          token(prec(3, /[ \t]*#\+end_example/i)),
+          optional($._TRAILING),
+          $._NL_or_EOI,
+        ),
+        alias($._HEADING_BOUNDARY_ABORT, $.ERROR),
+      ),
     ),
 
     example_block_body: $ => repeat1($.example_line),
 
-    example_line: _ => seq(/[^\n]*/, '\n'),
+    example_line: $ => choice(
+      seq($._RAW_BLOCK_LINE_TEXT, '\n'),
+      '\n',
+    ),
 
     comment_block_body: $ => repeat1($.comment_line),
 
-    comment_line: _ => seq(/[^\n]*/, '\n'),
+    comment_line: $ => choice(
+      seq($._RAW_BLOCK_LINE_TEXT, '\n'),
+      '\n',
+    ),
 
     export_block: $ => seq(
       token(prec(2, ci('#+begin_export'))),
@@ -837,16 +905,24 @@ module.exports = grammar({
       optional(field('parameters', seq($._S, $._REST_OF_LINE))),
       $._NL,
       field('body', optional($.export_block_body)),
-      token(prec(3, /[ \t]*#\+end_export/i)),
-      optional($._TRAILING),
-      $._NL_or_EOI,
+      choice(
+        seq(
+          token(prec(3, /[ \t]*#\+end_export/i)),
+          optional($._TRAILING),
+          $._NL_or_EOI,
+        ),
+        alias($._HEADING_BOUNDARY_ABORT, $.ERROR),
+      ),
     ),
 
     _EXPORT_BACKEND: _ => /[^ \t\n]+/,
 
     export_block_body: $ => repeat1($.export_line),
 
-    export_line: _ => seq(/[^\n]*/, '\n'),
+    export_line: $ => choice(
+      seq($._RAW_BLOCK_LINE_TEXT, '\n'),
+      '\n',
+    ),
 
     src_block: $ => seq(
       token(prec(2, ci('#+begin_src'))),
@@ -857,25 +933,44 @@ module.exports = grammar({
       )),
       $._NL,
       field('body', optional($.src_block_body)),
-      token(prec(3, /[ \t]*#\+end_src/i)),
-      optional($._TRAILING),
-      $._NL_or_EOI,
+      choice(
+        seq(
+          token(prec(3, /[ \t]*#\+end_src/i)),
+          optional($._TRAILING),
+          $._NL_or_EOI,
+        ),
+        alias($._HEADING_BOUNDARY_ABORT, $.ERROR),
+      ),
     ),
 
     _SRC_LANGUAGE: _ => /[^ \t\n]+/,
 
     src_block_body: $ => repeat1($.src_line),
 
-    src_line: _ => seq(/[^\n]*/, '\n'),
+    src_line: $ => choice(
+      seq($._RAW_BLOCK_LINE_TEXT, '\n'),
+      '\n',
+    ),
+
+    _RAW_BLOCK_LINE_TEXT: _ => choice(
+      /[^*\n][^\n]*/,
+      /\*[^ \t\n][^\n]*/,
+      '*',
+    ),
 
     verse_block: $ => seq(
       token(prec(2, ci('#+begin_verse'))),
       optional($._TRAILING),
       $._NL,
       field('body', optional($._gblock_body)),
-      token(prec(3, /[ \t]*#\+end_verse/i)),
-      optional($._TRAILING),
-      $._NL_or_EOI,
+      choice(
+        seq(
+          token(prec(3, /[ \t]*#\+end_verse/i)),
+          optional($._TRAILING),
+          $._NL_or_EOI,
+        ),
+        seq(alias($._HEADING_BOUNDARY_ABORT, $.ERROR)),
+      ),
     ),
 
     _indented_object_line: $ => seq(

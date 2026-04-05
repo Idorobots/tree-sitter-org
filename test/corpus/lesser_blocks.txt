@@ -206,3 +206,30 @@ Indented lesser blocks
         (paragraph
           (plain_text)
           (newline))))))
+
+================
+Unclosed src block aborts at heading boundary
+================
+* A
+#+begin_src
+puts 1
+* B
+:PROPERTIES:
+:END:
+
+---
+
+(document
+  (heading
+    (stars)
+    (plain_text)
+    (section
+      (src_block
+        (src_block_body
+          (src_line))
+        (ERROR))))
+  (heading
+    (stars)
+    (plain_text)
+    (section
+      (property_drawer))))

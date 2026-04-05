@@ -412,6 +412,37 @@ Malformed property link value does not break next heading drawer
                 time: (ts_time)))))))))
 
 ================
+Drawer aborts at heading boundary
+================
+* Test
+:PROPERTIES:
+:END:
+:Unix:SysAdmin:Debugging:
+
+* Test
+:PROPERTIES:
+:END:
+
+---
+
+(document
+  (heading
+    (stars)
+    (plain_text)
+    (section
+      (property_drawer)
+      (drawer
+        (drawer_name)
+        (drawer_start_text)
+        (blank_line)
+        (ERROR))))
+  (heading
+    (stars)
+    (plain_text)
+    (section
+      (property_drawer))))
+
+================
 Custom drawer with key-like empty value line
 ================
 :DRAWER:

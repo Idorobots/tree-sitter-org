@@ -28,9 +28,11 @@
 enum TokenType {
   TOKEN_STARS,
   TOKEN_HEADING_END,
+  TOKEN_HEADING_BOUNDARY_ABORT,
   TOKEN_TODO_KW,
   TOKEN_COMMENT_TOKEN,
   TOKEN_BLOCK_END_MATCH,
+  TOKEN_SPECIAL_BLOCK_ABORT_SYNC,
   TOKEN_GBLOCK_NAME,
   TOKEN_MARKUP_OPEN_BOLD,
   TOKEN_MARKUP_CLOSE_BOLD,
@@ -612,6 +614,16 @@ static bool scan_heading_end_eof(Scanner *s, TSLexer *lexer) {
   lexer->result_symbol = TOKEN_HEADING_END;
   mark_end(lexer);
   s->heading_depth--;
+  return true;
+}
+
+// _HEADING_BOUNDARY_ABORT: zero-width token used by block/drawer rules to
+// terminate unterminated containers when a new heading starts.
+static bool scan_heading_boundary_abort(TSLexer *lexer) {
+  if (get_column(lexer) != 0) return false;
+  if (lookahead(lexer) != '*') return false;
+  mark_end(lexer);
+  lexer->result_symbol = TOKEN_HEADING_BOUNDARY_ABORT;
   return true;
 }
 
@@ -3342,6 +3354,18 @@ static bool scan_drawer_exit_sync(Scanner *s, TSLexer *lexer) {
   return true;
 }
 
+// _SPECIAL_BLOCK_ABORT_SYNC: zero-width sync used by special_block abort path
+// to keep scanner block-name stack aligned when #+end_NAME is missing.
+static bool scan_special_block_abort_sync(Scanner *s, TSLexer *lexer) {
+  if (s->block_depth > 0) {
+    s->block_depth--;
+  }
+
+  mark_end(lexer);
+  lexer->result_symbol = TOKEN_SPECIAL_BLOCK_ABORT_SYNC;
+  return true;
+}
+
 // _TODO_SETUP_SYNC: zero-width sync point used on special_keyword lines.
 //
 // When positioned at a line that begins with "#+TODO:", parse the remainder
@@ -3535,6 +3559,14 @@ bool tree_sitter_org_external_scanner_scan(
 
   if (valid_symbols[TOKEN_DRAWER_EXIT_SYNC]) {
     if (scan_drawer_exit_sync(s, lexer)) return true;
+  }
+
+  if (valid_symbols[TOKEN_SPECIAL_BLOCK_ABORT_SYNC]) {
+    if (scan_special_block_abort_sync(s, lexer)) return true;
+  }
+
+  if (valid_symbols[TOKEN_HEADING_BOUNDARY_ABORT]) {
+    if (scan_heading_boundary_abort(lexer)) return true;
   }
 
   // _NL is a grammar regex and never updates prev_char.  Reset it to 0
