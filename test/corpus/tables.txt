@@ -221,6 +221,35 @@ Markup ending directly before table separator
             (verbatim_content)))))))
 
 ================
+Strikethrough closes before table separator after digit
+================
+| +ANTLR 3+     | Java | =BSD= | _deprecated_ |
+
+---
+
+(document
+  (zeroth_section
+    (org_table
+      (table_row
+        (table_cell
+          (plain_text)
+          (strike_through
+            (plain_text))
+          (plain_text))
+        (table_cell
+          (plain_text))
+        (table_cell
+          (plain_text)
+          (verbatim
+            (verbatim_content))
+          (plain_text))
+        (table_cell
+          (plain_text)
+          (underline
+            (plain_text))
+          (plain_text))))))
+
+================
 Table cells with plus signs stay plain text
 ================
 | CPU      | 4 vCPU   | 8+ vCPU     |

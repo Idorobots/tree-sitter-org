@@ -24,11 +24,26 @@
 
 The node tree lists =first_line: (plain_text (MISSING "_DURATION_token1")))= at the end of the line.
 
+** DONE Strikethrough in tables
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-04-06 Mon 01:05]
+:END:
+#+begin_example
+| /lxml/        | Python     | =BSD-3-Clause= | [[https://lxml.de]]                   |
+| ~pest~        | Rust       | =MIT / Apache= | [[https://pest.rs]]                   |
+| +ANTLR 3+     | Java       | =BSD=          | _deprecated_ — use ANTLR 4            |
+| *ANTLR 4*     | Java/many  | =BSD-3-Clause= | [[https://www.antlr.org]]             |
+| /Menhir/      | OCaml      | =LGPL-2=       | [[https://gallium.inria.fr/~fpottier/menhir/]] |
+#+end_example
+
+The strikethrough on line 3 spans until the =|= character even though there's a =+= character that should end the strikethrough. 
+
 * Pipeline improvements
 ** DONE Check.py should check for missing tokens as well as error nodes.
 :LOGBOOK:
 - State "DONE"       from "TODO"       [2026-04-06 Mon 00:54]
 :END:
+
 
 * Next
 ** NPM publishing
