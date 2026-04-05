@@ -25,7 +25,10 @@
 The node tree lists =first_line: (plain_text (MISSING "_DURATION_token1")))= at the end of the line.
 
 * Pipeline improvements
-** TODO Check.py should check for missing tokens as well as error nodes.
+** DONE Check.py should check for missing tokens as well as error nodes.
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-04-06 Mon 00:54]
+:END:
 
 * Next
 ** NPM publishing

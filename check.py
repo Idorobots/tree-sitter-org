@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import argparse
 import glob
 import re
 import subprocess
@@ -24,6 +25,16 @@ class FileResult:
     errors: list[ParseErrorSnippet]
 
 
+@dataclass
+class RecoveryIssue:
+    start_line: int
+    start_col: int
+    symbol: str
+
+
+ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*m")
+
+
 def is_option_error(stdout: str, stderr: str) -> bool:
     text = (stdout + "\n" + stderr).lower()
     return (
@@ -33,22 +44,31 @@ def is_option_error(stdout: str, stderr: str) -> bool:
     )
 
 
-def run_parse_command(file_path: Path, grammar_path: Path, xml: bool) -> subprocess.CompletedProcess[str]:
+def run_parse_command(
+    file_path: Path,
+    grammar_path: Path,
+    xml: bool,
+    debug_mode: str | None = None,
+) -> subprocess.CompletedProcess[str]:
     file_arg = str(file_path.resolve())
     org_so = grammar_path / "org.so"
     xml_flag = ["--xml"] if xml else []
+    debug_flag = ["-d", debug_mode] if debug_mode else []
 
     attempts: list[tuple[list[str], Path]] = [
-        (["tree-sitter", "parse", *xml_flag, "--grammar-path", str(grammar_path), file_arg], Path.cwd()),
-        (["tree-sitter", "parse", *xml_flag, "-p", str(grammar_path), file_arg], Path.cwd()),
+        (["tree-sitter", "parse", *xml_flag, *debug_flag, "--grammar-path", str(grammar_path), file_arg], Path.cwd()),
+        (["tree-sitter", "parse", *xml_flag, *debug_flag, "-p", str(grammar_path), file_arg], Path.cwd()),
     ]
 
     if org_so.exists():
         attempts.append(
-            (["tree-sitter", "parse", *xml_flag, "--lib-path", str(org_so), "--lang-name", "org", file_arg], Path.cwd())
+            (
+                ["tree-sitter", "parse", *xml_flag, *debug_flag, "--lib-path", str(org_so), "--lang-name", "org", file_arg],
+                Path.cwd(),
+            )
         )
 
-    attempts.append((["tree-sitter", "parse", *xml_flag, file_arg], grammar_path))
+    attempts.append((["tree-sitter", "parse", *xml_flag, *debug_flag, file_arg], grammar_path))
 
     last_proc: subprocess.CompletedProcess[str] | None = None
     for cmd, cwd in attempts:
@@ -61,9 +81,21 @@ def run_parse_command(file_path: Path, grammar_path: Path, xml: bool) -> subproc
     return last_proc
 
 
-def usage() -> None:
-    script = Path(sys.argv[0]).name
-    print(f"Usage: ./{script} <file-or-glob> [<file-or-glob> ...]", file=sys.stderr)
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Check Org files for parser errors."
+    )
+    parser.add_argument(
+        "inputs",
+        nargs="+",
+        help="One or more files or glob patterns",
+    )
+    parser.add_argument(
+        "--check-recovery",
+        action="store_true",
+        help="Also fail on missing-token recoveries (recover_with_missing)",
+    )
+    return parser.parse_args()
 
 
 def expand_inputs(args: list[str]) -> tuple[list[Path], list[str]]:
@@ -148,7 +180,42 @@ def build_snippet(lines: list[str], start_line: int, end_line: int, context: int
     return "\n".join(lines[start - 1 : end])
 
 
-def run_parse(file_path: Path, grammar_path: Path) -> FileResult:
+def parse_missing_recoveries(debug_output: str) -> list[RecoveryIssue]:
+    issues: list[RecoveryIssue] = []
+    seen: set[tuple[int, int, str]] = set()
+    row = 0
+    col = 0
+
+    for raw in debug_output.splitlines():
+        line = ANSI_ESCAPE_RE.sub("", raw).strip()
+        pos_match = re.search(r"process version:\d+.*row:(\d+), col:(\d+)", line)
+        if pos_match:
+            row = int(pos_match.group(1))
+            col = int(pos_match.group(2))
+            continue
+
+        rec_match = re.search(r"recover_with_missing symbol:([^,\s]+)", line)
+        if not rec_match:
+            continue
+
+        symbol = rec_match.group(1)
+        key = (row, col, symbol)
+        if key in seen:
+            continue
+        seen.add(key)
+
+        issues.append(
+            RecoveryIssue(
+                start_line=row + 1,
+                start_col=col + 1,
+                symbol=symbol,
+            )
+        )
+
+    return issues
+
+
+def run_parse(file_path: Path, grammar_path: Path, check_recovery: bool) -> FileResult:
     try:
         proc = run_parse_command(file_path, grammar_path, xml=True)
     except FileNotFoundError:
@@ -202,6 +269,19 @@ def run_parse(file_path: Path, grammar_path: Path) -> FileResult:
             )
         )
 
+    if check_recovery and not snippets and proc.returncode == 0:
+        debug_proc = run_parse_command(file_path, grammar_path, xml=False, debug_mode="normal")
+        recoveries = parse_missing_recoveries(debug_proc.stdout + "\n" + debug_proc.stderr)
+        for recovery in recoveries:
+            snippets.append(
+                ParseErrorSnippet(
+                    start_line=recovery.start_line,
+                    end_line=recovery.start_line,
+                    message=f"missing-token recovery at col {recovery.start_col}: {recovery.symbol}",
+                    snippet=build_snippet(file_lines, recovery.start_line, recovery.start_line),
+                )
+            )
+
     if not snippets and proc.returncode != 0:
         fallback = diagnostic or "Parser command failed"
         snippets.append(
@@ -218,11 +298,8 @@ def run_parse(file_path: Path, grammar_path: Path) -> FileResult:
 
 
 def main() -> int:
-    if len(sys.argv) < 2:
-        usage()
-        return 2
-
-    inputs = sys.argv[1:]
+    args = parse_args()
+    inputs = args.inputs
     files, missing = expand_inputs(inputs)
     if missing:
         for m in missing:
@@ -234,7 +311,7 @@ def main() -> int:
 
     grammar_path = Path(__file__).resolve().parent
 
-    results = [run_parse(path, grammar_path) for path in files]
+    results = [run_parse(path, grammar_path, check_recovery=args.check_recovery) for path in files]
     passing = sum(1 for r in results if r.passing)
     total = len(results)
 
