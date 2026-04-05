@@ -443,6 +443,28 @@ Drawer aborts at heading boundary
       (property_drawer))))
 
 ================
+Custom drawer aborts at heading boundary
+================
+* Test
+:Scala:Debugging:
+* Test
+
+---
+
+(document
+  (heading
+    (stars)
+    (plain_text)
+    (section
+      (drawer
+        (drawer_name)
+        (drawer_start_text)
+        (ERROR))))
+  (heading
+    (stars)
+    (plain_text)))
+
+================
 Custom drawer with key-like empty value line
 ================
 :DRAWER:

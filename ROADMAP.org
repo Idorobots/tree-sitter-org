@@ -148,7 +148,10 @@ The tag should parse even though the =:= is not preceeded by whitespace.
 
 The =tag= ends up as part of the title text. It should parse as a tag instead.
 
-** TODO Drawer parsing should abort at heading boundary
+** DONE Drawer parsing should abort at heading boundary
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-04-05 Sun 02:22]
+:END:
 #+begin_example
 ,* Test
 :PROPERTIES:
@@ -162,6 +165,21 @@ The =tag= ends up as part of the title text. It should parse as a tag instead.
 
 The above parses as a single heading with two drawers, it should parse as two headings with a plaintext line in the body of the first heading.
 
+*** DONE Block content regression
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-04-05 Sun 02:21]
+:END:
+
+#+begin_example
+#+begin_center
+*Quatremont Institute*
+Annual Symposium on Computational Linguistics
+12–14 March 2025 · Grumblewick, Northshire
+#+end_example
+
+It seems that the recent fix introduced a regression when there's a bold markup at the column 0 in the body contents of a block or drawer.
+
+More examples are available when you run check.py on examples/blocks.org file.
 * Next
 ** NPM publishing
 Add release jobs that publish to NPM.

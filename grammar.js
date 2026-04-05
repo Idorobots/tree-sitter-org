@@ -389,6 +389,9 @@ module.exports = grammar({
           optional($._TRAILING),
           $._NL_or_EOI,
         ),
+        // Alias the boundary-abort token to `ERROR` so downstream consumers
+        // can key off an explicit ERROR-tagged node when a block is cut by a
+        // heading boundary. This is an alias marker, not parser recovery.
         seq(alias($._HEADING_BOUNDARY_ABORT, $.ERROR)),
       ),
     ),

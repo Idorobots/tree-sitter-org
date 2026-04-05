@@ -622,7 +622,20 @@ static bool scan_heading_end_eof(Scanner *s, TSLexer *lexer) {
 static bool scan_heading_boundary_abort(TSLexer *lexer) {
   if (get_column(lexer) != 0) return false;
   if (lookahead(lexer) != '*') return false;
+
+  // Probe a real heading boundary: one or more '*' followed by space/tab.
+  // Keep this token zero-width by marking the end before probing.
   mark_end(lexer);
+
+  uint16_t stars = 0;
+  while (lookahead(lexer) == '*') {
+    stars++;
+    advance(lexer);
+  }
+
+  if (stars == 0) return false;
+  if (lookahead(lexer) != ' ' && lookahead(lexer) != '\t') return false;
+
   lexer->result_symbol = TOKEN_HEADING_BOUNDARY_ABORT;
   return true;
 }

@@ -233,3 +233,29 @@ puts 1
     (plain_text)
     (section
       (property_drawer))))
+
+================
+Unclosed src block aborts at nested heading boundary
+================
+* A
+#+begin_src
+puts 1
+** B
+:PROPERTIES:
+:END:
+
+---
+
+(document
+  (heading
+    (stars)
+    (plain_text)
+    (section
+      (src_block
+        (src_block_body
+          (src_line))
+        (ERROR)))
+    (heading
+      (stars)
+      (plain_text)
+      (property_drawer))))
