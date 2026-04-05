@@ -599,6 +599,21 @@ Strikethrough in heading title after TODO keyword
       (plain_text))))
 
 ================
+Strikethrough body ending with digit closes correctly
+================
++ANTLR 3+ remains parsable.
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (strike_through
+        (plain_text))
+      (plain_text)
+      (newline))))
+
+================
 Adjacent markup with slash boundary
 ================
 *Bold*/italic/ -- two markup objects sharing a boundary.

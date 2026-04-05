@@ -15,6 +15,11 @@ class LeafIssue:
     end_line: int
     start_col: int
     end_col: int
+    kind: str
+    message: str
+
+
+ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*m")
 
 
 def is_option_error(stdout: str, stderr: str) -> bool:
@@ -26,22 +31,31 @@ def is_option_error(stdout: str, stderr: str) -> bool:
     )
 
 
-def run_parse_command(file_path: Path, grammar_path: Path, xml: bool) -> subprocess.CompletedProcess[str]:
+def run_parse_command(
+    file_path: Path,
+    grammar_path: Path,
+    xml: bool,
+    debug_mode: str | None = None,
+) -> subprocess.CompletedProcess[str]:
     file_arg = str(file_path.resolve())
     org_so = grammar_path / "org.so"
     xml_flag = ["--xml"] if xml else []
+    debug_flag = ["-d", debug_mode] if debug_mode else []
 
     attempts: list[tuple[list[str], Path]] = [
-        (["tree-sitter", "parse", *xml_flag, "--grammar-path", str(grammar_path), file_arg], Path.cwd()),
-        (["tree-sitter", "parse", *xml_flag, "-p", str(grammar_path), file_arg], Path.cwd()),
+        (["tree-sitter", "parse", *xml_flag, *debug_flag, "--grammar-path", str(grammar_path), file_arg], Path.cwd()),
+        (["tree-sitter", "parse", *xml_flag, *debug_flag, "-p", str(grammar_path), file_arg], Path.cwd()),
     ]
 
     if org_so.exists():
         attempts.append(
-            (["tree-sitter", "parse", *xml_flag, "--lib-path", str(org_so), "--lang-name", "org", file_arg], Path.cwd())
+            (
+                ["tree-sitter", "parse", *xml_flag, *debug_flag, "--lib-path", str(org_so), "--lang-name", "org", file_arg],
+                Path.cwd(),
+            )
         )
 
-    attempts.append((["tree-sitter", "parse", *xml_flag, file_arg], grammar_path))
+    attempts.append((["tree-sitter", "parse", *xml_flag, *debug_flag, file_arg], grammar_path))
 
     last_proc: subprocess.CompletedProcess[str] | None = None
     for cmd, cwd in attempts:
@@ -99,6 +113,8 @@ def extract_leaf_issues(xml_text: str) -> list[LeafIssue]:
                 end_line=max(srow + 1, erow + 1),
                 start_col=scol + 1,
                 end_col=ecol + 1,
+                kind="leaf_error",
+                message="leaf ERROR node",
             )
         )
 
@@ -118,8 +134,48 @@ def extract_ranges_from_text(stdout: str) -> list[LeafIssue]:
                 end_line=max(srow + 1, erow + 1),
                 start_col=scol + 1,
                 end_col=ecol + 1,
+                kind="leaf_error",
+                message="leaf ERROR node",
             )
         )
+    return issues
+
+
+def parse_missing_recoveries(debug_output: str) -> list[LeafIssue]:
+    issues: list[LeafIssue] = []
+    seen: set[tuple[int, int, str]] = set()
+    row = 0
+    col = 0
+
+    for raw in debug_output.splitlines():
+        line = ANSI_ESCAPE_RE.sub("", raw).strip()
+        pos_match = re.search(r"process version:\d+.*row:(\d+), col:(\d+)", line)
+        if pos_match:
+            row = int(pos_match.group(1))
+            col = int(pos_match.group(2))
+            continue
+
+        rec_match = re.search(r"recover_with_missing symbol:([^,\s]+)", line)
+        if not rec_match:
+            continue
+
+        symbol = rec_match.group(1)
+        key = (row, col, symbol)
+        if key in seen:
+            continue
+        seen.add(key)
+
+        issues.append(
+            LeafIssue(
+                start_line=row + 1,
+                end_line=row + 1,
+                start_col=col + 1,
+                end_col=col + 1,
+                kind="missing_recovery",
+                message=symbol,
+            )
+        )
+
     return issues
 
 
@@ -144,6 +200,11 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=2,
         help="Context lines around each leaf error (default: 2)",
+    )
+    parser.add_argument(
+        "--check-recovery",
+        action="store_true",
+        help="Also report missing-token recoveries (recover_with_missing)",
     )
     return parser.parse_args()
 
@@ -171,23 +232,42 @@ def main() -> int:
         if fallback.returncode != 0:
             issues = extract_ranges_from_text(fallback.stdout)
 
+    if args.check_recovery and proc.returncode == 0:
+        debug_proc = run_parse_command(file_path, grammar_path, xml=False, debug_mode="normal")
+        issues.extend(parse_missing_recoveries(debug_proc.stdout + "\n" + debug_proc.stderr))
+
+    issues.sort(key=lambda issue: (issue.start_line, issue.start_col, issue.kind, issue.message))
+
     lines = file_path.read_text(encoding="utf-8", errors="replace").splitlines()
 
     if not issues:
         if proc.returncode == 0:
-            print("No leaf parser errors found.")
+            if args.check_recovery:
+                print("No leaf parser errors or missing-token recoveries found.")
+            else:
+                print("No leaf parser errors found.")
             return 0
         print("Parse failed but no leaf ERROR nodes were found in XML output.", file=sys.stderr)
         return 1
 
+    leaf_error_count = sum(1 for issue in issues if issue.kind == "leaf_error")
+    recovery_count = sum(1 for issue in issues if issue.kind == "missing_recovery")
+
     print(f"File: {file_path}")
-    print(f"Leaf errors: {len(issues)}")
+    print(f"Leaf errors: {leaf_error_count}")
+    if args.check_recovery:
+        print(f"Missing-token recoveries: {recovery_count}")
+    print(f"Total issues: {len(issues)}")
     print()
 
     for idx, issue in enumerate(issues, start=1):
+        if issue.kind == "missing_recovery":
+            issue_label = f"missing-token recovery: {issue.message}"
+        else:
+            issue_label = issue.message
         print(
             f"#{idx} lines {issue.start_line}-{issue.end_line}, "
-            f"cols {issue.start_col}-{issue.end_col}"
+            f"cols {issue.start_col}-{issue.end_col} - {issue_label}"
         )
         print(render_context(lines, issue.start_line, issue.end_line, args.context))
         if idx < len(issues):

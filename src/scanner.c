@@ -2051,15 +2051,6 @@ static bool scan_plain_text(Scanner *s, TSLexer *lexer, const bool *valid_symbol
           can_close = true;
         }
 
-        // Avoid treating numeric suffixes like "3.21+ " as potential
-        // strikethrough closes. This prevents false list/bullet recovery in
-        // table cells and list item text while preserving real +strike+ cases.
-        if (ch == '+' && (lookahead(lexer) == ' ' || lookahead(lexer) == '\t') &&
-            prev_before_marker >= '0' && prev_before_marker <= '9' &&
-            !is_list_line_start_context(s, marker_col)) {
-          can_close = false;
-        }
-
         if (is_markup_open_pre_for_marker(s->prev_char, ch) && lookahead(lexer) != ' ' && lookahead(lexer) != '\t' &&
             lookahead(lexer) != '\n' && !eof(lexer)) {
           can_open = true;
