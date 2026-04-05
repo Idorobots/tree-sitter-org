@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "tree-sitter-org"
 description = "Tree-sitter grammar for Org Mode syntax"
-version = "0.23.7"
+version = "0.23.8"
 keywords = ["incremental", "parsing", "tree-sitter", "org"]
 classifiers = [
   "Intended Audience :: Developers",
