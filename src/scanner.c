@@ -28,9 +28,11 @@
 enum TokenType {
   TOKEN_STARS,
   TOKEN_HEADING_END,
+  TOKEN_HEADING_BOUNDARY_ABORT,
   TOKEN_TODO_KW,
   TOKEN_COMMENT_TOKEN,
   TOKEN_BLOCK_END_MATCH,
+  TOKEN_SPECIAL_BLOCK_ABORT_SYNC,
   TOKEN_GBLOCK_NAME,
   TOKEN_MARKUP_OPEN_BOLD,
   TOKEN_MARKUP_CLOSE_BOLD,
@@ -615,6 +617,29 @@ static bool scan_heading_end_eof(Scanner *s, TSLexer *lexer) {
   return true;
 }
 
+// _HEADING_BOUNDARY_ABORT: zero-width token used by block/drawer rules to
+// terminate unterminated containers when a new heading starts.
+static bool scan_heading_boundary_abort(TSLexer *lexer) {
+  if (get_column(lexer) != 0) return false;
+  if (lookahead(lexer) != '*') return false;
+
+  // Probe a real heading boundary: one or more '*' followed by space/tab.
+  // Keep this token zero-width by marking the end before probing.
+  mark_end(lexer);
+
+  uint16_t stars = 0;
+  while (lookahead(lexer) == '*') {
+    stars++;
+    advance(lexer);
+  }
+
+  if (stars == 0) return false;
+  if (lookahead(lexer) != ' ' && lookahead(lexer) != '\t') return false;
+
+  lexer->result_symbol = TOKEN_HEADING_BOUNDARY_ABORT;
+  return true;
+}
+
 // Combined stars/heading_end scanner.
 // At column 0 with '*'+ followed by space:
 //   - If inside a heading and new level <= current level: emit _HEADING_END (zero-width)
@@ -1067,7 +1092,8 @@ static bool is_internal_token_start(int32_t ch) {
 static bool is_heading_tag_char(int32_t ch) {
   return (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') ||
          (ch >= '0' && ch <= '9') || ch == '_' || ch == '@' ||
-         ch == '#' || ch == '%';
+         ch == '#' || ch == '%' ||
+         (ch >= 0x80 && ch <= 0xFFFF);
 }
 
 // Probe for a heading tags suffix after consuming the leading ':'
@@ -2065,6 +2091,14 @@ static bool scan_plain_text(Scanner *s, TSLexer *lexer, const bool *valid_symbol
             break;
           }
 
+          // On heading lines, do not let a failed markup-open probe swallow a
+          // trailing tags suffix (":tag:"). End the current plain_text token
+          // before the marker and let subsequent scans handle the marker and
+          // the tags suffix separately.
+          if (s->in_heading_line && found_any) {
+            break;
+          }
+
           s->prev_char = last;
           mark_end(lexer);
           found_any = true;
@@ -2109,7 +2143,7 @@ static bool scan_plain_text(Scanner *s, TSLexer *lexer, const bool *valid_symbol
 
         // Preserve a real trailing heading tags suffix for grammar-level tags.
         // Inside list items, colon-wrapped tails (e.g. ":feature:") are text.
-        if (s->in_heading_line && (s->prev_char == ' ' || s->prev_char == '\t')) {
+        if (s->in_heading_line) {
           advance(lexer);
           if (is_heading_tag_char(lookahead(lexer)) && probe_heading_tags_suffix_after_colon(lexer)) {
             if (!found_any) return false;
@@ -2119,9 +2153,7 @@ static bool scan_plain_text(Scanner *s, TSLexer *lexer, const bool *valid_symbol
           s->prev_char = ':';
           mark_end(lexer);
           found_any = true;
-          lexer->result_symbol = TOKEN_PLAIN_TEXT;
-          s->plain_lbracket_depth = (uint16_t)plain_lbracket_depth;
-          return true;
+          continue;
         }
 
         s->prev_char = ':';
@@ -2506,7 +2538,7 @@ static bool scan_plain_text(Scanner *s, TSLexer *lexer, const bool *valid_symbol
     // Mid-line colons are often plain text ("test ::", "value: text").
     // Treat ':' as potential heading-tags start only if the remainder is a
     // full tags suffix.
-    if (s->in_heading_line && (s->prev_char == ' ' || s->prev_char == '\t')) {
+    if (s->in_heading_line) {
       advance(lexer);
       s->prev_char = ':';
       mark_end(lexer);
@@ -3335,6 +3367,18 @@ static bool scan_drawer_exit_sync(Scanner *s, TSLexer *lexer) {
   return true;
 }
 
+// _SPECIAL_BLOCK_ABORT_SYNC: zero-width sync used by special_block abort path
+// to keep scanner block-name stack aligned when #+end_NAME is missing.
+static bool scan_special_block_abort_sync(Scanner *s, TSLexer *lexer) {
+  if (s->block_depth > 0) {
+    s->block_depth--;
+  }
+
+  mark_end(lexer);
+  lexer->result_symbol = TOKEN_SPECIAL_BLOCK_ABORT_SYNC;
+  return true;
+}
+
 // _TODO_SETUP_SYNC: zero-width sync point used on special_keyword lines.
 //
 // When positioned at a line that begins with "#+TODO:", parse the remainder
@@ -3528,6 +3572,14 @@ bool tree_sitter_org_external_scanner_scan(
 
   if (valid_symbols[TOKEN_DRAWER_EXIT_SYNC]) {
     if (scan_drawer_exit_sync(s, lexer)) return true;
+  }
+
+  if (valid_symbols[TOKEN_SPECIAL_BLOCK_ABORT_SYNC]) {
+    if (scan_special_block_abort_sync(s, lexer)) return true;
+  }
+
+  if (valid_symbols[TOKEN_HEADING_BOUNDARY_ABORT]) {
+    if (scan_heading_boundary_abort(lexer)) return true;
   }
 
   // _NL is a grammar regex and never updates prev_char.  Reset it to 0

@@ -146,11 +146,39 @@ Indented greater and dynamic blocks
     (blank_line)
     (indent
       (whitespace)
-      (dynamic_block
-        (dynamic_block_name)
-        (org_table
-          (table_row
-            (table_cell
-              (plain_text))
-            (table_cell
-              (plain_text))))))))
+        (dynamic_block
+          (dynamic_block_name)
+          (org_table
+            (table_row
+              (table_cell
+                (plain_text))
+              (table_cell
+                (plain_text))))))))
+
+================
+Unclosed center block aborts at heading boundary
+================
+* A
+#+begin_center
+content
+* B
+:PROPERTIES:
+:END:
+
+---
+
+(document
+  (heading
+    (stars)
+    (plain_text)
+    (section
+      (center_block
+        (paragraph
+          (plain_text)
+          (newline))
+        (ERROR))))
+  (heading
+    (stars)
+    (plain_text)
+    (section
+      (property_drawer))))
