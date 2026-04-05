@@ -350,6 +350,55 @@ Property drawer after logbook in heading body
             description: (plain_text)))))))
 
 ================
+Sibling property headings before LOGBOOK state timestamp
+================
+* A
+:PROPERTIES:
+:END:
+** B
+* C
+:PROPERTIES:
+:END:
+** D
+* E
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2014-01-16 czw 20:31]
+:END:
+
+---
+
+(document
+  (heading
+    stars: (stars)
+    title: (plain_text)
+    properties: (property_drawer)
+    (heading
+      stars: (stars)
+      title: (plain_text)))
+  (heading
+    stars: (stars)
+    title: (plain_text)
+    properties: (property_drawer)
+    (heading
+      stars: (stars)
+      title: (plain_text)))
+  (heading
+    stars: (stars)
+    title: (plain_text)
+    body: (section
+      (logbook_drawer
+        body: (list
+          item: (list_item
+            bullet: (unordered_bullet)
+            first_line: (plain_text)
+            first_line: (timestamp
+              year: (ts_year)
+              month: (ts_month)
+              day: (ts_day)
+              dayname: (ts_dayname)
+              time: (ts_time))))))))
+
+================
 Malformed property link value does not break next heading drawer
 ================
 *** Test

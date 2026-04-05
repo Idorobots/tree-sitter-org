@@ -1,189 +1,35 @@
 #+TITLE: A Tree-Sitter parser for Org Mode nodes
 #+ARCHIVE: ./docs/plans/ROADMAP_ARCHIVE.org::
 
-* Initial parser release
-** DONE Tree-Sitter parser pulled into a separate repository
+* Bugfixes
+** DONE Duration token edge case
 :LOGBOOK:
-- State "DONE"       from "TODO"       [2026-03-28 Sat 14:17]
-:END:
-** DONE Update the package.json to better match the current state of the repo
-:LOGBOOK:
-- State "DONE"       from "TODO"       [2026-03-28 Sat 14:41]
-:END:
-
-** DONE Updated highlights queries
-:LOGBOOK:
-- State "DONE"       from "TODO"       [2026-03-28 Sat 14:53]
-:END:
-Please analyze the queries/highlights.scm file and update it to match the current state of the grammar.
-
-** DONE C parser bindings
-:LOGBOOK:
-- State "DONE"       from "TODO"       [2026-03-28 Sat 15:10]
-:END:
-Add parser bindings for the C/C++ programming language.
-
-** DONE Python parser bindins
-:LOGBOOK:
-- State "DONE"       from "TODO"       [2026-03-28 Sat 15:39]
-:END:
-Add parser bindings for Python.
-
-** DONE JS parser bindings
-:LOGBOOK:
-- State "DONE"       from "TODO"       [2026-03-28 Sat 15:41]
-:END:
-Add parser bindings for JavaScript.
-
-** DONE CI workflow using generic tree-sitter actions
-:LOGBOOK:
-- State "DONE"       from "TODO"       [2026-03-28 Sat 15:51]
-:END:
-Use the reusable tree-sitter workflows for the publishing of this grammar. These can be found here: https://github.com/tree-sitter/workflows
-
-It might be instrumental to check the https://github.com/tree-sitter/tree-sitter-python project for inspiration.
-
-For now let's only release to GitHub.
-
-** DONE Grammar linter
-:LOGBOOK:
-- State "DONE"       from "TODO"       [2026-03-29 Sun 15:48]
-:END:
-Add Eslint for the grammar.
-
-** DONE PyPi publishing
-:LOGBOOK:
-- State "DONE"       from "TODO"       [2026-03-29 Sun 16:28]
-:END:
-Add release jobs that publish to PyPi.
-
-** DONE Indented lesser blocks fuzz failure
-:LOGBOOK:
-- State "DONE"       from "TODO"       [2026-03-29 Sun 17:09]
-:END:
-
-Reproduction step:
-
-#+begin_src bash
-TREE_SITTER_SEED=6817280694206471717 tree-sitter fuzz -i "Indented lesser blocks" --iterations 1 --edits 1 --log-graphs
-#+end_src
-
-** DONE Release v0.23.5
-:LOGBOOK:
-- State "DONE"       from              [2026-03-29 Sun 17:15]
-:END:
-
-* Bugs
-** DONE Empty table cells fail to parse
-:LOGBOOK:
-- State "DONE"       from "TODO"       [2026-03-29 Sun 20:48]
+- State "DONE"       from "TODO"       [2026-04-06 Mon 00:26]
 :END:
 
 #+begin_example
-|Value|Double|
-|1||
-|2||
-|3||
-#+end_example
-
-** DONE Consecutive fixed-width blocks should coalesce
-:LOGBOOK:
-- State "DONE"       from "TODO"       [2026-03-31 Tue 13:35]
-:END:
-#+begin_example
-: Foo
-: Bar
-: Baz
-#+end_example
-
-The above should result in just one, three-line long fixed-width block.
-
-** DONE Lone list item parses as text
-:LOGBOOK:
-- State "DONE"       from "TODO"       [2026-04-01 Wed 11:07]
-:END:
-
-: - Item 0
-
-Note the lack of newline at the end of the input
-
-** CANCELLED Extra empty plaintext on newline-less paragraphs
-:LOGBOOK:
-- State "CANCELLED"  from "TODO"       [2026-04-01 Wed 11:42] \\
-  After the previous fix this is parsed as a =newline= without any content, so this is fine. :shrug:
-:END:
-
-: Use *bold* text
-
-Note the lack of newline at the end of the input. The parse tree results in an extra plaintext value that doesn't store any data at the end of the paragraph.
-
-** DONE Support for unicode in node tags
-:LOGBOOK:
-- State "DONE"       from "TODO"       [2026-04-05 Sun 00:54]
-:END:
-#+begin_example
-,* TODO 修正タスク名の確認 :開発:
-#+end_example
-
-This should parse with a single, unicode tag.
-
-** DONE Lack of space before tags causes mis-parse.
-:LOGBOOK:
-- State "DONE"       from "TODO"       [2026-04-05 Sun 00:49]
-:END:
-#+begin_example
-,* Test.:tag:
-#+end_example
-
-The tag should parse even though the =:= is not preceeded by whitespace.
-** DONE Markup-like characters in title cause tag mis-parse.
-:LOGBOOK:
-- State "DONE"       from "TODO"       [2026-04-05 Sun 00:32]
-:END:
-#+begin_example
-,* Test /proc/stat :tag:
-,* Create a story for the (+) button counters. :tag:
-,* Refactor *Resource classes         :tag:
-#+end_example
-
-The =tag= ends up as part of the title text. It should parse as a tag instead.
-
-** DONE Drawer parsing should abort at heading boundary
-:LOGBOOK:
-- State "DONE"       from "TODO"       [2026-04-05 Sun 02:22]
-:END:
-#+begin_example
-,* Test
+,* A
 :PROPERTIES:
 :END:
-:Unix:SysAdmin:Debugging:
-
-,* Test
+,** B
+,* C
 :PROPERTIES:
 :END:
-#+end_example
-
-The above parses as a single heading with two drawers, it should parse as two headings with a plaintext line in the body of the first heading.
-
-*** DONE Block content regression
+,** D
+,* E
 :LOGBOOK:
-- State "DONE"       from "TODO"       [2026-04-05 Sun 02:21]
+- State "DONE"       from "TODO"       [2014-01-16 czw 20:31]
 :END:
-
-#+begin_example
-#+begin_center
-*Quatremont Institute*
-Annual Symposium on Computational Linguistics
-12–14 March 2025 · Grumblewick, Northshire
 #+end_example
 
-It seems that the recent fix introduced a regression when there's a bold markup at the column 0 in the body contents of a block or drawer.
+The node tree lists =first_line: (plain_text (MISSING "_DURATION_token1")))= at the end of the line.
 
-More examples are available when you run check.py on examples/blocks.org file.
+* Pipeline improvements
+** TODO Check.py should check for missing tokens as well as error nodes.
+
 * Next
 ** NPM publishing
 Add release jobs that publish to NPM.
 
 ** Rust, Go, Swift bindings
 - Release to crates.io, etc
-

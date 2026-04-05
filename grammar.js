@@ -615,24 +615,17 @@ module.exports = grammar({
       optional(field('counter_set', $.counter_set)),
       optional(field('checkbox', $.checkbox)),
       choice(
-        prec(2, seq(
-          field('tag', $.item_tag),
-          field('first_line', $._item_first_line_target_end),
-          field('first_line', alias($._TRAILING, $.plain_text)),
-          $._NL_or_EOI,
-        )),
-        prec(2, seq(
-          field('first_line', $._item_first_line_target_end),
-          field('first_line', alias($._TRAILING, $.plain_text)),
-          $._NL_or_EOI,
-        )),
         prec(1, seq(
           field('tag', $.item_tag),
           optional(field('first_line', $._item_first_line)),
-          optional($._TRAILING),
+          optional(field('first_line', alias($._TRAILING, $.plain_text))),
           $._NL_or_EOI,
         )),
-        seq(optional(field('first_line', $._item_first_line)), optional($._TRAILING), $._NL_or_EOI),
+        seq(
+          optional(field('first_line', $._item_first_line)),
+          optional(field('first_line', alias($._TRAILING, $.plain_text))),
+          $._NL_or_EOI,
+        ),
       ),
       optional(prec.dynamic(5, $._list_item_body)),
     )),
@@ -643,32 +636,6 @@ module.exports = grammar({
     ),
 
     _item_first_line: $ => repeat1($._object),
-
-    _item_first_line_target_end: $ => prec.right(3, seq(
-      repeat($._object_nofn),
-      choice(
-        $.code,
-        $.verbatim,
-        $.bold,
-        $.italic,
-        $.underline,
-        $.strike_through,
-        $.regular_link,
-        $.angle_link,
-        $.plain_link,
-        $.timestamp,
-        $.completion_counter,
-        $.entity,
-        $.macro,
-        $.target,
-        $.radio_target,
-        $.export_snippet,
-        $.footnote_reference,
-        $.citation,
-        $.inline_source_block,
-        $.inline_babel_call,
-      ),
-    )),
 
     _bullet: $ => choice(
       $.unordered_bullet,

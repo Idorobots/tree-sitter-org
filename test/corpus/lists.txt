@@ -240,7 +240,7 @@ List items with inline code and trailing whitespace
           body: (code_content))))))
 
 ================
-List items with targeted trailing whitespace as plain text
+List items with targeted trailing whitespace after object endings
 ================
 - ~code~ 
 - =verbatim= 
@@ -439,7 +439,7 @@ Inline plus in indented list under heading
           item: (list_item
             bullet: (unordered_bullet)
             first_line: (plain_text))
-	  item: (list_item
+          item: (list_item
             bullet: (unordered_bullet)
             first_line: (plain_text)))))))
 
