@@ -1481,12 +1481,12 @@ module.exports = grammar({
 
     _ts_repeater: $ => seq(
       field('mark', alias($._REPEATER_MARK, $.repeater_mark)),
-      field('value', /[0-9]+/),
-      field('unit', alias($._TIME_UNIT, $.time_unit)),
+      field('value', alias($._TS_REPEATER_VALUE, $.repeater_value)),
+      field('unit', alias($._TIME_UNIT, $.repeater_time_unit)),
       optional(seq(
         '/',
-        field('cap_value', /[0-9]+/),
-        field('cap_unit', alias($._TIME_UNIT, $.time_unit)),
+        field('cap_value', alias($._TS_REPEATER_CAP_VALUE, $.repeater_cap_value)),
+        field('cap_unit', alias($._TIME_UNIT, $.repeater_cap_time_unit)),
       )),
     ),
 
@@ -1494,11 +1494,14 @@ module.exports = grammar({
 
     _ts_delay: $ => seq(
       field('mark', alias($._DELAY_MARK, $.delay_mark)),
-      field('value', /[0-9]+/),
-      field('unit', alias($._TIME_UNIT, $.time_unit)),
+      field('value', alias($._TS_DELAY_VALUE, $.delay_value)),
+      field('unit', alias($._TIME_UNIT, $.delay_time_unit)),
     ),
 
     _DELAY_MARK: _ => token(choice('--', '-')),
+    _TS_REPEATER_VALUE: _ => /[0-9]+/,
+    _TS_REPEATER_CAP_VALUE: _ => /[0-9]+/,
+    _TS_DELAY_VALUE: _ => /[0-9]+/,
     _TIME_UNIT: _ => /[hdwmy]/,
 
     // --- 8.10 Text Markup ---
