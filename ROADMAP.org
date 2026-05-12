@@ -38,6 +38,25 @@ The node tree lists =first_line: (plain_text (MISSING "_DURATION_token1")))= at 
 
 The strikethrough on line 3 spans until the =|= character even though there's a =+= character that should end the strikethrough. 
 
+** DONE Timestamp delay/repeater marks are missing the value
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-05-12 Tue 20:30]
+:END:
+Here are three examples with different kinds of repeaters on their timestamps. In all cases, the values are not actually parsed, making it less useful:
+
+#+begin_example
+,* Delay
+DEADLINE: <2025-12-07 nie -5d>
+
+,* Repeater
+SCHEDULED: <2025-12-11 czw +3d>
+
+,* Repeater with cap
+SCHEDULED: <2025-12-11 czw +1m/3m>
+#+end_example
+
+I'd like the value to be available on the parse tree. Please make sure to expose all the components of the timestamp in the parse tree as named nodes.
+
 * Pipeline improvements
 ** DONE Check.py should check for missing tokens as well as error nodes.
 :LOGBOOK:

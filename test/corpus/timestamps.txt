@@ -124,7 +124,70 @@ Active same-day time range with repeater
         (ts_time)
         (ts_time)
         (repeater_mark)
-        (time_unit))
+        (repeater_value)
+        (repeater_time_unit))
+      (newline))))
+
+================
+Active timestamp with delay
+================
+<2025-12-07 Sun -5d>
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (timestamp
+        (ts_year)
+        (ts_month)
+        (ts_day)
+        (ts_dayname)
+        (delay_mark)
+        (delay_value)
+        (delay_time_unit))
+      (newline))))
+
+================
+Active timestamp with repeater
+================
+<2025-12-11 Thu +3d>
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (timestamp
+        (ts_year)
+        (ts_month)
+        (ts_day)
+        (ts_dayname)
+        (repeater_mark)
+        (repeater_value)
+        (repeater_time_unit))
+      (newline))))
+
+================
+Active timestamp with capped repeater
+================
+<2025-12-11 Thu +1m/3m>
+
+---
+
+(document
+  (zeroth_section
+    (paragraph
+      (timestamp
+        (ts_year)
+        (ts_month)
+        (ts_day)
+        (ts_dayname)
+        (repeater_mark)
+        (repeater_value)
+        (repeater_time_unit)
+        (repeater_cap_value)
+        (repeater_cap_time_unit))
       (newline))))
 
 ================

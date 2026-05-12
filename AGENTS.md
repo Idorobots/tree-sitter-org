@@ -173,6 +173,7 @@ Regenerate with `tree-sitter generate && tree-sitter build`.
 ## Agent Workflow
 - Read nearby grammar/scanner code before editing.
 - Run the narrowest relevant test first (single `--include` title), then broaden to the corpus file, then `tree-sitter test`.
+- If a change introduces a breaking API/AST behavior, add an entry to `CHANGELOG.org` under a version-specific heading describing the break and required migration.
 - For grammar/scanner changes:
   1. Rebuild: `tree-sitter generate && tree-sitter build`
   2. Run targeted corpus test: `tree-sitter test --file-name test/corpus/<topic>.txt`
