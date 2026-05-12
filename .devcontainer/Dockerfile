@@ -3,7 +3,6 @@ FROM ubuntu:26.04
 # Install common utilities
 RUN apt-get update && apt-get install -y \
     python-is-python3 \
-    pipx \
     bash \
     curl \
     findutils \
@@ -25,10 +24,6 @@ RUN mkdir -p ~/.local/share/opencode
 
 # Install tree-sitter CLI
 RUN npm i -g tree-sitter-cli@latest
-
-# Install Poetry
-RUN pipx install poetry
-RUN pipx ensurepath
 
 # Set working directory
 WORKDIR /workspace
