@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.13)
 
 project(tree-sitter-org
-        VERSION "0.23.8"
+        VERSION "0.24.0"
         DESCRIPTION "Tree-sitter grammar for Org Mode syntax"
         HOMEPAGE_URL "https://github.com/idorobots/tree-sitter-org"
         LANGUAGES C)

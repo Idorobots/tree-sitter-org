@@ -4,7 +4,7 @@ endif
 
 LANGUAGE_NAME := tree-sitter-org
 HOMEPAGE_URL := https://github.com/idorobots/tree-sitter-org
-VERSION := 0.23.8
+VERSION := 0.24.0
 
 # repository
 SRC_DIR := src
