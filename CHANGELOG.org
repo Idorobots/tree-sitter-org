@@ -1,0 +1,6 @@
+* 0.24.0
+
+** Breaking Changes
+
+- Timestamp modifier unit nodes were renamed from ~time_unit~ to context-specific node types: ~repeater_time_unit~, ~repeater_cap_time_unit~, and ~delay_time_unit~.
+- Downstream consumers that match ~(time_unit)~ in Tree-sitter queries or bindings must update to the new node names.

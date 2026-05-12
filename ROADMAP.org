@@ -38,7 +38,10 @@ The node tree lists =first_line: (plain_text (MISSING "_DURATION_token1")))= at 
 
 The strikethrough on line 3 spans until the =|= character even though there's a =+= character that should end the strikethrough. 
 
-** TODO Timestamp delay/repeater marks are missing the value
+** DONE Timestamp delay/repeater marks are missing the value
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-05-12 Tue 20:30]
+:END:
 Here are three examples with different kinds of repeaters on their timestamps. In all cases, the values are not actually parsed, making it less useful:
 
 #+begin_example
